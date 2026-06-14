@@ -28,8 +28,8 @@ export default async function StudioPage({
       <div className="mx-auto max-w-6xl px-5 pt-8">
         <h1 className="text-2xl font-semibold">Carousel Studio</h1>
         <p className="mt-1 text-muted">
-          Edit slides, pick a theme, export free PNGs. Loads your latest committed draft, or this
-          sample.
+          Your carousel is generated automatically as 1080×1350 PNGs — download them, or fine-tune
+          the copy and theme below. Loads your latest committed draft, or this sample.
         </p>
       </div>
       <CarouselStudio

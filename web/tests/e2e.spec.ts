@@ -48,6 +48,18 @@ test("studio renders and the slide PNG route returns an image", async ({ page })
   expect(res.headers()["content-type"]).toContain("image/png");
 });
 
+test("studio auto-generates the carousel images on load", async ({ page }) => {
+  await page.goto("/studio");
+  // The "Generated carousel" panel renders each slide to a real PNG via
+  // /api/slide and shows them as <img>. Wait for the auto-render to finish.
+  await expect(page.getByText("Generated carousel")).toBeVisible();
+  const firstImg = page.getByRole("img", { name: "Slide 1" });
+  await expect(firstImg).toBeVisible({ timeout: 20000 });
+  // The img src must be an object URL backed by the rendered PNG blob.
+  await expect(firstImg).toHaveAttribute("src", /^blob:/);
+  await expect(page.getByRole("button", { name: /Download all/i })).toBeEnabled();
+});
+
 test("login page renders", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: /Sign in|Create account/i })).toBeVisible();

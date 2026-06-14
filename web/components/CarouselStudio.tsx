@@ -7,7 +7,7 @@ import { SlideArt } from "@/lib/slide-render";
 import { THEMES, getTheme, slideSrc } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
 import { saveCarousel, getCarousel } from "@/lib/carousels";
-import type { Carousel, Slide, SlideKind } from "@/lib/types";
+import type { Carousel, Slide } from "@/lib/types";
 
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -38,11 +38,51 @@ export function CarouselStudio({
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const loaded = useRef(false);
 
-  // On first mount, prefer a draft handed over from the conviction flow.
+  // Auto-generated carousel: the actual exported PNGs (HTML → Satori → image),
+  // rendered on arrival so the finished artifact is the first thing you see.
+  const [rendered, setRendered] = useState<string[]>([]);
+  const [rendering, setRendering] = useState(false);
+  const [renderErr, setRenderErr] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const renderedBlobs = useRef<Blob[]>([]);
+
+  /** Render every slide to a PNG via /api/slide and hold the blobs + object URLs. */
+  async function renderAll(s: Slide[] = slides, tId: string = themeId, h: string = handle) {
+    setRendering(true);
+    setRenderErr(null);
+    try {
+      const urls: string[] = [];
+      const blobs: Blob[] = [];
+      for (let i = 0; i < s.length; i++) {
+        const res = await fetch(slideSrc({ slide: s[i], themeId: tId, index: i, total: s.length, handle: h }));
+        if (!res.ok) throw new Error(`slide ${i + 1} failed to render`);
+        const blob = await res.blob();
+        blobs.push(blob);
+        urls.push(URL.createObjectURL(blob));
+      }
+      // Swap in the fresh set, then revoke the previous URLs.
+      setRendered((prev) => {
+        prev.forEach((u) => URL.revokeObjectURL(u));
+        return urls;
+      });
+      renderedBlobs.current = blobs;
+      setStale(false);
+    } catch (e) {
+      setRenderErr((e as Error).message);
+    } finally {
+      setRendering(false);
+    }
+  }
+
+  // On first mount: load the draft handed over from the conviction flow (or a
+  // saved carousel), then auto-generate the images for it.
   useEffect(() => {
     if (loaded.current) return;
     loaded.current = true;
     void (async () => {
+      let s = initialSlides;
+      let tId = THEMES[0].id;
+      let h = initialHandle;
       if (loadId) {
         const c = await getCarousel(loadId);
         if (c) {
@@ -52,33 +92,53 @@ export function CarouselStudio({
           setTitle(c.title);
           setCarouselId(c.id);
           setCreatedAt(c.createdAt);
-          return;
+          s = c.slides;
+          tId = c.themeId;
+          h = c.handle;
+        }
+      } else {
+        const d = loadDraft();
+        if (d?.slides?.length) {
+          setSlides(d.slides);
+          setHandle(d.handle || initialHandle);
+          s = d.slides;
+          h = d.handle || initialHandle;
         }
       }
-      const d = loadDraft();
-      if (d?.slides?.length) {
-        setSlides(d.slides);
-        setHandle(d.handle || initialHandle);
-      }
+      void renderAll(s, tId, h);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHandle, loadId]);
+
+  // Revoke any outstanding object URLs when the studio unmounts.
+  useEffect(() => {
+    return () => {
+      renderedBlobs.current = [];
+      rendered.forEach((u) => URL.revokeObjectURL(u));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const theme = getTheme(themeId);
   const total = slides.length;
   const idx = Math.min(sel, total - 1);
   const current = slides[idx];
 
+  // Any edit invalidates the generated images until regenerated.
   function patch(p: Partial<Slide>) {
     setSlides((s) => s.map((sl, i) => (i === idx ? { ...sl, ...p } : sl)));
+    setStale(true);
   }
   function add() {
     setSlides((s) => [...s, { kind: "argument", kicker: "POINT", title: "", body: "New point" }]);
     setSel(total);
+    setStale(true);
   }
   function remove(i: number) {
     if (total <= 1) return;
     setSlides((s) => s.filter((_, k) => k !== i));
     setSel(Math.max(0, i - 1));
+    setStale(true);
   }
   function move(i: number, dir: -1 | 1) {
     const j = i + dir;
@@ -89,17 +149,26 @@ export function CarouselStudio({
       return n;
     });
     setSel(j);
+    setStale(true);
+  }
+  function pickTheme(id: string) {
+    setThemeId(id);
+    setStale(true);
+  }
+  function setHandleStale(v: string) {
+    setHandle(v);
+    setStale(true);
   }
 
   async function downloadAll() {
     setBusy(true);
     try {
+      // Reuse the freshly-generated images when they're still valid.
+      if (stale || renderedBlobs.current.length !== slides.length) await renderAll();
+      const blobs = renderedBlobs.current;
+      if (blobs.length !== slides.length) throw new Error("nothing rendered");
       const zip = new JSZip();
-      for (let i = 0; i < slides.length; i++) {
-        const res = await fetch(slideSrc({ slide: slides[i], themeId, index: i, total, handle }));
-        if (!res.ok) throw new Error(`slide ${i + 1} failed to render`);
-        zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, await res.blob());
-      }
+      blobs.forEach((b, i) => zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, b));
       download(await zip.generateAsync({ type: "blob" }), "carousel.zip");
     } catch (e) {
       alert("Render failed: " + (e as Error).message);
@@ -110,9 +179,15 @@ export function CarouselStudio({
   async function downloadOne(i: number) {
     setBusy(true);
     try {
-      const res = await fetch(slideSrc({ slide: slides[i], themeId, index: i, total, handle }));
-      if (!res.ok) throw new Error("render failed");
-      download(await res.blob(), `slide-${String(i + 1).padStart(2, "0")}.png`);
+      const fresh = !stale && renderedBlobs.current[i];
+      const blob = fresh
+        ? renderedBlobs.current[i]
+        : await (async () => {
+            const res = await fetch(slideSrc({ slide: slides[i], themeId, index: i, total, handle }));
+            if (!res.ok) throw new Error("render failed");
+            return res.blob();
+          })();
+      download(blob, `slide-${String(i + 1).padStart(2, "0")}.png`);
     } catch (e) {
       alert("Render failed: " + (e as Error).message);
     } finally {
@@ -166,12 +241,84 @@ export function CarouselStudio({
           </button>
           {saveMsg && <span className="whitespace-nowrap text-xs text-muted">{saveMsg}</span>}
         </div>
-        <div className="flex items-center justify-between gap-3">
+
+        {/* Auto-generated carousel: the finished, exportable PNGs. */}
+        <div className="rounded-2xl border border-line bg-surface/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Generated carousel</p>
+              <p className="text-xs text-muted">
+                {rendering
+                  ? "Rendering slides to images…"
+                  : renderErr
+                    ? "Couldn't render — try regenerate."
+                    : stale
+                      ? "Edited since last render — regenerate to refresh."
+                      : `${rendered.length} slide${rendered.length === 1 ? "" : "s"} · 1080×1350 PNG · ready to post`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {(stale || renderErr) && !rendering && (
+                <button
+                  onClick={() => void renderAll()}
+                  className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface"
+                >
+                  Regenerate
+                </button>
+              )}
+              <button
+                onClick={downloadAll}
+                disabled={busy || rendering || (rendered.length === 0 && !stale)}
+                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+              >
+                {busy ? "Preparing…" : "Download all (.zip)"}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+            {rendering && rendered.length === 0 ? (
+              Array.from({ length: total }).map((_, i) => (
+                <div
+                  key={i}
+                  className="shrink-0 animate-pulse rounded-md bg-line/40"
+                  style={{ width: 1080 * thumb, height: 1350 * thumb }}
+                />
+              ))
+            ) : rendered.length > 0 ? (
+              rendered.map((url, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setSel(i);
+                    void downloadOne(i);
+                  }}
+                  title={`Download slide ${i + 1}`}
+                  className={`group relative shrink-0 overflow-hidden rounded-md ring-1 ring-line ${stale ? "opacity-60" : ""}`}
+                  style={{ width: 1080 * thumb, height: 1350 * thumb }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Slide ${i + 1}`} width={1080 * thumb} height={1350 * thumb} />
+                  <span className="absolute inset-x-0 bottom-0 hidden bg-black/60 py-0.5 text-center text-[10px] text-white group-hover:block">
+                    ↓ PNG
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="py-6 text-sm text-muted">No images yet.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Fine-tune: live editable preview + themes. */}
+        <p className="mt-6 text-sm font-semibold">Fine-tune</p>
+        <p className="text-xs text-muted">Edit copy, pick a theme, then regenerate above.</p>
+        <div className="mt-3 flex items-center justify-between gap-3">
           <div className="flex gap-1.5">
             {THEMES.map((t) => (
               <button
                 key={t.id}
-                onClick={() => setThemeId(t.id)}
+                onClick={() => pickTheme(t.id)}
                 title={t.name}
                 className={`h-7 w-7 rounded-full border-2 ${themeId === t.id ? "border-fg" : "border-line"}`}
                 style={{ background: t.bg }}
@@ -183,22 +330,13 @@ export function CarouselStudio({
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => downloadOne(idx)}
-              disabled={busy}
-              className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50"
-            >
-              Slide PNG
-            </button>
-            <button
-              onClick={downloadAll}
-              disabled={busy}
-              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
-            >
-              {busy ? "Rendering…" : "Download all (.zip)"}
-            </button>
-          </div>
+          <button
+            onClick={() => downloadOne(idx)}
+            disabled={busy}
+            className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50"
+          >
+            This slide PNG
+          </button>
         </div>
 
         <div className="mt-4 flex justify-center rounded-2xl border border-line bg-surface/40 p-6">
@@ -279,7 +417,7 @@ export function CarouselStudio({
         <label className="mt-5 block text-xs font-medium text-muted">Handle</label>
         <input
           value={handle}
-          onChange={(e) => setHandle(e.target.value)}
+          onChange={(e) => setHandleStale(e.target.value)}
           className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
         />
       </aside>
