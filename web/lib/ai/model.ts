@@ -21,12 +21,12 @@ export function getModel(s: ModelSettings = {}): LanguageModel {
   switch (s.provider ?? "google") {
     case "anthropic":
       return createAnthropic({
-        apiKey: s.apiKey ?? process.env.ANTHROPIC_API_KEY,
+        apiKey: s.apiKey || process.env.ANTHROPIC_API_KEY,
       })(s.model ?? "claude-opus-4-8");
 
     case "openai":
       return createOpenAI({
-        apiKey: s.apiKey ?? process.env.OPENAI_API_KEY,
+        apiKey: s.apiKey || process.env.OPENAI_API_KEY,
       })(s.model ?? "gpt-5.5");
 
     case "ollama":
@@ -38,7 +38,7 @@ export function getModel(s: ModelSettings = {}): LanguageModel {
     case "google":
     default:
       return createGoogleGenerativeAI({
-        apiKey: s.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        apiKey: s.apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
       })(s.model ?? "gemini-flash-latest");
   }
 }

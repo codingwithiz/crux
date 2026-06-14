@@ -35,7 +35,7 @@ async function fetchHN(): Promise<NewsItem[]> {
       source: "hn" as const,
       title: h.title,
       url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
-      meta: `${h.points ?? 0} points`,
+      meta: `${h.points ?? 0} points · HN`,
       score: h.points ?? 0,
     }));
 }
@@ -54,7 +54,7 @@ async function fetchHF(): Promise<NewsItem[]> {
       source: "hf" as const,
       title: it.paper?.title ?? it.title ?? "Untitled paper",
       url: id ? `https://huggingface.co/papers/${id}` : "https://huggingface.co/papers",
-      meta: `${up} upvotes`,
+      meta: `${up} upvotes · Papers`,
       detail: it.paper?.summary,
       score: up,
     };
@@ -79,15 +79,63 @@ async function fetchGitHub(): Promise<NewsItem[]> {
     source: "github" as const,
     title: r.full_name,
     url: r.html_url,
-    meta: `${r.stargazers_count.toLocaleString()} stars`,
+    meta: `${r.stargazers_count.toLocaleString()} stars · GitHub`,
     detail: r.description ?? undefined,
     score: r.stargazers_count,
   }));
 }
 
-/** Free, ToS-clean AI signal from a few primary sources. Resilient to any one failing. */
+interface RedditChild {
+  data: { id: string; title: string; permalink: string; ups: number; selftext?: string };
+}
+async function fetchReddit(sub: string): Promise<NewsItem[]> {
+  const d = (await jget(
+    `https://www.reddit.com/r/${sub}/top.json?t=day&limit=8`,
+  )) as { data?: { children?: RedditChild[] } };
+  return (d.data?.children ?? [])
+    .filter((c) => c.data?.title)
+    .map((c) => ({
+      id: `reddit-${c.data.id}`,
+      source: "reddit" as const,
+      title: c.data.title,
+      url: `https://www.reddit.com${c.data.permalink}`,
+      meta: `${c.data.ups ?? 0} upvotes · r/${sub}`,
+      detail: c.data.selftext ? c.data.selftext.slice(0, 240) : undefined,
+      score: c.data.ups ?? 0,
+    }));
+}
+
+interface LobItem {
+  short_id: string;
+  title: string;
+  url: string;
+  score: number;
+  comments_url: string;
+  description_plain?: string;
+}
+async function fetchLobsters(): Promise<NewsItem[]> {
+  const d = (await jget("https://lobste.rs/t/ai.json")) as LobItem[];
+  return (Array.isArray(d) ? d : []).slice(0, 8).map((it) => ({
+    id: `lob-${it.short_id}`,
+    source: "lobsters" as const,
+    title: it.title,
+    url: it.url || it.comments_url,
+    meta: `${it.score ?? 0} points · Lobsters`,
+    detail: it.description_plain ? it.description_plain.slice(0, 240) : undefined,
+    score: it.score ?? 0,
+  }));
+}
+
+/** Free, ToS-clean AI signal from several primary sources. Resilient to any one failing. */
 export async function getNews(): Promise<NewsItem[]> {
-  const settled = await Promise.allSettled([fetchHN(), fetchHF(), fetchGitHub()]);
+  const settled = await Promise.allSettled([
+    fetchHN(),
+    fetchHF(),
+    fetchGitHub(),
+    fetchReddit("MachineLearning"),
+    fetchReddit("LocalLLaMA"),
+    fetchLobsters(),
+  ]);
   const items: NewsItem[] = [];
   for (const r of settled) if (r.status === "fulfilled") items.push(...r.value);
   return items;

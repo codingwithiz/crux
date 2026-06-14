@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { ConvictionFlow } from "./ConvictionFlow";
+import { getLedger } from "@/lib/ledger";
+import { rankItems } from "@/lib/rank";
 import type { NewsItem } from "@/lib/types";
 
 const SOURCE_LABELS: Record<NewsItem["source"], string> = {
-  hf: "Papers (Hugging Face)",
+  hf: "Papers (HF)",
   hn: "Hacker News",
-  github: "GitHub trending",
+  github: "GitHub",
+  reddit: "Reddit",
+  lobsters: "Lobsters",
 };
-const ORDER: NewsItem["source"][] = ["hf", "hn", "github"];
 
 export function NewsPicker() {
   const [items, setItems] = useState<NewsItem[] | null>(null);
@@ -17,10 +20,16 @@ export function NewsPicker() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/news")
-      .then((r) => r.json())
-      .then((d: { items?: NewsItem[] }) => setItems(d.items ?? []))
-      .catch((e) => setErr(String(e)));
+    (async () => {
+      try {
+        const res = await fetch("/api/news");
+        const d = (await res.json()) as { items?: NewsItem[] };
+        const theses = (await getLedger()).map((t) => ({ topic: t.topic, statement: t.statement }));
+        setItems(rankItems(d.items ?? [], theses));
+      } catch (e) {
+        setErr(String(e));
+      }
+    })();
   }, []);
 
   if (picked) {
@@ -56,31 +65,24 @@ export function NewsPicker() {
   if (!items.length) return <p className="text-muted">No items right now — try the thought path.</p>;
 
   return (
-    <div className="space-y-6">
-      {ORDER.map((src) => {
-        const list = items.filter((i) => i.source === src);
-        if (!list.length) return null;
-        return (
-          <div key={src}>
-            <h2 className="mb-2 font-mono text-xs uppercase tracking-wide text-muted">
-              {SOURCE_LABELS[src]}
-            </h2>
-            <div className="space-y-2">
-              {list.map((it) => (
-                <button
-                  key={it.id}
-                  onClick={() => setPicked(it)}
-                  className="block w-full rounded-lg border border-line bg-surface/40 p-3 text-left transition hover:border-accent hover:bg-surface"
-                >
-                  <p className="text-sm font-medium">{it.title}</p>
-                  {it.detail && <p className="mt-1 line-clamp-2 text-xs text-muted">{it.detail}</p>}
-                  <p className="mt-1 text-xs text-muted">{it.meta}</p>
-                </button>
-              ))}
-            </div>
+    <div className="space-y-2">
+      <p className="mb-2 text-xs text-muted">
+        Ranked for you — normalized popularity blended with relevance to your ledger.
+      </p>
+      {items.map((it) => (
+        <button
+          key={it.id}
+          onClick={() => setPicked(it)}
+          className="block w-full rounded-lg border border-line bg-surface/40 p-3 text-left transition hover:border-accent hover:bg-surface"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-xs text-accent">{SOURCE_LABELS[it.source]}</span>
+            <span className="shrink-0 text-xs text-muted">{it.meta}</span>
           </div>
-        );
-      })}
+          <p className="mt-1 text-sm font-medium">{it.title}</p>
+          {it.detail && <p className="mt-1 line-clamp-2 text-xs text-muted">{it.detail}</p>}
+        </button>
+      ))}
     </div>
   );
 }

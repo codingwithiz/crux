@@ -60,7 +60,7 @@ export interface Slide {
 
 export interface NewsItem {
   id: string;
-  source: "hf" | "hn" | "github";
+  source: "hf" | "hn" | "github" | "reddit" | "lobsters";
   title: string;
   url: string;
   meta?: string;

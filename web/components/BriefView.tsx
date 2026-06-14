@@ -10,6 +10,8 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   hf: "Paper",
   hn: "Hacker News",
   github: "GitHub",
+  reddit: "Reddit",
+  lobsters: "Lobsters",
 };
 
 export function BriefView() {

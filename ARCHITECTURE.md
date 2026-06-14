@@ -178,7 +178,7 @@ components/
 lib/
   types.ts                  shared types
   ai/model.ts  ai/routing.ts  ai/prompts.ts        model layer
-  sources.ts                HF / HN / GitHub connectors
+  sources.ts  rank.ts        sources (HF/HN/GitHub/Reddit/Lobsters) + personalized ranking
   slides.ts  slide-render.tsx  draft.ts             carousel data + render
   ledger.ts  carousels.ts                           dual-mode data layer
   settings.ts  supabase/client.ts                   settings + supabase client
