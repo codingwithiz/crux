@@ -20,6 +20,7 @@ test("all nav routes resolve", async ({ page }) => {
     ["News", /\/news/],
     ["Studio", /\/studio/],
     ["Gallery", /\/gallery/],
+    ["Voice", /\/voice/],
     ["Ledger", /\/ledger/],
   ];
   for (const [label, urlRe] of routes) {
@@ -70,6 +71,22 @@ test("news API returns live items", async ({ page }) => {
   expect(res.status()).toBe(200);
   const json = (await res.json()) as { items?: unknown[] };
   expect(Array.isArray(json.items)).toBeTruthy();
+});
+
+test("voice page loads the editor with the built-in default", async ({ page }) => {
+  await page.goto("/voice");
+  await expect(page.getByRole("heading", { name: /Your voice/i })).toBeVisible();
+  await expect(page.getByText(/built-in default voice/i)).toBeVisible();
+  await expect(page.getByPlaceholder(/Paste one of your posts/i).first()).toBeVisible();
+  // The default voice guide should have populated the guide textarea.
+  await expect(page.getByPlaceholder(/Distill from your samples/i)).not.toBeEmpty();
+});
+
+test("voice distill API rejects empty input", async ({ page }) => {
+  const res = await page.request.post("/api/voice", { data: { samples: [] } });
+  expect(res.status()).toBe(400);
+  const j = (await res.json()) as { error?: string };
+  expect(j.error).toBe("no_samples");
 });
 
 test("radar read endpoint returns a snapshot shape", async ({ page }) => {

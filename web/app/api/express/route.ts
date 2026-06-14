@@ -4,7 +4,7 @@ import { getModel, modelReady } from "@/lib/ai/model";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { EXPRESSOR_SYSTEM } from "@/lib/ai/prompts";
-import type { Settings, Thesis } from "@/lib/types";
+import type { Settings, Thesis, VoiceProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,20 +28,41 @@ const Schema = z.object({
 interface Body {
   thesis: Thesis;
   settings?: Settings;
+  voice?: VoiceProfile;
+}
+
+/** Compose the voice guide + a couple of short samples into a prompt block. */
+function voiceBlock(voice?: VoiceProfile): string {
+  if (!voice) return "";
+  const parts: string[] = [];
+  if (voice.guide) parts.push(`VOICE GUIDE:\n${voice.guide}`);
+  if (voice.tone) parts.push(`Tone: ${voice.tone}`);
+  parts.push(`Emoji: ${voice.emoji ? "use tasteful emojis like the samples do" : "do NOT use emojis"}`);
+  const samples = (voice.samples ?? []).filter((s) => s.trim()).slice(0, 2);
+  if (samples.length) {
+    parts.push(
+      `Reference samples of how I write (match the STYLE, not the content):\n` +
+        samples.map((s, i) => `[${i + 1}] ${s.slice(0, 600)}`).join("\n"),
+    );
+  }
+  return parts.join("\n\n");
 }
 
 export async function POST(req: Request) {
-  const { thesis, settings: rawSettings } = (await req.json()) as Body;
+  const { thesis, settings: rawSettings, voice } = (await req.json()) as Body;
   if (!thesis?.statement) return Response.json({ error: "no_thesis" }, { status: 400 });
   const settings = await resolveServerSettings(rawSettings);
   const ms = stepModelSettings(settings, "express");
   if (!modelReady(ms)) return Response.json({ error: "no_model" }, { status: 400 });
 
+  const vb = voiceBlock(voice);
+  const system = vb ? `${EXPRESSOR_SYSTEM}\n\n${vb}` : EXPRESSOR_SYSTEM;
+
   try {
     const { output } = await generateText({
       model: getModel(ms),
       output: Output.object({ schema: Schema }),
-      system: EXPRESSOR_SYSTEM,
+      system,
       prompt: `My committed thesis: "${thesis.statement}"
 Topic: ${thesis.topic}
 Confidence: ${thesis.confidence}

@@ -74,6 +74,23 @@ export interface BriefPick extends NewsItem {
   relevance: string;
 }
 
+/**
+ * The user's writing voice — the moat. A small corpus of their real posts plus
+ * a distilled style guide, used to tune the Expressor so carousels sound like
+ * THEM, not generic AI. Stored per-user (cloud) or in localStorage.
+ */
+export interface VoiceProfile {
+  /** Raw writing samples (the user's own posts). */
+  samples: string[];
+  /** A compact, distilled style guide (hand-written default or AI-derived). */
+  guide?: string;
+  /** Optional freeform tone knob, e.g. "energetic, concrete, humble-confident". */
+  tone?: string;
+  /** Whether the Expressor may use emojis (the user's posts use them tastefully). */
+  emoji: boolean;
+  updatedAt: string;
+}
+
 export interface CarouselTheme {
   id: string;
   name: string;

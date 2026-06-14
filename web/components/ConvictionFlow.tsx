@@ -7,6 +7,7 @@ import { DefaultChatTransport } from "ai";
 import { nanoid } from "nanoid";
 import { getSettings } from "@/lib/settings";
 import { addThesis } from "@/lib/ledger";
+import { getVoice, effectiveVoice } from "@/lib/voice";
 import { saveDraft } from "@/lib/draft";
 import { thesisToSlides } from "@/lib/slides";
 import { findRelated, type RelatedThesis } from "@/lib/related";
@@ -150,10 +151,11 @@ export function ConvictionFlow({
 
     let slides: Slide[] = thesisToSlides(thesis, "@you");
     try {
+      const voice = effectiveVoice(await getVoice());
       const res = await fetch("/api/express", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ thesis, settings: getSettings() }),
+        body: JSON.stringify({ thesis, settings: getSettings(), voice }),
       });
       if (res.ok) {
         const j = (await res.json()) as { slides?: Slide[] };

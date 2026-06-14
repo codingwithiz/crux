@@ -55,6 +55,15 @@ PNGs and the **Gallery** shows the real stored images (and zips them straight fr
 Storage). Without it, saving still works — the Gallery just re-renders thumbnails
 on demand.
 
+Finally, run
+[`supabase/migrations/0007_voice.sql`](./supabase/migrations/0007_voice.sql)
+to enable **your saved writing voice** (the `user_voice` table, own-row RLS).
+The **Voice** page lets a signed-in user paste their real posts, distill them
+into a style guide, and have every carousel written in *their* voice. Without
+this migration the voice still works — it just lives in `localStorage` instead
+of syncing to the account. Out of the box a strong built-in default voice is
+used, so carousels are never generic even before you set your own.
+
 ## 4. Enable email auth
 In **Authentication → Providers**, ensure **Email** is enabled. For quick local
 testing you can turn **off** "Confirm email" (Authentication → Providers → Email)
@@ -93,4 +102,4 @@ applied in the browser); if no snapshot exists it falls back to a live scan.
   the Vercel project's Environment Variables. The Cron in `vercel.json` runs
   automatically once deployed.
 - Migration order recap: `0001` theses → `0002` carousels → `0003` embeddings →
-  `0004` user secrets → `0005` carousel storage → `0006` radar.
+  `0004` user secrets → `0005` carousel storage → `0006` radar → `0007` voice.
