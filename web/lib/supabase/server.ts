@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 /** Server Supabase client (route handlers / server components). Reads the
@@ -29,4 +30,16 @@ export function supabaseConfiguredServer(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
+}
+
+/** Service-role client for trusted server jobs (Cron). Bypasses RLS, so it is
+ *  ONLY for server contexts with no user session. Returns null when the
+ *  service key isn't configured, so callers degrade gracefully. */
+export function createServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return null;
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }

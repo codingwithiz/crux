@@ -92,4 +92,6 @@ export interface Carousel {
   themeId: string;
   handle: string;
   createdAt: string;
+  /** Public URLs of the rendered PNGs in Supabase Storage (signed-in users). */
+  imageUrls?: string[];
 }

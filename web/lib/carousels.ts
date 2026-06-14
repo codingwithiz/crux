@@ -26,6 +26,7 @@ interface Row {
   theme_id: string;
   handle: string;
   created_at: string;
+  image_urls?: string[] | null;
 }
 function rowToCarousel(r: Row): Carousel {
   return {
@@ -35,6 +36,7 @@ function rowToCarousel(r: Row): Carousel {
     themeId: r.theme_id,
     handle: r.handle,
     createdAt: r.created_at,
+    imageUrls: r.image_urls ?? undefined,
   };
 }
 
@@ -93,13 +95,50 @@ export async function saveCarousel(c: Carousel): Promise<void> {
         theme_id: c.themeId,
         handle: c.handle,
         created_at: c.createdAt,
+        image_urls: c.imageUrls ?? [],
       },
       { onConflict: "id" },
     );
 }
 
+/**
+ * Upload the rendered slide PNGs to the public `carousels` storage bucket under
+ * the signed-in user's folder and return their public URLs. No-op (returns [])
+ * when not signed in or Storage isn't reachable — the caller falls back to the
+ * Gallery's on-demand re-render. Path: "{uid}/{carouselId}/slide-NN.png".
+ */
+export async function uploadCarouselImages(
+  carouselId: string,
+  blobs: Blob[],
+): Promise<string[]> {
+  const uid = await currentUserId();
+  if (!uid || blobs.length === 0) return [];
+  const supabase = createClient();
+  const urls: string[] = [];
+  for (let i = 0; i < blobs.length; i++) {
+    const path = `${uid}/${carouselId}/slide-${String(i + 1).padStart(2, "0")}.png`;
+    const { error } = await supabase.storage
+      .from("carousels")
+      .upload(path, blobs[i], { contentType: "image/png", upsert: true });
+    if (error) return []; // storage not set up (run 0005) — degrade gracefully
+    urls.push(supabase.storage.from("carousels").getPublicUrl(path).data.publicUrl);
+  }
+  return urls;
+}
+
 export async function removeCarousel(id: string): Promise<void> {
   const uid = await currentUserId();
   if (!uid) return localWrite(localList().filter((c) => c.id !== id));
-  await createClient().from("carousels").delete().eq("id", id);
+  const supabase = createClient();
+  // Best-effort: clear the carousel's image folder before dropping the row.
+  try {
+    const folder = `${uid}/${id}`;
+    const { data } = await supabase.storage.from("carousels").list(folder);
+    if (data?.length) {
+      await supabase.storage.from("carousels").remove(data.map((f) => `${folder}/${f.name}`));
+    }
+  } catch {
+    /* storage not set up — ignore */
+  }
+  await supabase.from("carousels").delete().eq("id", id);
 }

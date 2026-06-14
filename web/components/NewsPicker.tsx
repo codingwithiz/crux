@@ -14,18 +14,40 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   lobsters: "Lobsters",
 };
 
+interface RadarSnapshot {
+  capturedAt: string;
+  count: number;
+  items: NewsItem[];
+}
+
 export function NewsPicker() {
   const [items, setItems] = useState<NewsItem[] | null>(null);
   const [picked, setPicked] = useState<NewsItem | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/news");
-        const d = (await res.json()) as { items?: NewsItem[] };
+        // Prefer the daily-radar snapshot (Cron-prepared); fall back to live.
+        let raw: NewsItem[] = [];
+        try {
+          const r = await fetch("/api/radar");
+          const rj = (await r.json()) as { snapshot?: RadarSnapshot | null };
+          if (rj.snapshot?.items?.length) {
+            raw = rj.snapshot.items;
+            setScannedAt(rj.snapshot.capturedAt);
+          }
+        } catch {
+          /* radar not available — live fetch below */
+        }
+        if (!raw.length) {
+          const res = await fetch("/api/news");
+          const d = (await res.json()) as { items?: NewsItem[] };
+          raw = d.items ?? [];
+        }
         const theses = (await getLedger()).map((t) => ({ topic: t.topic, statement: t.statement }));
-        setItems(rankItems(d.items ?? [], theses));
+        setItems(rankItems(raw, theses));
       } catch (e) {
         setErr(String(e));
       }
@@ -68,6 +90,16 @@ export function NewsPicker() {
     <div className="space-y-2">
       <p className="mb-2 text-xs text-muted">
         Ranked for you — normalized popularity blended with relevance to your ledger.
+        {scannedAt ? (
+          <>
+            {" "}
+            <span className="text-cool">
+              Auto-scanned daily · last update {new Date(scannedAt).toLocaleString()}
+            </span>
+          </>
+        ) : (
+          <> Live scan.</>
+        )}
       </p>
       {items.map((it) => (
         <button

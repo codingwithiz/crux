@@ -72,6 +72,24 @@ test("news API returns live items", async ({ page }) => {
   expect(Array.isArray(json.items)).toBeTruthy();
 });
 
+test("radar read endpoint returns a snapshot shape", async ({ page }) => {
+  // null without Supabase / before the 0006 migration; an object once a scan ran.
+  const res = await page.request.get("/api/radar");
+  expect(res.status()).toBe(200);
+  const json = (await res.json()) as Record<string, unknown>;
+  expect("snapshot" in json).toBeTruthy();
+});
+
+test("radar cron scans sources and reports a digest", async ({ page }) => {
+  const res = await page.request.get("/api/cron/radar", { timeout: 30000 });
+  expect(res.status()).toBe(200);
+  const json = (await res.json()) as { ok?: boolean; count?: number; persisted?: boolean };
+  expect(json.ok).toBeTruthy();
+  expect(typeof json.count).toBe("number");
+  // persisted only when SUPABASE_SERVICE_ROLE_KEY is set; assert it's a boolean.
+  expect(typeof json.persisted).toBe("boolean");
+});
+
 test("AI routes guard correctly without a model key", async ({ page }) => {
   // With no settings/key, synthesize should refuse rather than 500.
   const res = await page.request.post("/api/synthesize", {

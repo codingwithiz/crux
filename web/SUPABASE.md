@@ -16,8 +16,14 @@ Create `web/.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-KEY
+
+# Optional — only needed for the automated daily radar (step 7):
+SUPABASE_SERVICE_ROLE_KEY=YOUR-SERVICE-ROLE-KEY   # server-only; never expose
+CRON_SECRET=any-long-random-string                # gates /api/cron/radar
 ```
-Restart `npm run dev` after adding them.
+Restart `npm run dev` after adding them. The **service-role key** is found in
+**Project Settings → API**; it bypasses row-level security, so keep it server-side
+only (it is never sent to the browser).
 
 ## 3. Create the table
 Open **SQL Editor** in the Supabase dashboard, paste the contents of
@@ -40,6 +46,15 @@ server's own env key). Keys are protected by row-level security: each user can
 read/write only their own row, and the API never returns key *values* to the
 browser — only booleans for which providers are set.
 
+Then run
+[`supabase/migrations/0005_carousel_storage.sql`](./supabase/migrations/0005_carousel_storage.sql)
+to enable **saved carousel images** (Supabase Storage). It creates a public
+`carousels` bucket plus storage policies so a signed-in user can write only under
+their own folder. After this, hitting **Save** in the Studio uploads the rendered
+PNGs and the **Gallery** shows the real stored images (and zips them straight from
+Storage). Without it, saving still works — the Gallery just re-renders thumbnails
+on demand.
+
 ## 4. Enable email auth
 In **Authentication → Providers**, ensure **Email** is enabled. For quick local
 testing you can turn **off** "Confirm email" (Authentication → Providers → Email)
@@ -53,10 +68,29 @@ so sign-ups work without the confirmation step.
 - Not signed in (or Supabase not configured) → the ledger silently uses
   localStorage, so nothing breaks.
 
+## 6. Automated daily radar (optional)
+Run
+[`supabase/migrations/0006_radar.sql`](./supabase/migrations/0006_radar.sql)
+to create the `radar_snapshots` table (public-read). A **Vercel Cron** job
+(declared in [`vercel.json`](./vercel.json), daily at 13:00 UTC) calls
+`/api/cron/radar`, which scans the free AI sources, ranks them by normalized
+popularity, and stores one snapshot. The **News** page reads the latest snapshot
+so a prepared brief is always waiting (your per-thesis relevance ranking is still
+applied in the browser); if no snapshot exists it falls back to a live scan.
+- Writes use the **service-role key** (`SUPABASE_SERVICE_ROLE_KEY`) because the
+  Cron has no user session. Without it the route still returns the computed
+  digest but doesn't persist (`persisted: false`).
+- Set `CRON_SECRET` in production — Vercel sends it as a bearer token so only the
+  Cron can trigger the scan. Locally (no secret) the route is open for testing.
+- To trigger a scan by hand: `GET /api/cron/radar` (add
+  `Authorization: Bearer $CRON_SECRET` if you set one).
+
 ## Notes
 - The `anon` key is safe to expose in the browser — RLS is what protects data.
-  Never put the **service_role** key in the app.
-- Deploying to Vercel: add the same two `NEXT_PUBLIC_*` vars in the Vercel
-  project's Environment Variables.
-- Carousel image storage (Supabase Storage) is not wired yet — carousels still
-  download locally. That's an easy follow-up once accounts are in.
+  Never put the **service_role** key in the app (server/env only).
+- Deploying to Vercel: add the same `NEXT_PUBLIC_*` vars, plus
+  `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` if you want the daily radar, in
+  the Vercel project's Environment Variables. The Cron in `vercel.json` runs
+  automatically once deployed.
+- Migration order recap: `0001` theses → `0002` carousels → `0003` embeddings →
+  `0004` user secrets → `0005` carousel storage → `0006` radar.

@@ -6,7 +6,7 @@ import { nanoid } from "nanoid";
 import { SlideArt } from "@/lib/slide-render";
 import { THEMES, getTheme, slideSrc } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
-import { saveCarousel, getCarousel } from "@/lib/carousels";
+import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
 import type { Carousel, Slide } from "@/lib/types";
 
 function download(blob: Blob, name: string) {
@@ -200,6 +200,16 @@ export function CarouselStudio({
     setSaveMsg(null);
     try {
       const id = carouselId ?? nanoid();
+      // Make sure we have the current PNGs, then persist them to Storage so the
+      // saved carousel keeps real images (signed-in users). Falls back silently.
+      if (stale || renderedBlobs.current.length !== slides.length) await renderAll();
+      let imageUrls: string[] | undefined;
+      try {
+        const urls = await uploadCarouselImages(id, renderedBlobs.current);
+        if (urls.length) imageUrls = urls;
+      } catch {
+        /* not signed in / storage off — keep editable data only */
+      }
       const c: Carousel = {
         id,
         title: title.trim() || slides[0]?.title?.slice(0, 60) || "Untitled",
@@ -207,11 +217,12 @@ export function CarouselStudio({
         themeId,
         handle,
         createdAt: createdAt ?? new Date().toISOString(),
+        imageUrls,
       };
       await saveCarousel(c);
       setCarouselId(id);
       setCreatedAt(c.createdAt);
-      setSaveMsg("Saved");
+      setSaveMsg(imageUrls ? "Saved + images uploaded" : "Saved");
     } catch (e) {
       setSaveMsg("Save failed: " + (e as Error).message);
     } finally {

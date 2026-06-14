@@ -34,10 +34,13 @@ export function GalleryView() {
     setBusy(true);
     try {
       const zip = new JSZip();
+      // Prefer the stored PNGs; fall back to re-rendering from slide data.
+      const useStored = c.imageUrls && c.imageUrls.length === c.slides.length;
       for (let i = 0; i < c.slides.length; i++) {
-        const res = await fetch(
-          slideSrc({ slide: c.slides[i], themeId: c.themeId, index: i, total: c.slides.length, handle: c.handle }),
-        );
+        const url = useStored
+          ? c.imageUrls![i]
+          : slideSrc({ slide: c.slides[i], themeId: c.themeId, index: i, total: c.slides.length, handle: c.handle });
+        const res = await fetch(url);
         if (!res.ok) throw new Error("render failed");
         zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, await res.blob());
       }
@@ -71,15 +74,25 @@ export function GalleryView() {
               className="shrink-0 overflow-hidden rounded-md ring-1 ring-line"
               style={{ width: 1080 * s, height: 1350 * s }}
             >
-              <div style={{ width: 1080, height: 1350, transform: `scale(${s})`, transformOrigin: "top left" }}>
-                <SlideArt
-                  slide={c.slides[0] ?? { kind: "hook", kicker: "", title: c.title, body: "" }}
-                  theme={getTheme(c.themeId)}
-                  index={0}
-                  total={c.slides.length || 1}
-                  handle={c.handle}
+              {c.imageUrls?.[0] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={c.imageUrls[0]}
+                  alt={c.title || "carousel"}
+                  width={1080 * s}
+                  height={1350 * s}
                 />
-              </div>
+              ) : (
+                <div style={{ width: 1080, height: 1350, transform: `scale(${s})`, transformOrigin: "top left" }}>
+                  <SlideArt
+                    slide={c.slides[0] ?? { kind: "hook", kicker: "", title: c.title, body: "" }}
+                    theme={getTheme(c.themeId)}
+                    index={0}
+                    total={c.slides.length || 1}
+                    handle={c.handle}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
               <p className="truncate text-sm font-medium">{c.title || "Untitled"}</p>
