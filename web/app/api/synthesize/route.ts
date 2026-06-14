@@ -1,7 +1,9 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getModel, modelReady, type ModelSettings } from "@/lib/ai/model";
+import { getModel, modelReady } from "@/lib/ai/model";
+import { stepModelSettings } from "@/lib/ai/routing";
 import { SYNTHESIZER_SYSTEM } from "@/lib/ai/prompts";
+import type { Settings } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,7 +21,7 @@ interface Body {
   input?: string;
   kind?: string;
   sourceTitle?: string;
-  settings?: ModelSettings;
+  settings?: Settings;
 }
 
 export async function POST(req: Request) {
@@ -28,7 +30,8 @@ export async function POST(req: Request) {
     .catch(() => ({}))) as Body;
 
   if (!input || !input.trim()) return Response.json({ error: "empty" }, { status: 400 });
-  if (!modelReady(settings)) return Response.json({ error: "no_model" }, { status: 400 });
+  const ms = stepModelSettings(settings, "synthesize");
+  if (!modelReady(ms)) return Response.json({ error: "no_model" }, { status: 400 });
 
   const subject =
     kind === "news"
@@ -37,7 +40,7 @@ export async function POST(req: Request) {
 
   try {
     const { output } = await generateText({
-      model: getModel(settings),
+      model: getModel(ms),
       output: Output.object({ schema: Schema }),
       system: SYNTHESIZER_SYSTEM,
       prompt: `${subject}\n\nReturn the synthesis: what happened, what is genuinely new vs. repackaged, the single biggest debate or uncertainty, the skeptic's strongest case, 1-3 concrete second-order implications, and exactly 3 questions I must answer before I have a publishable opinion.`,

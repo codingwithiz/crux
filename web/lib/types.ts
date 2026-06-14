@@ -5,6 +5,10 @@ export interface Settings {
   apiKey?: string;
   model?: string;
   ollamaBaseURL?: string;
+  // Optional premium override for the Adversary (the reasoning-critical step).
+  adversaryProvider?: Provider;
+  adversaryApiKey?: string;
+  adversaryModel?: string;
 }
 
 export interface SourceRef {

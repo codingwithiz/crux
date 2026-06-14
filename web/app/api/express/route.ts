@@ -1,8 +1,9 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getModel, modelReady, type ModelSettings } from "@/lib/ai/model";
+import { getModel, modelReady } from "@/lib/ai/model";
+import { stepModelSettings } from "@/lib/ai/routing";
 import { EXPRESSOR_SYSTEM } from "@/lib/ai/prompts";
-import type { Thesis } from "@/lib/types";
+import type { Settings, Thesis } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,17 +26,18 @@ const Schema = z.object({
 
 interface Body {
   thesis: Thesis;
-  settings?: ModelSettings;
+  settings?: Settings;
 }
 
 export async function POST(req: Request) {
   const { thesis, settings } = (await req.json()) as Body;
   if (!thesis?.statement) return Response.json({ error: "no_thesis" }, { status: 400 });
-  if (!modelReady(settings)) return Response.json({ error: "no_model" }, { status: 400 });
+  const ms = stepModelSettings(settings, "express");
+  if (!modelReady(ms)) return Response.json({ error: "no_model" }, { status: 400 });
 
   try {
     const { output } = await generateText({
-      model: getModel(settings),
+      model: getModel(ms),
       output: Output.object({ schema: Schema }),
       system: EXPRESSOR_SYSTEM,
       prompt: `My committed thesis: "${thesis.statement}"

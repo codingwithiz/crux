@@ -22,7 +22,7 @@ export function getModel(s: ModelSettings = {}): LanguageModel {
     case "anthropic":
       return createAnthropic({
         apiKey: s.apiKey ?? process.env.ANTHROPIC_API_KEY,
-      })(s.model ?? "claude-sonnet-4-6");
+      })(s.model ?? "claude-opus-4-8");
 
     case "openai":
       return createOpenAI({

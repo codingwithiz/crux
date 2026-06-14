@@ -27,6 +27,11 @@ export function SettingsButton() {
     setS((prev) => {
       const next = { ...prev, ...patch };
       if (patch.provider && patch.model === undefined) next.model = DEFAULT_MODELS[patch.provider];
+      if (patch.adversaryProvider !== undefined && patch.adversaryModel === undefined) {
+        next.adversaryModel = patch.adversaryProvider
+          ? DEFAULT_MODELS[patch.adversaryProvider]
+          : undefined;
+      }
       return next;
     });
   }
@@ -109,6 +114,50 @@ export function SettingsButton() {
                 />
               </>
             )}
+
+            <div className="mt-5 border-t border-line pt-4">
+              <label className="block text-sm font-medium">
+                Adversary model{" "}
+                <span className="font-normal text-muted">— the reasoning step (optional upgrade)</span>
+              </label>
+              <p className="mt-1 text-xs text-muted">
+                Use a stronger model just for the Adversary (e.g. Claude Opus 4.8). Synthesis and the
+                carousel stay on your default.
+              </p>
+              <select
+                value={s.adversaryProvider ?? ""}
+                onChange={(e) =>
+                  update({ adversaryProvider: (e.target.value || undefined) as Provider | undefined })
+                }
+                className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
+              >
+                <option value="">Same as default</option>
+                {PROVIDERS.map((p) => (
+                  <option key={p} value={p}>
+                    {PROVIDER_LABELS[p]}
+                  </option>
+                ))}
+              </select>
+              {s.adversaryProvider && (
+                <>
+                  <input
+                    value={s.adversaryModel ?? ""}
+                    onChange={(e) => update({ adversaryModel: e.target.value })}
+                    placeholder="model id"
+                    className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
+                  />
+                  {s.adversaryProvider !== "ollama" && (
+                    <input
+                      type="password"
+                      value={s.adversaryApiKey ?? ""}
+                      onChange={(e) => update({ adversaryApiKey: e.target.value })}
+                      placeholder="API key for the adversary model"
+                      className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
+                    />
+                  )}
+                </>
+              )}
+            </div>
 
             <div className="mt-5 flex justify-end gap-2">
               <button

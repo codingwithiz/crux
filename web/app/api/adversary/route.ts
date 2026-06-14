@@ -1,7 +1,8 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
-import { getModel, modelReady, type ModelSettings } from "@/lib/ai/model";
+import { getModel, modelReady } from "@/lib/ai/model";
+import { stepModelSettings } from "@/lib/ai/routing";
 import { ADVERSARY_SYSTEM } from "@/lib/ai/prompts";
-import type { Synthesis } from "@/lib/types";
+import type { Settings, Synthesis } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -10,13 +11,14 @@ interface Body {
   messages: UIMessage[];
   synthesis?: Synthesis;
   take?: string;
-  settings?: ModelSettings;
+  settings?: Settings;
 }
 
 export async function POST(req: Request) {
   const { messages, synthesis, take, settings } = (await req.json()) as Body;
 
-  if (!modelReady(settings)) {
+  const ms = stepModelSettings(settings, "adversary");
+  if (!modelReady(ms)) {
     return Response.json({ error: "no_model" }, { status: 400 });
   }
 
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
     .join("\n\n");
 
   const result = streamText({
-    model: getModel(settings),
+    model: getModel(ms),
     system: context ? `${ADVERSARY_SYSTEM}\n\n${context}` : ADVERSARY_SYSTEM,
     messages: await convertToModelMessages(messages),
   });
