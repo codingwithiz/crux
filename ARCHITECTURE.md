@@ -29,10 +29,16 @@ The UI is **client-first**. The browser talks to two backends: our **own Next.js
 ┌───────────────────────────────────────────┐    ┌──────────────────────────────┐
 │ NEXT.JS SERVER  — route handlers + proxy   │    │ SUPABASE                     │
 │   /api/synthesize   → Synthesizer          │    │   Auth (email / password)    │
-│   /api/adversary    → Adversary (streaming)│    │   Postgres:                  │
-│   /api/express      → Expressor            │    │     theses    (+ RLS)        │
-│   /api/slide        → Satori → PNG         │    │     carousels (+ RLS)        │
-│   /api/news         → source aggregator    │    └──────────────────────────────┘
+│   /api/adversary    → Adversary (streaming)│    │   Postgres (+ RLS):          │
+│   /api/express      → Expressor (voice)    │    │     theses (+ embeddings)    │
+│   /api/revoice      → restyle slides       │    │     carousels (+ image_urls) │
+│   /api/voice        → distill style guide  │    │     user_secrets · user_voice│
+│   /api/brief        → Curator picks        │    │     radar_snapshots          │
+│   /api/embed        → OpenAI embeddings    │    │   Storage: carousels bucket  │
+│   /api/news · /api/radar → sources/radar   │    └──────────────────────────────┘
+│   /api/cron/radar   → daily scan (Cron)    │
+│   /api/secrets      → per-user model keys  │
+│   /api/slide        → Satori → PNG         │
 │   proxy.ts          → refresh auth session │
 └───────────────┬───────────────────────────┘
        Vercel AI SDK v6  (per-step model routing)
@@ -63,12 +69,12 @@ The plan's agent design is deliberately **not** a multi-agent swarm — it's a p
 
 | Concept | Implementation | Type |
 |---|---|---|
-| **Curator** | `NewsPicker` + `lib/sources.ts` + `/api/news` (and the Daily Brief) | Deterministic fetch/rank |
+| **Curator** | `NewsPicker` + `lib/sources.ts` + `lib/rank.ts` + `/api/news`; `/api/brief` (LLM picks); `/api/cron/radar` + `/api/radar` (automated daily scan) | Deterministic fetch/rank + one LLM call |
 | **Synthesizer** | `/api/synthesize` → `generateText` + `Output.object` | One structured LLM call |
 | **Adversary** | `/api/adversary` → `streamText` + `useChat` | **Agentic, human-in-the-loop** |
-| **Expressor** | `/api/express` → `generateText` + `Output.object` | One structured LLM call |
-| **Thesis Ledger** | `lib/ledger.ts` → Supabase / localStorage | Memory (the moat) |
-| (render) | `/api/slide` → `next/og` (Satori) | Pure transform |
+| **Expressor** | `/api/express` → `generateText` + `Output.object`, tuned by the user's **voice** (`lib/voice.ts`, `/api/voice` distiller); `/api/revoice` restyles existing slides | One structured LLM call |
+| **Thesis Ledger** | `lib/ledger.ts` → Supabase / localStorage; `lib/related.ts` → pgvector re-surfacing | Memory (the moat) |
+| (render) | `/api/slide` → `next/og` (Satori); PNGs optionally persisted to Supabase Storage | Pure transform |
 
 ---
 
@@ -98,7 +104,7 @@ The **news path** is identical except `NewsPicker` supplies the input from `/api
 
 ## 6. Data model (`web/lib/types.ts`)
 
-`Settings` (provider/key/model + optional **adversary** override) · `Synthesis` (happened, newVsRepackaged, keyDebate, skepticCase, implications[], questions[]) · `Thesis` (statement, confidence, evidenceFor, steelman, changeMyMind, source, status, createdAt) · `Slide` (kind, kicker, title, body) · `Carousel` (title, slides[], themeId, handle) · `NewsItem`.
+`Settings` (provider/key/model + optional **adversary** override) · `Synthesis` (happened, newVsRepackaged, keyDebate, skepticCase, implications[], questions[]) · `Thesis` (statement, confidence, evidenceFor, steelman, changeMyMind, source, status, createdAt) · `Slide` (kind, kicker, title, body) · `Carousel` (title, slides[], themeId, handle, **imageUrls?**) · `NewsItem` / `BriefPick` (whyItMatters, relevance) · `VoiceProfile` (samples[], guide?, tone?, emoji) · `CarouselTheme` (+ `bg2` gradient).
 
 ---
 
@@ -126,7 +132,7 @@ create policy "theses_insert_own" on public.theses for insert with check (auth.u
 
 `auth.uid()` comes from the signed-in user's JWT (cookie, refreshed by `proxy.ts`). Every query is silently filtered to `where auth.uid() = user_id`; you can't forge `user_id` or read anyone else's rows. **This is why a direct-from-browser data layer is safe** — the trust boundary lives in Postgres. `on delete cascade` cleans up a user's data with their account.
 
-Migrations: `web/supabase/migrations/0001_theses.sql`, `0002_carousels.sql`.
+Migrations: `0001_theses` · `0002_carousels` · `0003_embeddings` (pgvector + `match_theses`) · `0004_user_secrets` · `0005_carousel_storage` (bucket + `image_urls`) · `0006_radar` · `0007_voice` — all in `web/supabase/migrations/`, each with own-row RLS. The radar snapshot is the one public-read table (its sources are public; writes come from the Cron via the service-role key).
 
 ---
 
@@ -142,7 +148,7 @@ Prompts live in `lib/ai/prompts.ts` — notably `ADVERSARY_SYSTEM`, the prompt-e
 
 ## 9. Rendering — one component, two runtimes
 
-`SlideArt` (`lib/slide-render.tsx`) renders **identically** in the browser (live preview, CSS-scaled) and on the server (`next/og` → real 1080×1350 PNG via `/api/slide`). That WYSIWYG only works because it's written in Satori's **flexbox-only** subset with inline styles, and the slide payload is JSON-encoded into a GET param. We store **slide data, not images** (carousels stay editable + re-exportable).
+`SlideArt` (`lib/slide-render.tsx`) renders **identically** in the browser (live preview, CSS-scaled) and on the server (`next/og` → real 1080×1350 PNG via `/api/slide`). That WYSIWYG only works because it's written in Satori's **flexbox-only** subset with inline styles (gradients, a kicker pill, a faded watermark numeral, and a per-position progress bar — all flexbox-safe), and the slide payload is JSON-encoded into a GET param. We store **slide data** (carousels stay editable + re-exportable) and, for signed-in users, **also** persist the rendered PNGs to Supabase Storage so the Gallery shows real images.
 
 ---
 
@@ -167,23 +173,28 @@ Prompts live in `lib/ai/prompts.ts` — notably `ADVERSARY_SYSTEM`, the prompt-e
 ```
 app/
   page.tsx                  landing (value chain + entry cards)
-  think/ news/ studio/ ledger/ gallery/ login/   page routes
+  think/ news/ brief/ studio/ ledger/ gallery/ voice/ login/   page routes
   api/synthesize|adversary|express/route.ts        the engine (LLM)
+  api/revoice|voice/route.ts                        voice: restyle slides / distill guide
+  api/brief|news|radar/route.ts                     curator: picks / sources / snapshot
+  api/cron/radar/route.ts                           daily scan (Vercel Cron)
+  api/secrets/route.ts                              per-user model keys
+  api/embed/route.ts                                OpenAI embeddings (re-surfacing)
   api/slide/route.tsx                               Satori PNG render
-  api/news/route.ts                                 free source aggregator
 components/
   ConvictionFlow.tsx        the input→synth→adversary→commit state machine
-  NewsPicker.tsx  CarouselStudio.tsx  GalleryView.tsx  LedgerView.tsx
-  Nav.tsx  SettingsButton.tsx  AuthButton.tsx
+  NewsPicker.tsx  BriefView.tsx  CarouselStudio.tsx  GalleryView.tsx  LedgerView.tsx
+  VoiceEditor.tsx  Nav.tsx  SettingsButton.tsx  AuthButton.tsx
 lib/
   types.ts                  shared types
-  ai/model.ts  ai/routing.ts  ai/prompts.ts        model layer
+  ai/model.ts  ai/routing.ts  ai/prompts.ts  ai/server-settings.ts  ai/voice-prompt.ts
   sources.ts  rank.ts        sources (HF/HN/GitHub/Reddit/Lobsters) + personalized ranking
-  slides.ts  slide-render.tsx  draft.ts             carousel data + render
-  ledger.ts  carousels.ts                           dual-mode data layer
-  settings.ts  supabase/client.ts                   settings + supabase client
+  slides.ts  slide-render.tsx  draft.ts             carousel data + render (5 themes)
+  ledger.ts  carousels.ts  voice.ts  related.ts     dual-mode data layer + re-surfacing
+  settings.ts  supabase/client.ts  supabase/server.ts
 proxy.ts                    session refresh
-supabase/migrations/*.sql   theses + carousels (RLS)
+vercel.json                 daily radar Cron schedule
+supabase/migrations/000{1..7}_*.sql   theses · carousels · embeddings · secrets · storage · radar · voice (RLS)
 ```
 
 ---
@@ -194,5 +205,8 @@ Next.js 16 (App Router, Turbopack) · React 19 · Tailwind v4 · **Vercel AI SDK
 ## 14. Free-forever + BYOK
 Default path costs **$0** (Gemini free tier / Ollama, localStorage, Vercel Hobby). Optional paid upgrades: **Claude** on the Adversary (~pennies/conviction), **Supabase** cloud sync (free tier), your own model keys. The free floor never disappears.
 
-## 15. Roadmap (deferred)
-Curator **Daily Brief** (personalized, on-demand) → automated daily Curator (Cron) · **pgvector** ledger re-surfacing (the compounding moat) · Expressor voice-tuning · Vercel deploy · scheduling/auto-publish.
+## 15. Roadmap
+
+**Shipped since the original MVP:** Curator **Daily Brief** (`/brief`) · **automated daily radar** (Cron + `radar_snapshots`) · **pgvector** ledger re-surfacing (the compounding moat) · **Expressor voice-tuning** (`/voice`) + **re-voice** existing slides · secure **per-user key** sync · **carousel image storage** · redesigned Satori carousel (5 themes).
+
+**Still deferred:** grounded synthesis with **retrieval + citations** (today's Synthesizer leans on parametric knowledge — the plan's anti-hallucination goal) · **durable workflow** / pause-resume for the HITL step (MVP is on-demand) · a **revise-thesis** flow so re-surfacing can mark a prior thesis `updated`/`abandoned` · **server-side relevance** filtering in the radar (currently popularity-only at scan time) · Vercel deploy · scheduling/auto-publish.

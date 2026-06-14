@@ -95,6 +95,8 @@ export interface CarouselTheme {
   id: string;
   name: string;
   bg: string;
+  /** Gradient end colour for the slide background (falls back to `bg`). */
+  bg2?: string;
   panel: string;
   fg: string;
   muted: string;

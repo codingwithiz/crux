@@ -1,9 +1,11 @@
 import type { CarouselTheme, Slide, SlideKind, Thesis } from "./types";
 
 export const THEMES: CarouselTheme[] = [
-  { id: "ink", name: "Ink & Gold", bg: "#0a0b0e", panel: "#14151b", fg: "#f3f4f6", muted: "#9499a6", accent: "#f4b740", accentFg: "#1a1206" },
-  { id: "paper", name: "Paper", bg: "#f4f1ea", panel: "#ffffff", fg: "#181512", muted: "#6b665d", accent: "#c0392b", accentFg: "#ffffff" },
-  { id: "signal", name: "Signal", bg: "#0b1220", panel: "#111a2e", fg: "#eaf0ff", muted: "#8aa2ff", accent: "#5eead4", accentFg: "#04261f" },
+  { id: "ink", name: "Ink & Gold", bg: "#0a0b0e", bg2: "#171922", panel: "#14151b", fg: "#f3f4f6", muted: "#9499a6", accent: "#f4b740", accentFg: "#1a1206" },
+  { id: "paper", name: "Paper", bg: "#f4f1ea", bg2: "#fbfaf6", panel: "#ffffff", fg: "#181512", muted: "#6b665d", accent: "#c0392b", accentFg: "#ffffff" },
+  { id: "signal", name: "Signal", bg: "#0b1220", bg2: "#15233f", panel: "#111a2e", fg: "#eaf0ff", muted: "#8aa2ff", accent: "#5eead4", accentFg: "#04261f" },
+  { id: "dusk", name: "Dusk", bg: "#140d22", bg2: "#2a1745", panel: "#1d1235", fg: "#f1ecff", muted: "#b3a3d4", accent: "#a78bfa", accentFg: "#160a2e" },
+  { id: "mono", name: "Mono", bg: "#0c0c0d", bg2: "#171718", panel: "#161617", fg: "#fafafa", muted: "#8a8a8f", accent: "#fafafa", accentFg: "#0c0c0d" },
 ];
 
 export function getTheme(id: string): CarouselTheme {
@@ -17,7 +19,7 @@ const KICKERS: Record<SlideKind, string> = {
   argument: "WHY I THINK SO",
   counter: "THE STRONGEST COUNTER",
   sowhat: "SO WHAT",
-  cta: "—",
+  cta: "WRAP-UP",
 };
 
 /** Build a default carousel skeleton from a committed thesis. */
