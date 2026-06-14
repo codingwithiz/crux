@@ -9,11 +9,24 @@ The defensible territory is the **middle** (Understanding → Insight → Opinio
 ## One-line thesis
 > It doesn't write your posts. It makes you someone worth reading.
 
-## Status: **Phase 0 — Assemble-first pilot (no code)**
-We validate the core loop with off-the-shelf tools for ~2 weeks **before building anything.** A Go/Kill gate decides whether we build — and the pilot itself writes the build spec.
+## Status: **MVP built** — a free-forever app in [`web/`](./web)
 
-- **[PLAN.md](./PLAN.md)** — full research, competitor landscape, architecture, MVP, monetization, risks, long-term vision.
-- **[pilot/](./pilot/)** — the no-code pilot kit you run daily.
+Pick trending AI news **or** type your own thought → grounded synthesis → an **Adversary** that makes you defend a take (it refuses to conclude for you) → commit a calibrated thesis → export a **carousel** (free PNGs via Satori). Free models by default (Gemini free tier / Ollama), optional BYOK.
+
+- **[PLAN.md](./PLAN.md)** — full research, competitor landscape, architecture, MVP, monetization, risks.
+- **[web/](./web)** — the application (Next.js 16 + AI SDK v6 + Tailwind v4).
+- **[pilot/](./pilot/)** — the original no-code pilot kit (now an optional parallel sanity-check).
+
+### Run it
+```bash
+cd web
+npm install
+npm run dev        # http://localhost:3000
+```
+Then click **Model** (top-right) and paste a **free** Google AI Studio key
+(aistudio.google.com/app/apikey — 1,500 req/day, no card). Or choose **Ollama**
+for fully-local, or bring your own Claude/OpenAI key. Keys are stored only in your
+browser. (Alternatively, set `GOOGLE_GENERATIVE_AI_API_KEY` in `web/.env.local`.)
 
 ## Start today
 1. Open **[pilot/README.md](./pilot/README.md)**.

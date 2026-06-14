@@ -60,6 +60,7 @@ export interface NewsItem {
   title: string;
   url: string;
   meta?: string;
+  detail?: string;
   score: number;
 }
 
