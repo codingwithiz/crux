@@ -78,3 +78,12 @@ export interface CarouselTheme {
   accent: string;
   accentFg: string;
 }
+
+export interface Carousel {
+  id: string;
+  title: string;
+  slides: Slide[];
+  themeId: string;
+  handle: string;
+  createdAt: string;
+}

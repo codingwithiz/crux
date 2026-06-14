@@ -17,7 +17,12 @@ const SAMPLE: Thesis = {
   status: "active",
 };
 
-export default function StudioPage() {
+export default async function StudioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}) {
+  const { c } = await searchParams;
   return (
     <div>
       <div className="mx-auto max-w-6xl px-5 pt-8">
@@ -27,7 +32,10 @@ export default function StudioPage() {
           sample.
         </p>
       </div>
-      <CarouselStudio initialSlides={thesisToSlides(SAMPLE, "@you")} />
+      <CarouselStudio
+        initialSlides={thesisToSlides(SAMPLE, "@you")}
+        loadId={typeof c === "string" ? c : undefined}
+      />
     </div>
   );
 }

@@ -23,7 +23,9 @@ Restart `npm run dev` after adding them.
 Open **SQL Editor** in the Supabase dashboard, paste the contents of
 [`supabase/migrations/0001_theses.sql`](./supabase/migrations/0001_theses.sql),
 and run it. This creates the `theses` table and the row-level-security policies
-(each user can only read/write their own theses).
+(each user can only read/write their own theses). Then run
+[`supabase/migrations/0002_carousels.sql`](./supabase/migrations/0002_carousels.sql)
+the same way to enable **saved carousels** (the Gallery).
 
 ## 4. Enable email auth
 In **Authentication → Providers**, ensure **Email** is enabled. For quick local

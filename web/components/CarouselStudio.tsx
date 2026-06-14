@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
+import { nanoid } from "nanoid";
 import { SlideArt } from "@/lib/slide-render";
 import { THEMES, getTheme, slideSrc } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
-import type { Slide, SlideKind } from "@/lib/types";
+import { saveCarousel, getCarousel } from "@/lib/carousels";
+import type { Carousel, Slide, SlideKind } from "@/lib/types";
 
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -19,27 +21,47 @@ function download(blob: Blob, name: string) {
 export function CarouselStudio({
   initialSlides,
   initialHandle = "@you",
+  loadId,
 }: {
   initialSlides: Slide[];
   initialHandle?: string;
+  loadId?: string;
 }) {
   const [slides, setSlides] = useState<Slide[]>(initialSlides);
   const [handle, setHandle] = useState(initialHandle);
   const [themeId, setThemeId] = useState(THEMES[0].id);
   const [sel, setSel] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [title, setTitle] = useState("");
+  const [carouselId, setCarouselId] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const loaded = useRef(false);
 
   // On first mount, prefer a draft handed over from the conviction flow.
   useEffect(() => {
     if (loaded.current) return;
     loaded.current = true;
-    const d = loadDraft();
-    if (d?.slides?.length) {
-      setSlides(d.slides);
-      setHandle(d.handle || initialHandle);
-    }
-  }, [initialHandle]);
+    void (async () => {
+      if (loadId) {
+        const c = await getCarousel(loadId);
+        if (c) {
+          setSlides(c.slides);
+          setThemeId(c.themeId);
+          setHandle(c.handle);
+          setTitle(c.title);
+          setCarouselId(c.id);
+          setCreatedAt(c.createdAt);
+          return;
+        }
+      }
+      const d = loadDraft();
+      if (d?.slides?.length) {
+        setSlides(d.slides);
+        setHandle(d.handle || initialHandle);
+      }
+    })();
+  }, [initialHandle, loadId]);
 
   const theme = getTheme(themeId);
   const total = slides.length;
@@ -98,12 +120,52 @@ export function CarouselStudio({
     }
   }
 
+  async function save() {
+    setBusy(true);
+    setSaveMsg(null);
+    try {
+      const id = carouselId ?? nanoid();
+      const c: Carousel = {
+        id,
+        title: title.trim() || slides[0]?.title?.slice(0, 60) || "Untitled",
+        slides,
+        themeId,
+        handle,
+        createdAt: createdAt ?? new Date().toISOString(),
+      };
+      await saveCarousel(c);
+      setCarouselId(id);
+      setCreatedAt(c.createdAt);
+      setSaveMsg("Saved");
+    } catch (e) {
+      setSaveMsg("Save failed: " + (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const big = 0.42;
   const thumb = 0.12;
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div>
+        <div className="mb-3 flex items-center gap-2">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Carousel title"
+            className="flex-1 rounded-lg border border-line bg-surface/40 px-3 py-1.5 text-sm outline-none focus:border-accent"
+          />
+          <button
+            onClick={save}
+            disabled={busy}
+            className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50"
+          >
+            {busy ? "…" : carouselId ? "Update" : "Save"}
+          </button>
+          {saveMsg && <span className="whitespace-nowrap text-xs text-muted">{saveMsg}</span>}
+        </div>
         <div className="flex items-center justify-between gap-3">
           <div className="flex gap-1.5">
             {THEMES.map((t) => (
