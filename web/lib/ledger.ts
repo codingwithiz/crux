@@ -1,5 +1,7 @@
 import type { Thesis } from "./types";
 import { createClient, supabaseConfigured } from "./supabase/client";
+import { getSettings } from "./settings";
+import { embedText } from "./related";
 
 const KEY = "ce.ledger";
 
@@ -86,11 +88,14 @@ export async function getLedger(): Promise<Thesis[]> {
 export async function addThesis(t: Thesis): Promise<void> {
   const userId = await currentUserId();
   if (!userId) return localAdd(t);
+  // Embed for semantic re-surfacing (best-effort; null if no embed key).
+  const embedding = await embedText(`${t.statement}\n${t.topic}`, getSettings());
   await createClient()
     .from("theses")
     .insert({
       id: t.id,
       user_id: userId,
+      embedding: embedding ?? null,
       topic: t.topic,
       statement: t.statement,
       confidence: t.confidence,

@@ -9,6 +9,7 @@ import { getSettings, settingsReady } from "@/lib/settings";
 import { addThesis } from "@/lib/ledger";
 import { saveDraft } from "@/lib/draft";
 import { thesisToSlides } from "@/lib/slides";
+import { findRelated, type RelatedThesis } from "@/lib/related";
 import type { Confidence, Settings, Slide, Synthesis, Thesis } from "@/lib/types";
 
 type Step = "input" | "synth" | "adversary" | "commit";
@@ -43,6 +44,7 @@ export function ConvictionFlow({
   const [input, setInput] = useState(initialInput);
   const [take, setTake] = useState("");
   const [synthesis, setSynthesis] = useState<Synthesis | null>(null);
+  const [related, setRelated] = useState<RelatedThesis[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +78,12 @@ export function ConvictionFlow({
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error === "no_model" ? "No model configured." : j.error || "Synthesis failed");
       }
-      setSynthesis((await res.json()) as Synthesis);
+      const data = (await res.json()) as Synthesis;
+      setSynthesis(data);
       setStep("synth");
+      void findRelated(`${text}\n${data.keyDebate}`, s)
+        .then(setRelated)
+        .catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -236,6 +242,23 @@ export function ConvictionFlow({
                   </div>
                 )}
               </div>
+
+              {related.length > 0 && (
+                <div className="mt-4 rounded-xl border border-cool/40 bg-cool/5 p-4">
+                  <p className="font-mono text-xs uppercase tracking-wide text-cool">
+                    Related to your past thinking
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {related.map((r) => (
+                      <li key={r.id} className="text-sm text-fg">
+                        {r.statement}
+                        <span className="ml-2 text-xs text-muted">({r.confidence})</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-muted">Does today change any of these?</p>
+                </div>
+              )}
 
               <div className="mt-6 rounded-xl border border-accent/40 bg-accent/5 p-4">
                 <label className="block text-sm font-medium">
