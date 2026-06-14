@@ -1,0 +1,402 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { nanoid } from "nanoid";
+import { getSettings, settingsReady } from "@/lib/settings";
+import { addThesis } from "@/lib/ledger";
+import { saveDraft } from "@/lib/draft";
+import { thesisToSlides } from "@/lib/slides";
+import type { Confidence, Settings, Slide, Synthesis, Thesis } from "@/lib/types";
+
+type Step = "input" | "synth" | "adversary" | "commit";
+
+const STEPS: { id: Step; label: string }[] = [
+  { id: "input", label: "Input" },
+  { id: "synth", label: "Synthesize" },
+  { id: "adversary", label: "Adversary" },
+  { id: "commit", label: "Commit" },
+];
+
+const SYNTH_ROWS: { key: keyof Synthesis; label: string }[] = [
+  { key: "happened", label: "What happened" },
+  { key: "newVsRepackaged", label: "New vs. repackaged" },
+  { key: "keyDebate", label: "The key debate" },
+  { key: "skepticCase", label: "The skeptic's case" },
+];
+
+export function ConvictionFlow({
+  mode,
+  initialInput = "",
+  sourceTitle,
+  sourceUrl,
+}: {
+  mode: "thought" | "news";
+  initialInput?: string;
+  sourceTitle?: string;
+  sourceUrl?: string;
+}) {
+  const router = useRouter();
+  const [step, setStep] = useState<Step>(mode === "news" && initialInput ? "synth" : "input");
+  const [input, setInput] = useState(initialInput);
+  const [take, setTake] = useState("");
+  const [synthesis, setSynthesis] = useState<Synthesis | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const autosynth = useRef(false);
+
+  useEffect(() => {
+    setSettings(getSettings());
+  }, []);
+
+  async function runSynthesis(text: string) {
+    setError(null);
+    const s = getSettings();
+    setSettings(s);
+    if (!settingsReady(s)) {
+      setError("Add a model key in the Model menu (top-right) — free from Google AI Studio.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/synthesize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          input: text,
+          kind: mode === "news" ? "news" : "thought",
+          sourceTitle,
+          settings: s,
+        }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error === "no_model" ? "No model configured." : j.error || "Synthesis failed");
+      }
+      setSynthesis((await res.json()) as Synthesis);
+      setStep("synth");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (mode === "news" && initialInput && !autosynth.current) {
+      autosynth.current = true;
+      void runSynthesis(initialInput);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Adversary chat ---
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/adversary", body: { synthesis, take, settings } }),
+    [synthesis, take, settings],
+  );
+  const { messages, sendMessage, status } = useChat({ transport });
+  const [chatInput, setChatInput] = useState("");
+  const seeded = useRef(false);
+  const thinking = status === "submitted" || status === "streaming";
+
+  function startAdversary() {
+    setSettings(getSettings());
+    setStep("adversary");
+    if (!seeded.current && take.trim()) {
+      seeded.current = true;
+      sendMessage({ text: `My take: ${take}` });
+    }
+  }
+
+  // --- Commit ---
+  const [statement, setStatement] = useState("");
+  const [confidence, setConfidence] = useState<Confidence>("med");
+  const [evidenceFor, setEvidenceFor] = useState("");
+  const [steelman, setSteelman] = useState("");
+  const [changeMyMind, setChangeMyMind] = useState("");
+  const [topic, setTopic] = useState(sourceTitle ?? "");
+
+  function goCommit() {
+    if (!statement.trim()) setStatement(take.trim());
+    setStep("commit");
+  }
+
+  async function commit() {
+    setLoading(true);
+    setError(null);
+    const thesis: Thesis = {
+      id: nanoid(),
+      topic: topic.trim() || (mode === "news" ? sourceTitle ?? "AI" : "My take"),
+      statement: statement.trim() || take.trim(),
+      confidence,
+      evidenceFor: evidenceFor.trim() || undefined,
+      steelman: steelman.trim() || undefined,
+      changeMyMind: changeMyMind.trim() || undefined,
+      createdAt: new Date().toISOString(),
+      source: sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined,
+      status: "active",
+    };
+    addThesis(thesis);
+
+    let slides: Slide[] = thesisToSlides(thesis, "@you");
+    try {
+      const res = await fetch("/api/express", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ thesis, settings: getSettings() }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { slides?: Slide[] };
+        if (Array.isArray(j.slides) && j.slides.length) slides = j.slides;
+      }
+    } catch {
+      /* fall back to deterministic slides */
+    }
+    saveDraft({ slides, handle: "@you" });
+    router.push("/studio");
+  }
+
+  const activeIdx = STEPS.findIndex((s) => s.id === step);
+
+  return (
+    <div>
+      {/* progress */}
+      <div className="mb-6 flex items-center gap-2 text-xs">
+        {STEPS.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-2">
+            <span
+              className={`rounded px-2 py-1 font-mono ${
+                i === activeIdx
+                  ? "bg-accent text-accent-fg"
+                  : i < activeIdx
+                    ? "bg-surface text-fg"
+                    : "bg-surface/50 text-muted"
+              }`}
+            >
+              {s.label}
+            </span>
+            {i < STEPS.length - 1 && <span className="text-muted">→</span>}
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          {error}
+        </div>
+      )}
+
+      {step === "input" && (
+        <div className="ce-fade-up">
+          <label className="block text-sm font-medium">Your raw thought</label>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={4}
+            placeholder="e.g. AI agents will make most SaaS dashboards obsolete within two years."
+            className="mt-2 w-full resize-none rounded-xl border border-line bg-surface/40 px-4 py-3 text-base outline-none focus:border-accent"
+          />
+          <button
+            onClick={() => runSynthesis(input)}
+            disabled={loading || !input.trim()}
+            className="mt-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+          >
+            {loading ? "Synthesizing…" : "Synthesize →"}
+          </button>
+        </div>
+      )}
+
+      {step === "synth" && (
+        <div className="ce-fade-up">
+          {loading && !synthesis ? (
+            <p className="text-muted">Synthesizing the landscape…</p>
+          ) : synthesis ? (
+            <>
+              <div className="space-y-3">
+                {SYNTH_ROWS.map((r) => (
+                  <div key={r.key} className="rounded-xl border border-line bg-surface/40 p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-accent">{r.label}</p>
+                    <p className="mt-1 text-sm text-fg">{synthesis[r.key] as string}</p>
+                  </div>
+                ))}
+                {synthesis.questions?.length > 0 && (
+                  <div className="rounded-xl border border-line bg-surface/40 p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-accent">
+                      Answer these before you have an opinion
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+                      {synthesis.questions.map((q, i) => (
+                        <li key={i}>{q}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 rounded-xl border border-accent/40 bg-accent/5 p-4">
+                <label className="block text-sm font-medium">
+                  Now — what do <span className="text-accent">you</span> think? (one sentence)
+                </label>
+                <input
+                  value={take}
+                  onChange={(e) => setTake(e.target.value)}
+                  placeholder="Write your gut take. The Adversary will pressure-test it."
+                  className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+                <button
+                  onClick={startAdversary}
+                  disabled={!take.trim()}
+                  className="mt-3 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+                >
+                  Pressure-test this →
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {step === "adversary" && (
+        <div className="ce-fade-up">
+          <div className="flex min-h-[320px] flex-col gap-3 rounded-xl border border-line bg-surface/40 p-4">
+            {messages.length === 0 && <p className="text-sm text-muted">Starting the interrogation…</p>}
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                  m.role === "user"
+                    ? "self-end bg-accent/15 text-fg"
+                    : "self-start border border-line bg-ink text-fg"
+                }`}
+              >
+                {m.parts.map((p, i) => (p.type === "text" ? <span key={i}>{p.text}</span> : null))}
+              </div>
+            ))}
+            {thinking && (
+              <div className="self-start rounded-2xl border border-line bg-ink px-4 py-2.5 text-sm text-muted">
+                thinking…
+              </div>
+            )}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (chatInput.trim()) {
+                sendMessage({ text: chatInput });
+                setChatInput("");
+              }
+            }}
+            className="mt-3 flex gap-2"
+          >
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Defend, revise, or push back…"
+              className="flex-1 rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            <button
+              type="submit"
+              disabled={thinking || !chatInput.trim()}
+              className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+            >
+              Send
+            </button>
+          </form>
+
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-xs text-muted">
+              The Adversary will not hand you a conclusion. Commit when your view is sharper.
+            </p>
+            <button
+              onClick={goCommit}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+            >
+              I am ready to commit →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === "commit" && (
+        <div className="ce-fade-up space-y-4">
+          <div>
+            <label className="block text-sm font-medium">Your committed thesis (1-2 sentences)</label>
+            <textarea
+              value={statement}
+              onChange={(e) => setStatement(e.target.value)}
+              rows={2}
+              className="mt-1 w-full resize-none rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">Confidence</label>
+            <div className="mt-2 flex gap-2">
+              {(["low", "med", "high"] as Confidence[]).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setConfidence(c)}
+                  className={`rounded-lg border px-4 py-1.5 text-sm capitalize ${
+                    confidence === c ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Field label="Key evidence for your view" value={evidenceFor} onChange={setEvidenceFor} />
+          <Field label="The strongest counter you accept (steelman)" value={steelman} onChange={setSteelman} />
+          <Field label="What would change your mind" value={changeMyMind} onChange={setChangeMyMind} />
+          <Field label="Topic / tag" value={topic} onChange={setTopic} single />
+
+          <button
+            onClick={commit}
+            disabled={loading || !statement.trim()}
+            className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+          >
+            {loading ? "Building carousel…" : "Commit + make carousel →"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  single,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  single?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium">{label}</label>
+      {single ? (
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+      ) : (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={2}
+          className="mt-1 w-full resize-none rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+      )}
+    </div>
+  );
+}
