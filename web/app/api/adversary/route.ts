@@ -1,6 +1,7 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { getModel, modelReady } from "@/lib/ai/model";
 import { stepModelSettings } from "@/lib/ai/routing";
+import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { ADVERSARY_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
 
@@ -15,7 +16,8 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const { messages, synthesis, take, settings } = (await req.json()) as Body;
+  const { messages, synthesis, take, settings: rawSettings } = (await req.json()) as Body;
+  const settings = await resolveServerSettings(rawSettings);
 
   const ms = stepModelSettings(settings, "adversary");
   if (!modelReady(ms)) {

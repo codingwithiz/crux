@@ -30,7 +30,15 @@ the same way to enable **saved carousels** (the Gallery). Finally run
 to enable **semantic re-surfacing** (pgvector). Re-surfacing needs an OpenAI key
 for embeddings — set `OPENAI_API_KEY` in `.env.local`, or an OpenAI key in the
 Model menu. Theses committed *before* this migration won't have embeddings until
-re-committed.
+re-committed. Lastly, run
+[`supabase/migrations/0004_user_secrets.sql`](./supabase/migrations/0004_user_secrets.sql)
+to enable **per-user model keys saved to your account** (synced across devices).
+With this in place, a signed-in user can save their BYOK key once in the Model
+menu and never re-paste it on another device — the server reads it back per
+request (precedence: a key sent in the request > the saved account key > the
+server's own env key). Keys are protected by row-level security: each user can
+read/write only their own row, and the API never returns key *values* to the
+browser — only booleans for which providers are set.
 
 ## 4. Enable email auth
 In **Authentication → Providers**, ensure **Email** is enabled. For quick local

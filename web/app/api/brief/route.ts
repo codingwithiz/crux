@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getModel, modelReady } from "@/lib/ai/model";
 import { stepModelSettings } from "@/lib/ai/routing";
+import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { CURATOR_SYSTEM } from "@/lib/ai/prompts";
 import { getNews } from "@/lib/sources";
 import type { BriefPick, Settings } from "@/lib/types";
@@ -28,7 +29,8 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const { theses, settings } = (await req.json().catch(() => ({}))) as Body;
+  const { theses, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
+  const settings = await resolveServerSettings(rawSettings);
   const ms = stepModelSettings(settings, "synthesize");
   if (!modelReady(ms)) return Response.json({ error: "no_model" }, { status: 400 });
 

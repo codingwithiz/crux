@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getModel, modelReady } from "@/lib/ai/model";
 import { stepModelSettings } from "@/lib/ai/routing";
+import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { EXPRESSOR_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Thesis } from "@/lib/types";
 
@@ -30,8 +31,9 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const { thesis, settings } = (await req.json()) as Body;
+  const { thesis, settings: rawSettings } = (await req.json()) as Body;
   if (!thesis?.statement) return Response.json({ error: "no_thesis" }, { status: 400 });
+  const settings = await resolveServerSettings(rawSettings);
   const ms = stepModelSettings(settings, "express");
   if (!modelReady(ms)) return Response.json({ error: "no_model" }, { status: 400 });
 

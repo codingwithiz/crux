@@ -12,16 +12,73 @@ import type { Provider, Settings } from "@/lib/types";
 
 const PROVIDERS: Provider[] = ["google", "ollama", "anthropic", "openai"];
 
+interface ServerStatus {
+  configured?: boolean;
+  signedIn?: boolean;
+  google?: boolean;
+  openai?: boolean;
+  anthropic?: boolean;
+}
+
+type CloudKey = "google" | "openai" | "anthropic";
+const CLOUD_KEYABLE: CloudKey[] = ["google", "openai", "anthropic"];
+const isCloudKey = (p?: Provider): p is CloudKey =>
+  p === "google" || p === "openai" || p === "anthropic";
+
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState<Settings>({ provider: "google", model: DEFAULT_MODELS.google });
   const [ready, setReady] = useState(true);
+  const [server, setServer] = useState<ServerStatus | null>(null);
+  const [cloudMsg, setCloudMsg] = useState<string | null>(null);
+  const [savingCloud, setSavingCloud] = useState(false);
 
   useEffect(() => {
     const cur = getSettings();
     setS(cur);
     setReady(settingsReady(cur));
+    if (open) {
+      setCloudMsg(null);
+      fetch("/api/secrets")
+        .then((r) => r.json())
+        .then((j: ServerStatus) => setServer(j))
+        .catch(() => setServer(null));
+    }
   }, [open]);
+
+  async function saveToAccount() {
+    setSavingCloud(true);
+    setCloudMsg(null);
+    // Collect the keys the user has typed for cloud-storable providers.
+    const body: Record<string, string> = {};
+    if (isCloudKey(s.provider) && s.apiKey?.trim()) body[s.provider] = s.apiKey.trim();
+    if (isCloudKey(s.adversaryProvider) && s.adversaryApiKey?.trim()) {
+      body[s.adversaryProvider] = s.adversaryApiKey.trim();
+    }
+    if (Object.keys(body).length === 0) {
+      setCloudMsg("Type a key above first, then save it to your account.");
+      setSavingCloud(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/secrets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || "save_failed");
+      }
+      const refreshed = (await fetch("/api/secrets").then((r) => r.json())) as ServerStatus;
+      setServer(refreshed);
+      setCloudMsg("Saved to your account — works on any device, even without re-entering keys.");
+    } catch (e) {
+      setCloudMsg(`Couldn't save: ${(e as Error).message}`);
+    } finally {
+      setSavingCloud(false);
+    }
+  }
 
   function update(patch: Partial<Settings>) {
     setS((prev) => {
@@ -65,7 +122,8 @@ export function SettingsButton() {
           >
             <h2 className="text-lg font-semibold">Model settings</h2>
             <p className="mt-1 text-sm text-muted">
-              Free by default. Bring your own key for a sharper adversary. Stored only in your browser.
+              Free by default. Bring your own key for a sharper adversary. Kept in this browser — or
+              save it to your account to sync across devices.
             </p>
 
             <label className="mt-4 block text-sm font-medium">Provider</label>
@@ -158,6 +216,44 @@ export function SettingsButton() {
                 </>
               )}
             </div>
+
+            {server?.signedIn && (
+              <div className="mt-5 rounded-lg border border-line bg-ink/40 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Keys saved to your account</span>
+                  <span className="text-xs text-muted">encrypted at rest · synced across devices</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {CLOUD_KEYABLE.map((p) => (
+                    <span
+                      key={p}
+                      className={`rounded-md border px-2 py-0.5 font-mono text-xs ${
+                        server[p]
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                          : "border-line text-muted"
+                      }`}
+                    >
+                      {server[p] ? "✓" : "○"} {p}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  onClick={saveToAccount}
+                  disabled={savingCloud}
+                  className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-surface disabled:opacity-50"
+                >
+                  {savingCloud ? "Saving…" : "Save current key(s) to my account"}
+                </button>
+                {cloudMsg && <p className="mt-2 text-xs text-cool">{cloudMsg}</p>}
+              </div>
+            )}
+
+            {server && server.configured && !server.signedIn && (
+              <p className="mt-5 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
+                Sign in to save keys to your account so you don&rsquo;t have to re-enter them on every
+                device. Until then, keys live only in this browser.
+              </p>
+            )}
 
             <div className="mt-5 flex justify-end gap-2">
               <button

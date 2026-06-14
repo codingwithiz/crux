@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { nanoid } from "nanoid";
-import { getSettings, settingsReady } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 import { addThesis } from "@/lib/ledger";
 import { saveDraft } from "@/lib/draft";
 import { thesisToSlides } from "@/lib/slides";
@@ -58,10 +58,6 @@ export function ConvictionFlow({
     setError(null);
     const s = getSettings();
     setSettings(s);
-    if (!settingsReady(s)) {
-      setError("Add a model key in the Model menu (top-right) — free from Google AI Studio.");
-      return;
-    }
     setLoading(true);
     try {
       const res = await fetch("/api/synthesize", {
@@ -76,7 +72,11 @@ export function ConvictionFlow({
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error === "no_model" ? "No model configured." : j.error || "Synthesis failed");
+        throw new Error(
+          j.error === "no_model"
+            ? "No model key found — add one in the Model menu (top-right)."
+            : j.error || "Synthesis failed",
+        );
       }
       const data = (await res.json()) as Synthesis;
       setSynthesis(data);

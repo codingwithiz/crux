@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ConvictionFlow } from "./ConvictionFlow";
-import { getSettings, settingsReady } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 import { getLedger } from "@/lib/ledger";
 import type { BriefPick, NewsItem } from "@/lib/types";
 
@@ -24,10 +24,6 @@ export function BriefView() {
     setErr(null);
     setPicks(null);
     const s = getSettings();
-    if (!settingsReady(s)) {
-      setErr("Add a model key in the Model menu (top-right) — free from Google AI Studio.");
-      return;
-    }
     setLoading(true);
     try {
       const ledger = await getLedger();
@@ -39,7 +35,11 @@ export function BriefView() {
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error === "no_model" ? "No model configured." : j.error || "Brief failed");
+        throw new Error(
+          j.error === "no_model"
+            ? "No model key found — add one in the Model menu (top-right)."
+            : j.error || "Brief failed",
+        );
       }
       const j = (await res.json()) as { picks?: BriefPick[] };
       setPicks(j.picks ?? []);

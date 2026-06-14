@@ -1,5 +1,6 @@
 import { embed } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { resolveServerSettings } from "@/lib/ai/server-settings";
 import type { Settings } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -19,9 +20,10 @@ function openaiKey(s?: Settings): string | undefined {
 }
 
 export async function POST(req: Request) {
-  const { text, settings } = (await req.json().catch(() => ({}))) as Body;
+  const { text, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   if (!text || !text.trim()) return Response.json({ error: "empty" }, { status: 400 });
 
+  const settings = await resolveServerSettings(rawSettings);
   const apiKey = openaiKey(settings);
   if (!apiKey) return Response.json({ error: "no_embed_key" }, { status: 400 });
 
