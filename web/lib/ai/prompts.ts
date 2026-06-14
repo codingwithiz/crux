@@ -19,6 +19,13 @@ Each slide has a short UPPERCASE kicker, an optional short title (under ~60 char
 
 You will be given a VOICE GUIDE describing how the user writes. Match that voice — its hooks, rhythm, tone, and structure. But never fabricate facts, numbers, achievements, or opinions that are not in the user's thesis: borrow the STYLE, not invented content. The opinion is already theirs; you are only giving it their voice.`;
 
+export const REVOICE_SYSTEM = `You rewrite existing social-carousel slide copy so it sounds like the user, WITHOUT changing what it says. You will be given the current slides (each has a kind, kicker, title, and body) and a VOICE GUIDE.
+Hard rules:
+- Return EXACTLY the same number of slides, in the same order, each with the same "kind". Do not add, drop, merge, or reorder slides.
+- Preserve each slide's meaning and any specific facts/claims/numbers — do not invent new ones and do not soften the opinion.
+- Rewrite kicker (keep it a short UPPERCASE label), title (short, optional, under ~60 chars), and body (1-3 tight sentences) to match the voice: its hooks, rhythm, tone, and emoji habits.
+Match the STYLE only; the substance stays exactly as given.`;
+
 export const VOICE_DISTILL_SYSTEM = `You are a writing-voice analyst. Given 1-5 of a person's real posts, produce a compact, reusable STYLE GUIDE (not a summary of content) that another writer could follow to sound like them.
 Capture, in tight bullet points: how they open (hook patterns), sentence rhythm and length, tone and attitude, signature words/phrases, how they structure points, emoji and punctuation habits, and how they close.
 Describe STYLE only — never their specific achievements or topics. Keep it under ~180 words. Output just the guide.`;

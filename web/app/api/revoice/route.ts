@@ -3,9 +3,9 @@ import { z } from "zod";
 import { getModel, modelReady } from "@/lib/ai/model";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
-import { EXPRESSOR_SYSTEM } from "@/lib/ai/prompts";
+import { REVOICE_SYSTEM } from "@/lib/ai/prompts";
 import { voiceBlock } from "@/lib/ai/voice-prompt";
-import type { Settings, Thesis, VoiceProfile } from "@/lib/types";
+import type { Settings, Slide, VoiceProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,42 +22,46 @@ const Schema = z.object({
         body: z.string(),
       }),
     )
-    .min(5)
-    .max(8),
+    .min(1)
+    .max(12),
 });
 
 interface Body {
-  thesis: Thesis;
+  slides?: Slide[];
   settings?: Settings;
   voice?: VoiceProfile;
 }
 
+// Rewrites existing carousel slides in the user's voice, preserving meaning,
+// order, count, and each slide's kind.
 export async function POST(req: Request) {
-  const { thesis, settings: rawSettings, voice } = (await req.json()) as Body;
-  if (!thesis?.statement) return Response.json({ error: "no_thesis" }, { status: 400 });
+  const { slides, settings: rawSettings, voice } = (await req.json().catch(() => ({}))) as Body;
+  if (!Array.isArray(slides) || slides.length === 0)
+    return Response.json({ error: "no_slides" }, { status: 400 });
+
   const settings = await resolveServerSettings(rawSettings);
   const ms = stepModelSettings(settings, "express");
   if (!modelReady(ms)) return Response.json({ error: "no_model" }, { status: 400 });
 
   const vb = voiceBlock(voice);
-  const system = vb ? `${EXPRESSOR_SYSTEM}\n\n${vb}` : EXPRESSOR_SYSTEM;
+  const system = vb ? `${REVOICE_SYSTEM}\n\n${vb}` : REVOICE_SYSTEM;
+
+  const compact = slides.map((s) => ({ kind: s.kind, kicker: s.kicker, title: s.title, body: s.body }));
 
   try {
     const { output } = await generateText({
       model: getModel(ms),
       output: Output.object({ schema: Schema }),
       system,
-      prompt: `My committed thesis: "${thesis.statement}"
-Topic: ${thesis.topic}
-Confidence: ${thesis.confidence}
-My evidence: ${thesis.evidenceFor ?? "(none given)"}
-Strongest counter I accept: ${thesis.steelman ?? "(none)"}
-What would change my mind: ${thesis.changeMyMind ?? "(none)"}
-
-Write the carousel slides in my voice.`,
+      prompt: `Current slides (JSON):\n${JSON.stringify(compact)}\n\nRewrite them in my voice. Return the same ${slides.length} slides, same order, same kinds.`,
     });
+
+    // Guard: if the model changed the count, keep the originals to stay safe.
+    if (output.slides.length !== slides.length) {
+      return Response.json({ error: "shape_mismatch" }, { status: 422 });
+    }
     return Response.json(output);
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "express_failed" }, { status: 500 });
+    return Response.json({ error: (e as Error).message ?? "revoice_failed" }, { status: 500 });
   }
 }

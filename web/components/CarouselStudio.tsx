@@ -7,6 +7,8 @@ import { SlideArt } from "@/lib/slide-render";
 import { THEMES, getTheme, slideSrc } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
 import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
+import { getSettings } from "@/lib/settings";
+import { getVoice, effectiveVoice } from "@/lib/voice";
 import type { Carousel, Slide } from "@/lib/types";
 
 function download(blob: Blob, name: string) {
@@ -45,6 +47,10 @@ export function CarouselStudio({
   const [renderErr, setRenderErr] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   const renderedBlobs = useRef<Blob[]>([]);
+
+  // Re-voice: rewrite the current slides in the user's saved voice.
+  const [revoicing, setRevoicing] = useState(false);
+  const [revoiceMsg, setRevoiceMsg] = useState<string | null>(null);
 
   /** Render every slide to a PNG via /api/slide and hold the blobs + object URLs. */
   async function renderAll(s: Slide[] = slides, tId: string = themeId, h: string = handle) {
@@ -195,6 +201,35 @@ export function CarouselStudio({
     }
   }
 
+  async function revoice() {
+    setRevoicing(true);
+    setRevoiceMsg(null);
+    try {
+      const voice = effectiveVoice(await getVoice());
+      const res = await fetch("/api/revoice", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slides, settings: getSettings(), voice }),
+      });
+      const j = (await res.json()) as { slides?: Slide[]; error?: string };
+      if (!res.ok || !j.slides?.length) {
+        throw new Error(
+          j.error === "no_model"
+            ? "No model key — add one in the Model menu (top-right)."
+            : j.error || "Re-voice failed",
+        );
+      }
+      setSlides(j.slides);
+      setRevoiceMsg("Rewritten in your voice — regenerating images…");
+      await renderAll(j.slides, themeId, handle);
+      setRevoiceMsg("Done — now in your voice.");
+    } catch (e) {
+      setRevoiceMsg((e as Error).message);
+    } finally {
+      setRevoicing(false);
+    }
+  }
+
   async function save() {
     setBusy(true);
     setSaveMsg(null);
@@ -324,6 +359,25 @@ export function CarouselStudio({
         {/* Fine-tune: live editable preview + themes. */}
         <p className="mt-6 text-sm font-semibold">Fine-tune</p>
         <p className="text-xs text-muted">Edit copy, pick a theme, then regenerate above.</p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void revoice()}
+            disabled={revoicing || rendering}
+            className="rounded-lg bg-cool/15 px-3 py-1.5 text-sm font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
+            title="Rewrite the current slide copy in your saved voice"
+          >
+            {revoicing ? "Rewriting…" : "✶ Rewrite in my voice"}
+          </button>
+          <a
+            href="/voice"
+            className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
+          >
+            edit my voice →
+          </a>
+          {revoiceMsg && <span className="text-xs text-cool">{revoiceMsg}</span>}
+        </div>
+
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="flex gap-1.5">
             {THEMES.map((t) => (

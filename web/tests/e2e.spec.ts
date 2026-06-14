@@ -89,6 +89,18 @@ test("voice distill API rejects empty input", async ({ page }) => {
   expect(j.error).toBe("no_samples");
 });
 
+test("revoice API rejects empty slides", async ({ page }) => {
+  const res = await page.request.post("/api/revoice", { data: { slides: [] } });
+  expect(res.status()).toBe(400);
+  const j = (await res.json()) as { error?: string };
+  expect(j.error).toBe("no_slides");
+});
+
+test("studio shows the rewrite-in-my-voice action", async ({ page }) => {
+  await page.goto("/studio");
+  await expect(page.getByRole("button", { name: /Rewrite in my voice/i })).toBeVisible();
+});
+
 test("radar read endpoint returns a snapshot shape", async ({ page }) => {
   // null without Supabase / before the 0006 migration; an object once a scan ran.
   const res = await page.request.get("/api/radar");
