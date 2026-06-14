@@ -68,6 +68,12 @@ export interface NewsItem {
   score: number;
 }
 
+/** A Curator pick — a news item the agent selected as worth forming an opinion on. */
+export interface BriefPick extends NewsItem {
+  whyItMatters: string;
+  relevance: string;
+}
+
 export interface CarouselTheme {
   id: string;
   name: string;

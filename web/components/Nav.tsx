@@ -3,6 +3,7 @@ import { SettingsButton } from "./SettingsButton";
 import { AuthButton } from "./AuthButton";
 
 const links = [
+  { href: "/brief", label: "Brief" },
   { href: "/think", label: "Think" },
   { href: "/news", label: "News" },
   { href: "/studio", label: "Studio" },
