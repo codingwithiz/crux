@@ -12,15 +12,14 @@ export function stepModelSettings(s: Settings | undefined, step: Step): ModelSet
   if (!s) return {};
 
   if (step === "adversary" && s.adversaryProvider) {
-    const ready = s.adversaryProvider === "ollama" || Boolean(s.adversaryApiKey);
-    if (ready) {
-      return {
-        provider: s.adversaryProvider,
-        apiKey: s.adversaryApiKey,
-        model: s.adversaryModel,
-        ollamaBaseURL: s.ollamaBaseURL,
-      };
-    }
+    // Select the override whenever a provider is chosen; modelReady/getModel
+    // handle the key (UI key, or the server env fallback like OPENAI_API_KEY).
+    return {
+      provider: s.adversaryProvider,
+      apiKey: s.adversaryApiKey,
+      model: s.adversaryModel,
+      ollamaBaseURL: s.ollamaBaseURL,
+    };
   }
 
   return {

@@ -27,7 +27,7 @@ export function getModel(s: ModelSettings = {}): LanguageModel {
     case "openai":
       return createOpenAI({
         apiKey: s.apiKey ?? process.env.OPENAI_API_KEY,
-      })(s.model ?? "gpt-5.1");
+      })(s.model ?? "gpt-5.5");
 
     case "ollama":
       return createOpenAICompatible({

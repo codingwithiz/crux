@@ -5,7 +5,7 @@ const KEY = "ce.settings";
 export const DEFAULT_MODELS: Record<Provider, string> = {
   google: "gemini-flash-latest",
   anthropic: "claude-opus-4-8",
-  openai: "gpt-5.1",
+  openai: "gpt-5.5",
   ollama: "llama3.1",
 };
 
