@@ -18,16 +18,16 @@ export function LedgerView() {
   const [items, setItems] = useState<Thesis[] | null>(null);
 
   useEffect(() => {
-    setItems(getLedger());
+    getLedger().then(setItems);
   }, []);
 
   function makeCarousel(t: Thesis) {
     saveDraft({ slides: thesisToSlides(t, "@you"), handle: "@you" });
     router.push("/studio");
   }
-  function del(id: string) {
-    removeThesis(id);
-    setItems(getLedger());
+  async function del(id: string) {
+    await removeThesis(id);
+    setItems(await getLedger());
   }
 
   if (!items) return <p className="text-muted">Loading…</p>;

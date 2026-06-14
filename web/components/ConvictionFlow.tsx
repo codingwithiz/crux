@@ -140,7 +140,7 @@ export function ConvictionFlow({
       source: sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined,
       status: "active",
     };
-    addThesis(thesis);
+    await addThesis(thesis);
 
     let slides: Slide[] = thesisToSlides(thesis, "@you");
     try {

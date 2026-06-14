@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SettingsButton } from "./SettingsButton";
+import { AuthButton } from "./AuthButton";
 
 const links = [
   { href: "/think", label: "Think" },
@@ -27,6 +28,7 @@ export function Nav() {
             </Link>
           ))}
           <SettingsButton />
+          <AuthButton />
         </nav>
       </div>
     </header>

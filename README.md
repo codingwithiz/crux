@@ -28,6 +28,10 @@ Then click **Model** (top-right) and paste a **free** Google AI Studio key
 for fully-local, or bring your own Claude/OpenAI key. Keys are stored only in your
 browser. (Alternatively, set `GOOGLE_GENERATIVE_AI_API_KEY` in `web/.env.local`.)
 
+**Want Claude on the Adversary?** In **Model → Adversary model**, pick Anthropic + paste an `console.anthropic.com` API key — synthesis/carousel stay on the free model; only the reasoning step uses Claude Opus 4.8.
+
+**Optional cloud sync + accounts:** see **[web/SUPABASE.md](./web/SUPABASE.md)** to enable Supabase (multi-user login + a cloud Thesis Ledger via row-level security). Without it, the app works locally in your browser.
+
 ## Start today
 1. Open **[pilot/README.md](./pilot/README.md)**.
 2. Do the ~15–20 min daily ritual: pick one item → synthesize → interrogate yourself → commit a thesis → (optionally) make a carousel.
