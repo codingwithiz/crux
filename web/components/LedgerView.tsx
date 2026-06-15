@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
+import { ledgerStats } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
-import { thesisToSlides } from "@/lib/slides";
+import { expressSlides } from "@/lib/express-client";
 import type { Confidence, Thesis } from "@/lib/types";
 
 const CONF_COLOR: Record<Confidence, string> = {
@@ -19,18 +20,46 @@ const STATUS_BADGE: Record<Thesis["status"], string | null> = {
   abandoned: "border-line bg-surface text-muted",
 };
 
+type Filter = "all" | "active" | "updated" | "abandoned";
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "updated", label: "Revised" },
+  { id: "abandoned", label: "Abandoned" },
+];
+
 export function LedgerView() {
   const router = useRouter();
   const [items, setItems] = useState<Thesis[] | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     getLedger().then(setItems);
   }, []);
 
-  function makeCarousel(t: Thesis) {
-    saveDraft({ slides: thesisToSlides(t, "@you"), handle: "@you" });
-    router.push("/studio");
+  const stats = useMemo(() => ledgerStats(items ?? []), [items]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (items ?? []).filter((t) => {
+      if (filter !== "all" && t.status !== filter) return false;
+      if (q && !`${t.topic} ${t.statement}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [items, filter, query]);
+
+  async function makeCarousel(t: Thesis) {
+    setBusyId(t.id);
+    try {
+      const slides = await expressSlides(t, "@you");
+      saveDraft({ slides, handle: "@you" });
+      router.push("/studio");
+    } finally {
+      setBusyId(null);
+    }
   }
   async function del(id: string) {
     await removeThesis(id);
@@ -58,75 +87,177 @@ export function LedgerView() {
     );
 
   return (
-    <div className="space-y-3">
-      {items.map((t) =>
-        editId === t.id ? (
-          <ReviseCard key={t.id} thesis={t} onSave={saveEdit} onCancel={() => setEditId(null)} />
-        ) : (
-          <div
-            key={t.id}
-            className={`rounded-xl border border-line bg-surface/40 p-4 ${t.status === "abandoned" ? "opacity-60" : ""}`}
+    <div>
+      {/* Track record — the "keep score" surface */}
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Convictions" value={stats.total} />
+        <Stat label="This week" value={stats.thisWeek} accent />
+        <Stat label="Revised" value={stats.updated} />
+        <Stat label="Abandoned" value={stats.abandoned} />
+      </div>
+      <div className="mb-5 flex items-center gap-3 text-xs text-muted">
+        <span className="font-mono uppercase tracking-wide">Confidence</span>
+        <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
+      </div>
+
+      {/* Filters + search */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`rounded-lg border px-3 py-1.5 text-xs ${
+              filter === f.id ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
+            }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <p className={`text-fg ${t.status === "abandoned" ? "line-through" : ""}`}>{t.statement}</p>
-              <span className={`shrink-0 font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
-                {t.confidence}
-              </span>
-            </div>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <span>
-                {t.topic} · {new Date(t.createdAt).toLocaleDateString()}
-              </span>
-              {STATUS_BADGE[t.status] && (
-                <span className={`rounded-full border px-2 py-0.5 ${STATUS_BADGE[t.status]}`}>
-                  {t.status === "updated" ? "revised" : t.status}
-                </span>
-              )}
-            </p>
-            {t.changeMyMind && (
-              <p className="mt-2 text-xs text-muted">
-                <span className="text-cool">Would change my mind:</span> {t.changeMyMind}
-              </p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                onClick={() => makeCarousel(t)}
-                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
+            {f.label}
+          </button>
+        ))}
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search topic or text…"
+          className="ml-auto w-44 rounded-lg border border-line bg-surface/40 px-3 py-1.5 text-xs outline-none focus:border-accent"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+          Nothing matches.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((t) =>
+            editId === t.id ? (
+              <ReviseCard key={t.id} thesis={t} onSave={saveEdit} onCancel={() => setEditId(null)} />
+            ) : (
+              <div
+                key={t.id}
+                className={`rounded-xl border border-line bg-surface/40 p-4 ${t.status === "abandoned" ? "opacity-60" : ""}`}
               >
-                Make carousel
-              </button>
-              <button
-                onClick={() => setEditId(t.id)}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-fg hover:bg-surface"
-              >
-                Revise
-              </button>
-              {t.status === "abandoned" ? (
                 <button
-                  onClick={() => setStatus(t, "active")}
-                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
+                  onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                  className="block w-full text-left"
                 >
-                  Reactivate
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={`text-fg ${t.status === "abandoned" ? "line-through" : ""}`}>{t.statement}</p>
+                    <span className={`shrink-0 font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
+                      {t.confidence}
+                    </span>
+                  </div>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <span>
+                      {t.topic} · {new Date(t.createdAt).toLocaleDateString()}
+                      {t.updatedAt ? ` · revised ${new Date(t.updatedAt).toLocaleDateString()}` : ""}
+                    </span>
+                    {STATUS_BADGE[t.status] && (
+                      <span className={`rounded-full border px-2 py-0.5 ${STATUS_BADGE[t.status]}`}>
+                        {t.status === "updated" ? "revised" : t.status}
+                      </span>
+                    )}
+                  </p>
                 </button>
-              ) : (
-                <button
-                  onClick={() => setStatus(t, "abandoned")}
-                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
-                >
-                  Abandon
-                </button>
-              )}
-              <button
-                onClick={() => del(t.id)}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-red-400"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ),
+
+                {expandedId === t.id && (
+                  <div className="mt-3 space-y-2 border-t border-line pt-3 text-sm">
+                    {t.evidenceFor && (
+                      <Detail label="Evidence for">{t.evidenceFor}</Detail>
+                    )}
+                    {t.steelman && <Detail label="Strongest counter I accept">{t.steelman}</Detail>}
+                    {t.changeMyMind && <Detail label="Would change my mind">{t.changeMyMind}</Detail>}
+                    {t.source?.title && (
+                      <Detail label="Source">
+                        {t.source.url ? (
+                          <a
+                            href={t.source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-cool underline-offset-4 hover:underline"
+                          >
+                            {t.source.title} ↗
+                          </a>
+                        ) : (
+                          t.source.title
+                        )}
+                      </Detail>
+                    )}
+                    {!t.evidenceFor && !t.steelman && !t.changeMyMind && !t.source?.title && (
+                      <p className="text-xs text-muted">No extra detail captured for this thesis.</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => makeCarousel(t)}
+                    disabled={busyId === t.id}
+                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+                  >
+                    {busyId === t.id ? "Building…" : "Make carousel"}
+                  </button>
+                  <button
+                    onClick={() => setEditId(t.id)}
+                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-fg hover:bg-surface"
+                  >
+                    Revise
+                  </button>
+                  {t.status === "abandoned" ? (
+                    <button
+                      onClick={() => setStatus(t, "active")}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
+                    >
+                      Reactivate
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setStatus(t, "abandoned")}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
+                    >
+                      Abandon
+                    </button>
+                  )}
+                  <button
+                    onClick={() => del(t.id)}
+                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-red-400"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ),
+          )}
+        </div>
       )}
     </div>
+  );
+}
+
+function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface/40 p-3">
+      <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-fg"}`}>{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+    </div>
+  );
+}
+
+function ConfBar({ low, med, high }: { low: number; med: number; high: number }) {
+  const total = Math.max(1, low + med + high);
+  return (
+    <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-surface">
+      <div style={{ width: `${(high / total) * 100}%` }} className="bg-accent" />
+      <div style={{ width: `${(med / total) * 100}%` }} className="bg-cool" />
+      <div style={{ width: `${(low / total) * 100}%` }} className="bg-line" />
+    </div>
+  );
+}
+
+function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <p className="text-sm text-fg">
+      <span className="text-xs uppercase tracking-wide text-muted">{label}: </span>
+      {children}
+    </p>
   );
 }
 

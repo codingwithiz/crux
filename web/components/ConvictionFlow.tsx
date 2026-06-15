@@ -7,12 +7,11 @@ import { DefaultChatTransport } from "ai";
 import { nanoid } from "nanoid";
 import { getSettings } from "@/lib/settings";
 import { addThesis } from "@/lib/ledger";
-import { getVoice, effectiveVoice } from "@/lib/voice";
+import { expressSlides } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
-import { thesisToSlides } from "@/lib/slides";
 import { findRelated, type RelatedThesis } from "@/lib/related";
 import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
-import type { Confidence, Settings, Slide, Synthesis, Thesis } from "@/lib/types";
+import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
 
 type Step = "input" | "synth" | "adversary" | "commit";
 
@@ -213,21 +212,7 @@ export function ConvictionFlow({
     };
     await addThesis(thesis);
 
-    let slides: Slide[] = thesisToSlides(thesis, "@you");
-    try {
-      const voice = effectiveVoice(await getVoice());
-      const res = await fetch("/api/express", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ thesis, settings: getSettings(), voice }),
-      });
-      if (res.ok) {
-        const j = (await res.json()) as { slides?: Slide[] };
-        if (Array.isArray(j.slides) && j.slides.length) slides = j.slides;
-      }
-    } catch {
-      /* fall back to deterministic slides */
-    }
+    const slides = await expressSlides(thesis, "@you");
     saveDraft({ slides, handle: "@you" });
     clearFlow();
     router.push("/studio");
