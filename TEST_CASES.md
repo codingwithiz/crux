@@ -66,6 +66,7 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 
 | # | Goal | Steps | Expected |
 |---|---|---|---|
+| **TC0** | Daily ritual hub ⭐ | **Today** (nav) or the landing's "Form today's conviction →" | A dated prompt, your 🔥 streak + track record, one **"Today's conviction"** pick (skips items already in your Ledger), and a **"Revisit your thinking"** nudge. Clicking the pick drops you into the flow |
 | **TC1** | Free-forever fallback | No keys / no Supabase → open `/`, click around | App works; **Model** dot is amber; no "Sign in" (localStorage mode) |
 | **TC2** | Model setup | Model menu → paste Google key → Save | Dot turns green |
 | **TC3** | Thought → conviction → carousel ⭐ | `/think` → *"AI agents will make most SaaS dashboards obsolete in 2 years"* → Synthesize → write a one-line take → Pressure-test → spar 2–3 turns → **I am ready to commit** → fill thesis → **Commit + make carousel** | Lands in **Studio**; PNGs auto-generate; preview renders |

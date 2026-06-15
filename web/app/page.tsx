@@ -36,6 +36,15 @@ export default function Home() {
             </span>
           ))}
         </div>
+
+        <div className="mt-8">
+          <Link
+            href="/today"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg transition hover:brightness-110"
+          >
+            Form today&rsquo;s conviction <span>→</span>
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-5 pb-10 sm:grid-cols-2">

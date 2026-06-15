@@ -173,7 +173,7 @@ Prompts live in `lib/ai/prompts.ts` — notably `ADVERSARY_SYSTEM`, the prompt-e
 ```
 app/
   page.tsx                  landing (value chain + entry cards)
-  think/ news/ brief/ studio/ ledger/ gallery/ voice/ login/   page routes
+  today/ think/ news/ brief/ studio/ ledger/ gallery/ voice/ login/   page routes
   api/synthesize|adversary|express/route.ts        the engine (LLM)
   api/revoice|voice/route.ts                        voice: restyle slides / distill guide
   api/brief|news|radar/route.ts                     curator: picks / sources / snapshot
@@ -207,6 +207,6 @@ Default path costs **$0** (Gemini free tier / Ollama, localStorage, Vercel Hobby
 
 ## 15. Roadmap
 
-**Shipped since the original MVP:** Curator **Daily Brief** (`/brief`) · **automated daily radar** (Cron + `radar_snapshots`) with **server-side relevance** ranking in `/api/radar` · **pgvector** ledger re-surfacing + a **revise-thesis** flow (active → updated/abandoned, re-embedded) · a **deeper Ledger** — track-record stats ("keep score"), status filters + search, expandable evidence/steelman/source, and voice-tuned **Make carousel** (shared `lib/express-client.ts`) · **Expressor voice-tuning** (`/voice`) + **re-voice** existing slides · secure **per-user key** sync · **carousel image storage** · redesigned Satori carousel (5 themes) · **grounded synthesis** with retrieval + verbatim citations on the news path (`lib/extract.ts`; "receipts" + a Grounded/⚠ badge) · **durable resume** of an in-progress conviction (localStorage session; survives refresh/crash) · a ready-to-post **caption** + [`DEPLOY.md`](./DEPLOY.md) (Vercel-ready).
+**Shipped since the original MVP:** the **daily ritual hub** (`/today`) — streak + track-record, one curated "form today's conviction" pick (dedup'd against your Ledger), and a "revisit your thinking" nudge — activating moat #3 (the habit loop) · Curator **Daily Brief** (`/brief`) · **automated daily radar** (Cron + `radar_snapshots`) with **server-side relevance** ranking in `/api/radar` · **pgvector** ledger re-surfacing + a **revise-thesis** flow (active → updated/abandoned, re-embedded) · a **deeper Ledger** — track-record stats ("keep score"), status filters + search, expandable evidence/steelman/source, and voice-tuned **Make carousel** (shared `lib/express-client.ts`) · **Expressor voice-tuning** (`/voice`) + **re-voice** existing slides · secure **per-user key** sync · **carousel image storage** · redesigned Satori carousel (5 themes) · **grounded synthesis** with retrieval + verbatim citations on the news path (`lib/extract.ts`; "receipts" + a Grounded/⚠ badge) · **durable resume** of an in-progress conviction (localStorage session; survives refresh/crash) · a ready-to-post **caption** + [`DEPLOY.md`](./DEPLOY.md) (Vercel-ready).
 
 **Still deferred (by design):** a real **durable-workflow engine** (Inngest / Vercel Workflow) — the current resume is session-level, enough for an on-demand app · **opportunity detection** (needs usage data you won't have early) · a **global knowledge graph** (deliberately killed in favor of the personal Ledger — PLAN A6) · **auto-posting / scheduling** (the slop trap — PLAN A6/A8 keep the human in the loop; the Studio's **Copy caption** covers manual posting).

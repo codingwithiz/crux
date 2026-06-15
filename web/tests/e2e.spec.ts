@@ -15,6 +15,7 @@ test("landing shows the value chain and both entry cards", async ({ page }) => {
 
 test("all nav routes resolve", async ({ page }) => {
   const routes: [string, RegExp][] = [
+    ["Today", /\/today/],
     ["Brief", /\/brief/],
     ["Think", /\/think/],
     ["News", /\/news/],
@@ -71,6 +72,13 @@ test("news API returns live items", async ({ page }) => {
   expect(res.status()).toBe(200);
   const json = (await res.json()) as { items?: unknown[] };
   expect(Array.isArray(json.items)).toBeTruthy();
+});
+
+test("today ritual hub renders the daily prompt + streak", async ({ page }) => {
+  await page.goto("/today");
+  await expect(page.getByRole("heading", { name: /conviction/i })).toBeVisible();
+  await expect(page.getByText(/day streak/i)).toBeVisible();
+  await expect(page.getByText("Today's conviction")).toBeVisible();
 });
 
 test("voice page loads the editor with the built-in default", async ({ page }) => {

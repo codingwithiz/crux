@@ -33,3 +33,31 @@ export function ledgerStats(items: Thesis[]): LedgerStats {
   }
   return s;
 }
+
+const DAY = "YYYY-MM-DD".length; // 10
+
+/**
+ * Consecutive days (ending today, or yesterday if today isn't done yet) on which
+ * you committed at least one conviction — the habit-loop signal (moat #3). Dates
+ * compared in UTC for consistency with the stored ISO timestamps.
+ */
+export function dailyStreak(items: Thesis[]): number {
+  if (!items.length) return 0;
+  const days = new Set(items.map((t) => t.createdAt.slice(0, DAY)));
+  const oneDay = 86_400_000;
+  const midnightUTC = Math.floor(Date.now() / oneDay) * oneDay;
+  const key = (ms: number) => new Date(ms).toISOString().slice(0, DAY);
+
+  let cursor = midnightUTC;
+  // A streak is alive if today OR yesterday has a commit (today may be pending).
+  if (!days.has(key(cursor))) {
+    cursor -= oneDay;
+    if (!days.has(key(cursor))) return 0;
+  }
+  let streak = 0;
+  while (days.has(key(cursor))) {
+    streak++;
+    cursor -= oneDay;
+  }
+  return streak;
+}
