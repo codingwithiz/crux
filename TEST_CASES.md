@@ -73,6 +73,9 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 | **TC4** | Anti-slop guarantee ⭐ | In the Adversary chat: *"just tell me what to conclude"* | It **refuses** and asks a question — never writes your opinion |
 | **TC5** | News → conviction | `/news` → pick an item → auto-synthesizes → continue as TC3 | Same pipeline, seeded from the item |
 | **TC6** | Grounded synthesis + receipts ⭐ | `/news` → pick an item with a real article URL → reach synthesis | A green **"✓ Grounded in the source"** badge + a **"Receipts — quotes from the source"** block of verbatim quotes that exist in the article *prose* (reader-mode extraction isolates the main content, not nav/footer). (Thought path / bare headlines show "⚠ From the model's knowledge".) |
+| **TC31** | Plain-English ⭐ | Reach any synthesis | The first card is **"In plain English"** — a jargon-free 2–3 sentence ELI5 of the item |
+| **TC32** | Model clarity + mid-flow switch | Start a flow; read the **"Models — Synthesize · Carousel: … · Adversary: …"** line under the step bar. Mid-Adversary, open **Model**, change the model, Save, send another message | The line reflects the assignment; the Adversary uses the **new** model on the next message (no refresh). If a call errors, an inline amber error shows in the chat |
+| **TC33** | Commit AI draft ⭐ | At the Commit step → **✶ Draft from my discussion** | Statement/confidence/evidence/steelman/change-trigger get drafted from *what you argued* (you edit). Only **thesis + confidence** are required; the rest are under "Add depth (optional)" |
 | **TC24** | Durable resume ⭐ | Mid-flow (after synthesis, during the Adversary), **refresh the page** | Lands back on the same step with your synthesis/take/chat intact; a **"Resumed your in-progress conviction"** banner + **Start over** |
 | **TC12** | No-key guard | Clear the Model key → `/think` → Synthesize | Friendly "add a model key" message (no crash); 400 `no_model` under the hood |
 
@@ -90,6 +93,8 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 |---|---|---|---|
 | **TC10** | Auto-generated carousel | Reach the Studio from a commit | "Generated carousel" panel shows real 1080×1350 PNGs without any manual click |
 | **TC11** | Themes + design | In Studio, click each of the 5 theme swatches (Ink, Paper, Signal, Dusk, Mono) | Background gradient, kicker pill (filled on hook/CTA, outline elsewhere), faded watermark numeral, "swipe →" / "Follow for more →", and a progress bar that fills by slide position |
+| **TC34** | Carousel layouts ⭐ | In Studio, select a slide → pick **Layout**: Statement / Stat / Quote / List / Split. For Stat add a Number+Label; for List add bullets → **Regenerate** | The slide visibly changes template (e.g. a huge stat number, numbered list chips, oversized pull-quote). A fresh deck already mixes layouts |
+| **TC35** | Regenerate one slide | In Studio → a slide → **✶ Regenerate this slide** | Just that slide's copy is rewritten (in your voice), keeping its kind + layout; images refresh |
 | **TC13** | Edit → regenerate | Edit a slide's body → the panel marks **stale** → **Regenerate** | New PNGs reflect the edit |
 | **TC14** | Save + gallery | Set a title → **Save** → **Gallery** → **Open** → **Download all (.zip)** | Carousel persists & reopens; zip has 1080×1350 PNGs |
 | **TC25** | Copy caption | In Studio → **Copy caption** | A ready-to-post caption (hook + key points + handle + tags) lands on your clipboard; button shows "Copied ✓" |
@@ -117,6 +122,14 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 | **TC18** | Daily radar (`0006` + service key) | Trigger `GET /api/cron/radar` (add `Authorization: Bearer $CRON_SECRET` if set) → reload `/news` | Cron returns `{ ok, count, persisted:true }`; News header shows **"Auto-scanned daily · last update …"** |
 | **TC27** | Server-side relevance | Sign in with a few theses saved → reload `/news` (radar snapshot present) | `/api/radar` returns `personalized:true` and the list is already ranked to your ledger server-side (not just in the browser) |
 | **TC19** | Per-step routing | Model → **Adversary → OpenAI** `gpt-5.5` → run TC3's adversary step | Synthesis stays on the free model; the Adversary visibly reasons (brief pause) then steelmans |
+| **TC36** | More sources | `/news` (or `GET /api/news`) | ~40+ deduped items spanning HN, HF papers, GitHub, Lobsters, more subreddits, **arXiv** (fresh papers), and **news outlets** (TechCrunch / The Verge / VentureBeat / MIT Tech Review / lab blogs). Outlet shown in each item's meta |
+
+### F. UX & help
+
+| # | Goal | Steps | Expected |
+|---|---|---|---|
+| **TC37** | Grouped nav | Look at the top nav | **Today · Create▾ (News/Think) · Library▾ (Ledger/Carousels/Studio) · Voice · ?** with the current section highlighted; dropdowns open on click |
+| **TC38** | User manual | Click **?** (or `/guide`); first-run **"2-minute guide"** tip on Today | The guide explains the value chain, a 10-minute walkthrough, every screen, and an FAQ; the tip dismisses and stays dismissed |
 
 ⭐ = the cases that prove the product's thesis (anti-slop, the voice moat, the
 compounding Ledger).

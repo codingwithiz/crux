@@ -174,11 +174,12 @@ Prompts live in `lib/ai/prompts.ts` — notably `ADVERSARY_SYSTEM`, the prompt-e
 ```
 app/
   page.tsx                  landing (value chain + entry cards)
-  today/ news/ think/ studio/ ledger/ gallery/ voice/ login/   page routes
+  today/ news/ think/ studio/ ledger/ gallery/ voice/ guide/ login/   page routes
   brief/   → redirects to /news (Brief consolidated into News)
-  api/synthesize|adversary|express/route.ts        the engine (LLM)
+  api/synthesize|adversary|express/route.ts        the engine (LLM; synthesize = grounded + plainEnglish)
+  api/commit-suggest/route.ts                       drafts the commit fields from your discussion
   api/revoice|voice/route.ts                        voice: restyle slides / distill guide
-  api/brief|news|radar/route.ts                     curator: picks / sources / snapshot
+  api/brief|news|radar/route.ts                     curator: picks / sources (HN·HF·GitHub·Reddit·Lobsters·arXiv·RSS) / snapshot
   api/cron/radar/route.ts                           daily scan (Vercel Cron)
   api/secrets/route.ts                              per-user model keys
   api/embed/route.ts                                OpenAI embeddings (re-surfacing)
@@ -208,6 +209,8 @@ Next.js 16 (App Router, Turbopack) · React 19 · Tailwind v4 · **Vercel AI SDK
 Default path costs **$0** (Gemini free tier / Ollama, localStorage, Vercel Hobby). Optional paid upgrades: **Claude** on the Adversary (~pennies/conviction), **Supabase** cloud sync (free tier), your own model keys. The free floor never disappears.
 
 ## 15. Roadmap
+
+**Usability batch (latest):** **plain-English** ELI5 lead card on every synthesis · **grounded reader-mode** retrieval (already shipped) · per-step **model clarity** line + mid-flow model switch + surfaced Adversary errors + model presets · **commit AI draft** (`/api/commit-suggest`, organizes *your* discussion) + collapsed optional fields · **bold multi-layout carousel** (statement / stat / quote / list / split) with a per-slide layout picker + regenerate-one in the Studio · **more sources** (arXiv + RSS outlets + lab blogs + more subreddits, deduped, recency-ranked, outlet-interleaved) · **grouped nav** (Today · Create▾ · Library▾ · Voice · ?) · in-app **user manual** (`/guide`) + first-run tip.
 
 **Shipped since the original MVP:** the **daily ritual hub** (`/today`) — streak + track-record, one curated "form today's conviction" pick (dedup'd against your Ledger), and a "revisit your thinking" nudge — activating moat #3 (the habit loop) · Curator **Daily Brief** (`/brief`) · **automated daily radar** (Cron + `radar_snapshots`) with **server-side relevance** ranking in `/api/radar` · **pgvector** ledger re-surfacing + a **revise-thesis** flow (active → updated/abandoned, re-embedded) · a **deeper Ledger** — track-record stats ("keep score"), status filters + search, expandable evidence/steelman/source, and voice-tuned **Make carousel** (shared `lib/express-client.ts`) · **Expressor voice-tuning** (`/voice`) + **re-voice** existing slides · secure **per-user key** sync · **carousel image storage** · redesigned Satori carousel (5 themes) · **grounded synthesis** with **reader-mode** retrieval + verbatim citations on the news path (`lib/extract.ts` isolates the main article prose; "receipts" + a Grounded/⚠ badge) · **calibration scoring** — resolve a thesis (held/mixed/broke) and the Ledger scores how well your confidence matched reality (`lib/ledger-stats.calibration`, migration `0008`) · **durable resume** of an in-progress conviction (localStorage session; survives refresh/crash) · a ready-to-post **caption** + [`DEPLOY.md`](./DEPLOY.md) (Vercel-ready).
 

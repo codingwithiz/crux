@@ -18,6 +18,8 @@ export interface SourceRef {
 
 /** Output of the Synthesizer (grounded, citation-aware). */
 export interface Synthesis {
+  /** A 2-3 sentence plain-English ELI5 of the item — the lead "explain it simply" card. */
+  plainEnglish?: string;
   happened: string;
   newVsRepackaged: string;
   keyDebate: string;
@@ -62,16 +64,27 @@ export type SlideKind =
   | "sowhat"
   | "cta";
 
+/** Visual layout for a slide — the bold/punchy template gallery. */
+export type SlideLayout = "statement" | "stat" | "quote" | "list" | "split";
+
 export interface Slide {
   kind: SlideKind;
   kicker: string;
   title: string;
   body: string;
+  /** Chosen template layout; defaults from `kind` when absent (back-compat). */
+  layout?: SlideLayout;
+  /** For the "list" layout — short bullet points. */
+  bullets?: string[];
+  /** For the "stat" layout — a big number + its label. */
+  stat?: { value: string; label: string };
 }
+
+export type NewsSource = "hf" | "hn" | "github" | "reddit" | "lobsters" | "arxiv" | "news";
 
 export interface NewsItem {
   id: string;
-  source: "hf" | "hn" | "github" | "reddit" | "lobsters";
+  source: NewsSource;
   title: string;
   url: string;
   meta?: string;

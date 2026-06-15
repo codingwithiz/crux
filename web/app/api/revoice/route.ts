@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const KINDS = ["hook", "context", "conventional", "argument", "counter", "sowhat", "cta"] as const;
+const LAYOUTS = ["statement", "stat", "quote", "list", "split"] as const;
 
 const Schema = z.object({
   slides: z
@@ -20,6 +21,9 @@ const Schema = z.object({
         kicker: z.string(),
         title: z.string(),
         body: z.string(),
+        layout: z.enum(LAYOUTS).optional(),
+        bullets: z.array(z.string()).optional(),
+        stat: z.object({ value: z.string(), label: z.string() }).optional(),
       }),
     )
     .min(1)
@@ -46,21 +50,35 @@ export async function POST(req: Request) {
   const vb = voiceBlock(voice);
   const system = vb ? `${REVOICE_SYSTEM}\n\n${vb}` : REVOICE_SYSTEM;
 
-  const compact = slides.map((s) => ({ kind: s.kind, kicker: s.kicker, title: s.title, body: s.body }));
+  const compact = slides.map((s) => ({
+    kind: s.kind,
+    kicker: s.kicker,
+    title: s.title,
+    body: s.body,
+    layout: s.layout,
+    bullets: s.bullets,
+    stat: s.stat,
+  }));
 
   try {
     const { output } = await generateText({
       model: getModel(ms),
       output: Output.object({ schema: Schema }),
       system,
-      prompt: `Current slides (JSON):\n${JSON.stringify(compact)}\n\nRewrite them in my voice. Return the same ${slides.length} slides, same order, same kinds.`,
+      prompt: `Current slides (JSON):\n${JSON.stringify(compact)}\n\nRewrite them in my voice. Return the same ${slides.length} slides, same order, same kinds, and KEEP each slide's "layout" and any "stat" values. If a slide has "bullets", rewrite the bullet text in my voice but keep the same number of bullets.`,
     });
 
     // Guard: if the model changed the count, keep the originals to stay safe.
     if (output.slides.length !== slides.length) {
       return Response.json({ error: "shape_mismatch" }, { status: 422 });
     }
-    return Response.json(output);
+    // Preserve original layout/stat if the model dropped them.
+    const merged = output.slides.map((s, i) => ({
+      ...s,
+      layout: s.layout ?? slides[i].layout,
+      stat: s.stat ?? slides[i].stat,
+    }));
+    return Response.json({ slides: merged });
   } catch (e) {
     return Response.json({ error: (e as Error).message ?? "revoice_failed" }, { status: 500 });
   }

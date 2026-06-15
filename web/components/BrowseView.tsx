@@ -13,6 +13,8 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   github: "GitHub",
   reddit: "Reddit",
   lobsters: "Lobsters",
+  arxiv: "arXiv",
+  news: "News",
 };
 
 interface RadarSnapshot {

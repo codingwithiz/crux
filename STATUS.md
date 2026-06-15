@@ -23,10 +23,18 @@ nobody else does. The governing rule:
 The visible output is a **carousel** (IG/LinkedIn). The compounding assets (the
 "moats") are your **Thesis Ledger**, your **voice**, and the **daily habit**.
 
-**Status: feature-complete MVP, all green.** 25 commits, 10 screens, 12 API
-routes, 8 SQL migrations, 15 automated tests passing, production build clean. It
-runs **free** end-to-end (Google Gemini free tier + localStorage), with optional
-paid upgrades (Claude on the Adversary, Supabase cloud sync, BYOK keys).
+**Status: feature-complete MVP, all green.** 11 screens, ~14 API routes, 8 SQL
+migrations, 17 automated tests passing, production build clean. It runs **free**
+end-to-end (Google Gemini free tier + localStorage), with optional paid upgrades
+(Claude on the Adversary, Supabase cloud sync, BYOK keys).
+
+**Latest (usability batch):** plain-English ELI5 on every synthesis · per-step
+model clarity + mid-flow model switching + surfaced Adversary errors · "Draft
+from my discussion" at Commit (with only thesis+confidence required) · a **bold
+multi-layout carousel** (statement / stat / quote / list / split) with per-slide
+layout picking + regenerate-one · **more sources** (arXiv + news outlets + lab
+blogs + more subreddits, deduped) · **grouped nav** · an in-app **`/guide`**
+manual. See `TEST_CASES.md` TC31–TC38.
 
 ---
 

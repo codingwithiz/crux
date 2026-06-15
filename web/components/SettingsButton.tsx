@@ -7,6 +7,8 @@ import {
   settingsReady,
   DEFAULT_MODELS,
   PROVIDER_LABELS,
+  PROVIDER_SHORT,
+  MODEL_PRESETS,
 } from "@/lib/settings";
 import type { Provider, Settings } from "@/lib/types";
 
@@ -126,7 +128,10 @@ export function SettingsButton() {
               save it to your account to sync across devices.
             </p>
 
-            <label className="mt-4 block text-sm font-medium">Provider</label>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-accent">
+              Default model — Synthesize · Curator · Carousel
+            </p>
+            <label className="mt-1 block text-sm font-medium">Provider</label>
             <select
               value={s.provider}
               onChange={(e) => update({ provider: e.target.value as Provider })}
@@ -143,8 +148,14 @@ export function SettingsButton() {
             <input
               value={s.model ?? ""}
               onChange={(e) => update({ model: e.target.value })}
+              list="ce-model-presets"
               className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
             />
+            <datalist id="ce-model-presets">
+              {(MODEL_PRESETS[s.provider] ?? []).map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
 
             {s.provider !== "ollama" ? (
               <>
@@ -202,8 +213,14 @@ export function SettingsButton() {
                     value={s.adversaryModel ?? ""}
                     onChange={(e) => update({ adversaryModel: e.target.value })}
                     placeholder="model id"
+                    list="ce-adv-presets"
                     className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
                   />
+                  <datalist id="ce-adv-presets">
+                    {(MODEL_PRESETS[s.adversaryProvider] ?? []).map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
                   {s.adversaryProvider !== "ollama" && (
                     <input
                       type="password"
@@ -254,6 +271,19 @@ export function SettingsButton() {
                 device. Until then, keys live only in this browser.
               </p>
             )}
+
+            <p className="mt-5 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
+              This run → Synthesize · Carousel:{" "}
+              <span className="text-fg">
+                {PROVIDER_SHORT[s.provider]} · {s.model || DEFAULT_MODELS[s.provider]}
+              </span>{" "}
+              · Adversary:{" "}
+              <span className="text-fg">
+                {s.adversaryProvider
+                  ? `${PROVIDER_SHORT[s.adversaryProvider]} · ${s.adversaryModel || DEFAULT_MODELS[s.adversaryProvider]}`
+                  : "same as default"}
+              </span>
+            </p>
 
             <div className="mt-5 flex justify-end gap-2">
               <button

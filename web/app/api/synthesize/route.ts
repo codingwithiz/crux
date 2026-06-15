@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const Schema = z.object({
+  plainEnglish: z.string(),
   happened: z.string(),
   newVsRepackaged: z.string(),
   keyDebate: z.string(),
@@ -28,7 +29,7 @@ interface Body {
   settings?: Settings;
 }
 
-const ASK = `Return the synthesis: what happened, what is genuinely new vs. repackaged, the single biggest debate or uncertainty, the skeptic's strongest case, 1-3 concrete second-order implications, and exactly 3 questions I must answer before I have a publishable opinion.`;
+const ASK = `Return the synthesis: FIRST "plainEnglish" — a 2-3 sentence explanation a smart non-expert could follow, no jargon (or define any term you must use), as if explaining to a friend. Then: what happened, what is genuinely new vs. repackaged, the single biggest debate or uncertainty, the skeptic's strongest case, 1-3 concrete second-order implications, and exactly 3 questions I must answer before I have a publishable opinion.`;
 
 export async function POST(req: Request) {
   const { input, kind, sourceTitle, sourceUrl, settings: rawSettings } = (await req

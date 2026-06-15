@@ -22,20 +22,20 @@ const KICKERS: Record<SlideKind, string> = {
   cta: "WRAP-UP",
 };
 
-/** Build a default carousel skeleton from a committed thesis. */
+/** Build a default carousel skeleton from a committed thesis (with layouts). */
 export function thesisToSlides(t: Thesis, handle = "@you"): Slide[] {
   const slides: Slide[] = [
-    { kind: "hook", kicker: KICKERS.hook, title: t.statement, body: t.topic },
+    { kind: "hook", kicker: KICKERS.hook, title: t.statement, body: t.topic, layout: "quote" },
   ];
   if (t.source?.title)
-    slides.push({ kind: "context", kicker: KICKERS.context, title: t.source.title, body: "" });
+    slides.push({ kind: "context", kicker: KICKERS.context, title: t.source.title, body: "", layout: "statement" });
   if (t.evidenceFor)
-    slides.push({ kind: "argument", kicker: KICKERS.argument, title: "", body: t.evidenceFor });
+    slides.push({ kind: "argument", kicker: KICKERS.argument, title: "", body: t.evidenceFor, layout: "statement" });
   if (t.steelman)
-    slides.push({ kind: "counter", kicker: KICKERS.counter, title: "", body: t.steelman });
+    slides.push({ kind: "counter", kicker: KICKERS.counter, title: "The strongest counter", body: t.steelman, layout: "split" });
   if (t.changeMyMind)
-    slides.push({ kind: "sowhat", kicker: "WHAT WOULD CHANGE MY MIND", title: "", body: t.changeMyMind });
-  slides.push({ kind: "cta", kicker: KICKERS.cta, title: "Takes that survive scrutiny.", body: handle });
+    slides.push({ kind: "sowhat", kicker: "WHAT WOULD CHANGE MY MIND", title: "", body: t.changeMyMind, layout: "statement" });
+  slides.push({ kind: "cta", kicker: KICKERS.cta, title: "Takes that survive scrutiny.", body: handle, layout: "statement" });
   return slides;
 }
 

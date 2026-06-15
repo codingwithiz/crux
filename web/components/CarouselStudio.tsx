@@ -3,13 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
 import { nanoid } from "nanoid";
-import { SlideArt } from "@/lib/slide-render";
+import { SlideArt, defaultLayout } from "@/lib/slide-render";
 import { THEMES, getTheme, slideSrc, buildCaption } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
 import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
 import { getSettings } from "@/lib/settings";
 import { getVoice, effectiveVoice } from "@/lib/voice";
-import type { Carousel, Slide } from "@/lib/types";
+import type { Carousel, Slide, SlideLayout } from "@/lib/types";
+
+const LAYOUTS: { id: SlideLayout; label: string }[] = [
+  { id: "statement", label: "Statement" },
+  { id: "stat", label: "Stat" },
+  { id: "quote", label: "Quote" },
+  { id: "list", label: "List" },
+  { id: "split", label: "Split" },
+];
 
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -175,6 +183,38 @@ export function CarouselStudio({
   function setHandleStale(v: string) {
     setHandle(v);
     setStale(true);
+  }
+  function setLayout(l: SlideLayout) {
+    const p: Partial<Slide> = { layout: l };
+    if (l === "stat" && !current.stat) p.stat = { value: "", label: "" };
+    if (l === "list" && (!current.bullets || current.bullets.length === 0))
+      p.bullets = current.body ? current.body.split(/\n/).map((x) => x.trim()).filter(Boolean) : [""];
+    patch(p);
+  }
+
+  // Regenerate just the selected slide (re-voiced variation; preserves kind/layout).
+  async function regenerateOne() {
+    setBusy(true);
+    try {
+      const voice = effectiveVoice(await getVoice());
+      const res = await fetch("/api/revoice", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slides: [current], settings: getSettings(), voice }),
+      });
+      const j = (await res.json()) as { slides?: Slide[]; error?: string };
+      if (!res.ok || !j.slides?.[0]) {
+        alert(j.error === "no_model" ? "No model key — add one in the Model menu." : j.error || "Regenerate failed");
+        return;
+      }
+      const ns = slides.map((sl, i) => (i === idx ? j.slides![0] : sl));
+      setSlides(ns);
+      await renderAll(ns, themeId, handle);
+    } catch (e) {
+      alert("Regenerate failed: " + (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function downloadAll() {
@@ -467,6 +507,31 @@ export function CarouselStudio({
           </div>
         </div>
 
+        <p className="mt-4 text-xs font-medium text-muted">Layout</p>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {LAYOUTS.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setLayout(l.id)}
+              className={`rounded-md border px-2 py-1 text-xs ${
+                (current.layout ?? defaultLayout(current.kind)) === l.id
+                  ? "border-accent bg-accent/10 text-fg"
+                  : "border-line text-muted hover:bg-surface"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => void regenerateOne()}
+          disabled={busy}
+          className="mt-3 w-full rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
+          title="Generate a fresh variation of this slide in your voice"
+        >
+          ✶ Regenerate this slide
+        </button>
+
         <label className="mt-4 block text-xs font-medium text-muted">Kicker</label>
         <input
           value={current.kicker}
@@ -478,15 +543,48 @@ export function CarouselStudio({
         <textarea
           value={current.title}
           onChange={(e) => patch({ title: e.target.value })}
-          rows={3}
+          rows={2}
           className="mt-1 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-sm"
         />
+
+        {(current.layout ?? defaultLayout(current.kind)) === "list" ? (
+          <>
+            <label className="mt-3 block text-xs font-medium text-muted">Bullets (one per line)</label>
+            <textarea
+              value={(current.bullets ?? []).join("\n")}
+              onChange={(e) => patch({ bullets: e.target.value.split("\n") })}
+              rows={5}
+              className="mt-1 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-sm"
+            />
+          </>
+        ) : (current.layout ?? defaultLayout(current.kind)) === "stat" ? (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-muted">Number</label>
+              <input
+                value={current.stat?.value ?? ""}
+                onChange={(e) => patch({ stat: { value: e.target.value, label: current.stat?.label ?? "" } })}
+                placeholder="41.8"
+                className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted">Label</label>
+              <input
+                value={current.stat?.label ?? ""}
+                onChange={(e) => patch({ stat: { value: current.stat?.value ?? "", label: e.target.value } })}
+                placeholder="BLEU record"
+                className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+        ) : null}
 
         <label className="mt-3 block text-xs font-medium text-muted">Body</label>
         <textarea
           value={current.body}
           onChange={(e) => patch({ body: e.target.value })}
-          rows={5}
+          rows={4}
           className="mt-1 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-sm"
         />
 

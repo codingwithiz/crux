@@ -13,21 +13,44 @@ test("landing shows the value chain and both entry cards", async ({ page }) => {
   await expect(page.getByRole("link", { name: /From your thought/i })).toBeVisible();
 });
 
-test("all nav routes resolve", async ({ page }) => {
-  const routes: [string, RegExp][] = [
+test("all nav routes resolve (grouped nav)", async ({ page }) => {
+  // Direct top-level links.
+  for (const [label, urlRe] of [
     ["Today", /\/today/],
-    ["News", /\/news/],
-    ["Think", /\/think/],
-    ["Studio", /\/studio/],
-    ["Gallery", /\/gallery/],
     ["Voice", /\/voice/],
-    ["Ledger", /\/ledger/],
-  ];
-  for (const [label, urlRe] of routes) {
+  ] as [string, RegExp][]) {
     await page.goto("/");
     await page.getByRole("link", { name: label, exact: true }).first().click();
     await expect(page).toHaveURL(urlRe);
   }
+  // Grouped links: open the menu button, then click the item.
+  const grouped: [string, string, RegExp][] = [
+    ["Create", "From the news", /\/news/],
+    ["Create", "From a thought", /\/think/],
+    ["Library", "Ledger", /\/ledger/],
+    ["Library", "Carousels", /\/gallery/],
+    ["Library", "Studio", /\/studio/],
+  ];
+  for (const [group, item, urlRe] of grouped) {
+    await page.goto("/");
+    await page.getByRole("button", { name: new RegExp(group) }).click();
+    await page.getByRole("link", { name: item, exact: true }).click();
+    await expect(page).toHaveURL(urlRe);
+  }
+});
+
+test("guide page renders the user manual", async ({ page }) => {
+  await page.goto("/guide");
+  await expect(page.getByRole("heading", { name: /How to use Conviction Engine/i })).toBeVisible();
+  await expect(page.getByText(/your first conviction/i)).toBeVisible();
+});
+
+test("commit-suggest guards without a model key", async ({ page }) => {
+  // Force a provider with no key/env (anthropic isn't set in CI) → 400 no_model.
+  const res = await page.request.post("/api/commit-suggest", {
+    data: { take: "test", settings: { provider: "anthropic", apiKey: "" } },
+  });
+  expect(res.status()).toBe(400);
 });
 
 test("studio renders and the slide PNG route returns an image", async ({ page }) => {
@@ -138,9 +161,10 @@ test("radar cron scans sources and reports a digest", async ({ page }) => {
 });
 
 test("AI routes guard correctly without a model key", async ({ page }) => {
-  // With no settings/key, synthesize should refuse rather than 500.
+  // Force a provider with no key/env (anthropic isn't set in CI) so the guard
+  // returns deterministically without making a live model call.
   const res = await page.request.post("/api/synthesize", {
-    data: { input: "test", kind: "thought", settings: { provider: "google", apiKey: "" } },
+    data: { input: "test", kind: "thought", settings: { provider: "anthropic", apiKey: "" } },
   });
-  expect([400, 200]).toContain(res.status()); // 400 no_model when no env key; 200 if env key present
+  expect(res.status()).toBe(400);
 });

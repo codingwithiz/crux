@@ -14,6 +14,8 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   github: "GitHub",
   reddit: "Reddit",
   lobsters: "Lobsters",
+  arxiv: "arXiv",
+  news: "News",
 };
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -22,6 +24,23 @@ export function TodayView() {
   const [ledger, setLedger] = useState<Thesis[] | null>(null);
   const [pick, setPick] = useState<NewsItem | null>(null);
   const [started, setStarted] = useState(false);
+  const [showTip, setShowTip] = useState(false);
+
+  useEffect(() => {
+    try {
+      setShowTip(!window.localStorage.getItem("ce.guide.seen"));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function dismissTip() {
+    try {
+      window.localStorage.setItem("ce.guide.seen", "1");
+    } catch {
+      /* ignore */
+    }
+    setShowTip(false);
+  }
 
   useEffect(() => {
     void (async () => {
@@ -100,6 +119,21 @@ export function TodayView() {
 
   return (
     <div className="space-y-6">
+      {showTip && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-cool/40 bg-cool/10 px-4 py-2.5 text-sm text-cool">
+          <span>
+            New here? The{" "}
+            <Link href="/guide" className="font-medium underline underline-offset-4">
+              2-minute guide
+            </Link>{" "}
+            shows how to turn one article into a defended take.
+          </span>
+          <button onClick={dismissTip} className="shrink-0 rounded-md px-2 py-1 text-xs hover:underline">
+            Got it
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-mono text-xs text-accent">{dateLabel}</p>

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { nanoid } from "nanoid";
-import { getSettings } from "@/lib/settings";
+import { getSettings, SETTINGS_EVENT, PROVIDER_SHORT, DEFAULT_MODELS } from "@/lib/settings";
+import { stepModelSettings, type Step as ModelStep } from "@/lib/ai/routing";
 import { addThesis } from "@/lib/ledger";
 import { expressSlides } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
@@ -52,8 +53,24 @@ export function ConvictionFlow({
   const autosynth = useRef(false);
 
   useEffect(() => {
-    setSettings(getSettings());
+    const sync = () => setSettings(getSettings());
+    sync();
+    // Pick up model changes made mid-flow (e.g. in the Model menu) so the next
+    // step — including the streaming Adversary — uses the new model.
+    window.addEventListener(SETTINGS_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(SETTINGS_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
   }, []);
+
+  // Human-readable "which model runs which step" summary.
+  function modelLabel(stepKind: ModelStep): string {
+    const ms = stepModelSettings(settings ?? undefined, stepKind);
+    const p = ms.provider ?? "google";
+    return `${PROVIDER_SHORT[p]} · ${ms.model ?? DEFAULT_MODELS[p]}`;
+  }
 
   async function runSynthesis(text: string) {
     setError(null);
@@ -98,7 +115,7 @@ export function ConvictionFlow({
     () => new DefaultChatTransport({ api: "/api/adversary", body: { synthesis, take, settings } }),
     [synthesis, take, settings],
   );
-  const { messages, sendMessage, status, setMessages } = useChat({ transport });
+  const { messages, sendMessage, status, setMessages, error: chatError } = useChat({ transport });
   const [chatInput, setChatInput] = useState("");
   const seeded = useRef(false);
   const thinking = status === "submitted" || status === "streaming";
@@ -120,6 +137,8 @@ export function ConvictionFlow({
   const [changeMyMind, setChangeMyMind] = useState("");
   const [topic, setTopic] = useState(sourceTitle ?? "");
   const [resumed, setResumed] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [showDepth, setShowDepth] = useState(false);
   const hydrated = useRef(false);
 
   // Mount: resume a saved in-progress conviction if one matches this flow;
@@ -195,6 +214,41 @@ export function ConvictionFlow({
     setStep("commit");
   }
 
+  // Draft the commit fields by organizing the user's OWN take + Adversary
+  // answers. Never auto-commits; the user edits before committing.
+  async function draftFromDiscussion() {
+    setSuggesting(true);
+    setError(null);
+    try {
+      const msgs = messages.map((m) => ({
+        role: m.role,
+        text: m.parts.map((p) => (p.type === "text" ? p.text : "")).join(" "),
+      }));
+      const res = await fetch("/api/commit-suggest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ synthesis, take, messages: msgs, settings: getSettings() }),
+      });
+      const j = (await res.json()) as Partial<Thesis> & { confidence?: Confidence; error?: string };
+      if (!res.ok) {
+        throw new Error(
+          j.error === "no_model" ? "No model key — add one in the Model menu (top-right)." : j.error || "Draft failed",
+        );
+      }
+      if (j.statement) setStatement(j.statement);
+      if (j.confidence) setConfidence(j.confidence);
+      if (j.evidenceFor) setEvidenceFor(j.evidenceFor);
+      if (j.steelman) setSteelman(j.steelman);
+      if (j.changeMyMind) setChangeMyMind(j.changeMyMind);
+      if (j.topic) setTopic(j.topic);
+      setShowDepth(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
   async function commit() {
     setLoading(true);
     setError(null);
@@ -241,6 +295,12 @@ export function ConvictionFlow({
           </div>
         ))}
       </div>
+
+      <p className="mb-4 text-[11px] text-muted">
+        Models — Synthesize · Carousel: <span className="text-fg">{modelLabel("synthesize")}</span>{" "}
+        · Adversary: <span className="text-fg">{modelLabel("adversary")}</span>{" "}
+        <span className="text-muted">· change in the Model menu (top-right)</span>
+      </p>
 
       {resumed && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-cool/40 bg-cool/10 px-4 py-2.5 text-sm text-cool">
@@ -307,6 +367,14 @@ export function ConvictionFlow({
                 </div>
               )}
               <div className="space-y-3">
+                {synthesis.plainEnglish && (
+                  <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-accent">
+                      In plain English
+                    </p>
+                    <p className="mt-1 text-base leading-relaxed text-fg">{synthesis.plainEnglish}</p>
+                  </div>
+                )}
                 {SYNTH_ROWS.map((r) => (
                   <div key={r.key} className="rounded-xl border border-line bg-surface/40 p-4">
                     <p className="font-mono text-xs uppercase tracking-wide text-accent">{r.label}</p>
@@ -402,6 +470,12 @@ export function ConvictionFlow({
                 thinking…
               </div>
             )}
+            {chatError && (
+              <div className="self-start rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
+                The Adversary hit an error: {chatError.message}. Check your model key in the Model
+                menu, then send again.
+              </div>
+            )}
           </div>
 
           <form
@@ -445,8 +519,25 @@ export function ConvictionFlow({
 
       {step === "commit" && (
         <div className="ce-fade-up space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-cool/30 bg-cool/5 px-4 py-2.5">
+            <p className="text-xs text-muted">
+              Only <span className="text-fg">your thesis</span> and{" "}
+              <span className="text-fg">confidence</span> are required. Let AI organize the rest from
+              what you argued?
+            </p>
+            <button
+              onClick={draftFromDiscussion}
+              disabled={suggesting}
+              className="shrink-0 rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
+            >
+              {suggesting ? "Drafting…" : "✶ Draft from my discussion"}
+            </button>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium">Your committed thesis (1-2 sentences)</label>
+            <label className="block text-sm font-medium">
+              Your committed thesis <span className="text-accent">*</span> (1-2 sentences)
+            </label>
             <textarea
               value={statement}
               onChange={(e) => setStatement(e.target.value)}
@@ -456,7 +547,9 @@ export function ConvictionFlow({
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Confidence</label>
+            <label className="block text-sm font-medium">
+              Confidence <span className="text-accent">*</span>
+            </label>
             <div className="mt-2 flex gap-2">
               {(["low", "med", "high"] as Confidence[]).map((c) => (
                 <button
@@ -472,15 +565,26 @@ export function ConvictionFlow({
             </div>
           </div>
 
-          <Field label="Key evidence for your view" value={evidenceFor} onChange={setEvidenceFor} />
-          <Field label="The strongest counter you accept (steelman)" value={steelman} onChange={setSteelman} />
-          <Field label="What would change your mind" value={changeMyMind} onChange={setChangeMyMind} />
-          <Field label="Topic / tag" value={topic} onChange={setTopic} single />
+          {showDepth ? (
+            <div className="space-y-4 border-t border-line pt-4">
+              <Field label="Key evidence for your view" value={evidenceFor} onChange={setEvidenceFor} />
+              <Field label="The strongest counter you accept (steelman)" value={steelman} onChange={setSteelman} />
+              <Field label="What would change your mind" value={changeMyMind} onChange={setChangeMyMind} />
+              <Field label="Topic / tag" value={topic} onChange={setTopic} single />
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDepth(true)}
+              className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
+            >
+              + Add depth (evidence, steelman, change-trigger) — optional
+            </button>
+          )}
 
           <button
             onClick={commit}
             disabled={loading || !statement.trim()}
-            className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+            className="block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
           >
             {loading ? "Building carousel…" : "Commit + make carousel →"}
           </button>

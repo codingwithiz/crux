@@ -1,8 +1,12 @@
-import type { NewsItem } from "./types";
+import type { NewsItem, NewsSource } from "./types";
 
 const UA = { "user-agent": "conviction-engine/0.1 (personal project)" };
 
 async function jget(url: string, headers: Record<string, string> = {}): Promise<unknown> {
+  return JSON.parse(await jtext(url, headers));
+}
+
+async function jtext(url: string, headers: Record<string, string> = {}): Promise<string> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
@@ -12,7 +16,7 @@ async function jget(url: string, headers: Record<string, string> = {}): Promise<
       next: { revalidate: 900 },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return await res.text();
   } finally {
     clearTimeout(timer);
   }
@@ -126,17 +130,137 @@ async function fetchLobsters(): Promise<NewsItem[]> {
   }));
 }
 
-/** Free, ToS-clean AI signal from several primary sources. Resilient to any one failing. */
+// ---- Generic RSS/Atom + arXiv (dependency-free, same regex approach as extract.ts) ----
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)))
+    .replace(/&[a-z]+;/gi, " ");
+}
+function stripTags(s: string): string {
+  return decodeEntities(s.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+}
+function tag(block: string, name: string): string {
+  const m = block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i"));
+  return m ? m[1] : "";
+}
+function feedLink(block: string): string {
+  const rss = stripTags(tag(block, "link"));
+  if (/^https?:/i.test(rss)) return rss;
+  const alt = block.match(/<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/i);
+  if (alt) return alt[1];
+  const any = block.match(/<link[^>]*href=["']([^"']+)["']/i);
+  if (any) return any[1];
+  const id = stripTags(tag(block, "id"));
+  return /^https?:/i.test(id) ? id : "";
+}
+function hash(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36);
+}
+
+/** Parse an RSS or Atom feed into NewsItems. `score` is recency (newer = higher). */
+function parseFeed(xml: string, label: string, source: NewsSource, limit = 8): NewsItem[] {
+  const blocks = xml.match(/<(item|entry)[\s\S]*?<\/(item|entry)>/gi) ?? [];
+  const out: NewsItem[] = [];
+  for (const b of blocks.slice(0, limit)) {
+    const title = stripTags(tag(b, "title"));
+    const url = feedLink(b);
+    if (!title || !url) continue;
+    const desc = stripTags(tag(b, "description") || tag(b, "summary") || tag(b, "content"));
+    const dateStr = stripTags(tag(b, "pubDate") || tag(b, "published") || tag(b, "updated"));
+    const ts = Date.parse(dateStr);
+    const when = Number.isFinite(ts) ? new Date(ts).toLocaleDateString() : "";
+    out.push({
+      id: `${source}-${hash(url)}`,
+      source,
+      title,
+      url,
+      meta: [when, label].filter(Boolean).join(" · "),
+      detail: desc ? desc.slice(0, 240) : undefined,
+      score: Number.isFinite(ts) ? Math.floor(ts / 60_000) : 0,
+    });
+  }
+  return out;
+}
+
+async function fetchRSS(url: string, label: string): Promise<NewsItem[]> {
+  return parseFeed(await jtext(url), label, "news");
+}
+
+async function fetchArxiv(): Promise<NewsItem[]> {
+  const q =
+    "search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=12";
+  return parseFeed(await jtext(`http://export.arxiv.org/api/query?${q}`), "arXiv", "arxiv", 12);
+}
+
+// Major AI outlets + lab/company blogs (best-effort; any feed that 404s is skipped).
+const RSS_FEEDS: { url: string; label: string }[] = [
+  { url: "https://techcrunch.com/category/artificial-intelligence/feed/", label: "TechCrunch" },
+  { url: "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml", label: "The Verge" },
+  { url: "https://venturebeat.com/category/ai/feed/", label: "VentureBeat" },
+  { url: "https://www.technologyreview.com/topic/artificial-intelligence/feed/", label: "MIT Tech Review" },
+  { url: "https://openai.com/news/rss.xml", label: "OpenAI" },
+  { url: "https://blog.google/technology/ai/rss/", label: "Google AI" },
+  { url: "https://deepmind.google/blog/rss.xml", label: "DeepMind" },
+  { url: "https://ai.meta.com/blog/rss/", label: "Meta AI" },
+];
+
+/** Drop near-duplicate items and cap how many each source contributes. */
+function dedupe(items: NewsItem[]): NewsItem[] {
+  const cap: Partial<Record<NewsSource, number>> = { news: 10, arxiv: 8 };
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const seen = new Set<string>();
+  const count: Record<string, number> = {};
+  const out: NewsItem[] = [];
+  for (const it of items) {
+    const urlKey = norm(it.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/+$/, ""));
+    const titleKey = norm(it.title).slice(0, 60);
+    if (seen.has(urlKey) || seen.has(titleKey)) continue;
+    if ((count[it.source] ?? 0) >= (cap[it.source] ?? 6)) continue;
+    seen.add(urlKey);
+    seen.add(titleKey);
+    count[it.source] = (count[it.source] ?? 0) + 1;
+    out.push(it);
+  }
+  return out;
+}
+
+/** Round-robin merge so no single feed dominates (outlet diversity). */
+function interleave(arrays: NewsItem[][]): NewsItem[] {
+  const out: NewsItem[] = [];
+  const max = Math.max(0, ...arrays.map((a) => a.length));
+  for (let i = 0; i < max; i++) for (const a of arrays) if (a[i]) out.push(a[i]);
+  return out;
+}
+
+/** Free, ToS-clean AI signal from many primary sources. Resilient to any one failing. */
 export async function getNews(): Promise<NewsItem[]> {
-  const settled = await Promise.allSettled([
-    fetchHN(),
-    fetchHF(),
-    fetchGitHub(),
-    fetchReddit("MachineLearning"),
-    fetchReddit("LocalLLaMA"),
-    fetchLobsters(),
+  const [coreS, feedS] = await Promise.all([
+    Promise.allSettled([
+      fetchHN(),
+      fetchHF(),
+      fetchGitHub(),
+      fetchReddit("MachineLearning"),
+      fetchReddit("LocalLLaMA"),
+      fetchReddit("singularity"),
+      fetchReddit("OpenAI"),
+      fetchReddit("artificial"),
+      fetchLobsters(),
+      fetchArxiv(),
+    ]),
+    Promise.allSettled(RSS_FEEDS.map((f) => fetchRSS(f.url, f.label))),
   ]);
-  const items: NewsItem[] = [];
-  for (const r of settled) if (r.status === "fulfilled") items.push(...r.value);
-  return items;
+  const core: NewsItem[] = [];
+  for (const r of coreS) if (r.status === "fulfilled") core.push(...r.value);
+  const feeds = feedS.filter((r) => r.status === "fulfilled").map((r) => r.value);
+  return dedupe([...core, ...interleave(feeds)]);
 }

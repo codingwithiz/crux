@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const KINDS = ["hook", "context", "conventional", "argument", "counter", "sowhat", "cta"] as const;
+const LAYOUTS = ["statement", "stat", "quote", "list", "split"] as const;
 
 const Schema = z.object({
   slides: z
@@ -20,6 +21,9 @@ const Schema = z.object({
         kicker: z.string(),
         title: z.string(),
         body: z.string(),
+        layout: z.enum(LAYOUTS).optional(),
+        bullets: z.array(z.string()).optional(),
+        stat: z.object({ value: z.string(), label: z.string() }).optional(),
       }),
     )
     .min(5)
