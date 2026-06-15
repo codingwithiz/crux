@@ -32,6 +32,9 @@ export interface Synthesis {
 
 export type Confidence = "low" | "med" | "high";
 
+/** How a committed thesis turned out, once reality has weighed in (for calibration). */
+export type Outcome = "held" | "mixed" | "broke";
+
 /** A committed opinion in the Thesis Ledger (the compounding moat). */
 export interface Thesis {
   id: string;
@@ -45,6 +48,9 @@ export interface Thesis {
   updatedAt?: string; // ISO, set when revised
   source?: SourceRef;
   status: "active" | "updated" | "abandoned";
+  /** Resolved outcome — how the call turned out (drives calibration scoring). */
+  outcome?: Outcome;
+  resolvedAt?: string; // ISO, set when an outcome is recorded
 }
 
 export type SlideKind =

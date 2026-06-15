@@ -1,4 +1,4 @@
-import type { Confidence, Thesis } from "./types";
+import type { Confidence, Outcome, Thesis } from "./types";
 
 export interface LedgerStats {
   total: number;
@@ -60,4 +60,55 @@ export function dailyStreak(items: Thesis[]): number {
     cursor -= oneDay;
   }
   return streak;
+}
+
+// Representative probability for each stated confidence, and the realised value
+// of each outcome — used for a Brier-style calibration score.
+const CONF_P: Record<Confidence, number> = { low: 0.3, med: 0.6, high: 0.85 };
+const OUT_V: Record<Outcome, number> = { held: 1, mixed: 0.5, broke: 0 };
+
+export interface Calibration {
+  resolved: number;
+  /** Mean squared error between stated confidence and realised outcome (lower = better). */
+  brier: number | null;
+  /** A friendly 0-100 calibration score = (1 - brier) * 100. */
+  score: number | null;
+  /** Per-confidence hit rate (mean realised outcome) among resolved theses. */
+  byConfidence: Record<Confidence, { resolved: number; hitRate: number | null }>;
+}
+
+/**
+ * Calibration — "were you actually right when you were confident?" (PLAN A2 §7).
+ * Compares stated confidence to recorded outcomes across resolved theses. Only
+ * theses with an `outcome` count; returns nulls until you've resolved a few.
+ */
+export function calibration(items: Thesis[]): Calibration {
+  const byConfidence: Calibration["byConfidence"] = {
+    low: { resolved: 0, hitRate: null },
+    med: { resolved: 0, hitRate: null },
+    high: { resolved: 0, hitRate: null },
+  };
+  const sums: Record<Confidence, number> = { low: 0, med: 0, high: 0 };
+
+  let sq = 0;
+  let n = 0;
+  for (const t of items) {
+    if (!t.outcome) continue;
+    n++;
+    sq += (CONF_P[t.confidence] - OUT_V[t.outcome]) ** 2;
+    byConfidence[t.confidence].resolved++;
+    sums[t.confidence] += OUT_V[t.outcome];
+  }
+  (["low", "med", "high"] as Confidence[]).forEach((c) => {
+    const r = byConfidence[c].resolved;
+    byConfidence[c].hitRate = r ? sums[c] / r : null;
+  });
+
+  const brier = n ? sq / n : null;
+  return {
+    resolved: n,
+    brier,
+    score: brier === null ? null : Math.round((1 - brier) * 100),
+    byConfidence,
+  };
 }

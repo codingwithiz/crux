@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
-import { ledgerStats } from "@/lib/ledger-stats";
+import { ledgerStats, calibration } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
 import { expressSlides } from "@/lib/express-client";
-import type { Confidence, Thesis } from "@/lib/types";
+import type { Confidence, Outcome, Thesis } from "@/lib/types";
 
 const CONF_COLOR: Record<Confidence, string> = {
   low: "text-muted",
@@ -18,6 +18,13 @@ const STATUS_BADGE: Record<Thesis["status"], string | null> = {
   active: null,
   updated: "border-cool/40 bg-cool/10 text-cool",
   abandoned: "border-line bg-surface text-muted",
+};
+
+const OUTCOME_LABEL: Record<Outcome, string> = { held: "held up", mixed: "mixed", broke: "broke" };
+const OUTCOME_BADGE: Record<Outcome, string> = {
+  held: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+  mixed: "border-amber-500/40 bg-amber-500/10 text-amber-200",
+  broke: "border-red-500/40 bg-red-500/10 text-red-300",
 };
 
 type Filter = "all" | "active" | "updated" | "abandoned";
@@ -42,6 +49,7 @@ export function LedgerView() {
   }, []);
 
   const stats = useMemo(() => ledgerStats(items ?? []), [items]);
+  const cal = useMemo(() => calibration(items ?? []), [items]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (items ?? []).filter((t) => {
@@ -67,6 +75,11 @@ export function LedgerView() {
   }
   async function setStatus(t: Thesis, status: Thesis["status"]) {
     await updateThesis({ ...t, status, updatedAt: new Date().toISOString() });
+    setItems(await getLedger());
+  }
+  async function setOutcome(t: Thesis, outcome: Outcome) {
+    const next = t.outcome === outcome ? undefined : outcome;
+    await updateThesis({ ...t, outcome: next, resolvedAt: next ? new Date().toISOString() : undefined });
     setItems(await getLedger());
   }
   async function saveEdit(t: Thesis) {
@@ -99,6 +112,35 @@ export function LedgerView() {
         <span className="font-mono uppercase tracking-wide">Confidence</span>
         <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
       </div>
+
+      {cal.resolved > 0 && (
+        <div className="mb-5 rounded-xl border border-line bg-surface/40 p-4">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-xs uppercase tracking-wide text-accent">Calibration</p>
+            <p className="text-xs text-muted">
+              {cal.resolved} resolved ·{" "}
+              <span className="text-fg">{cal.score}/100</span> calibrated
+            </p>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+            {(["high", "med", "low"] as Confidence[]).map((c) => (
+              <div key={c} className="rounded-lg border border-line bg-ink/40 p-2">
+                <p className="text-sm font-bold text-fg">
+                  {cal.byConfidence[c].hitRate === null
+                    ? "—"
+                    : `${Math.round((cal.byConfidence[c].hitRate as number) * 100)}%`}
+                </p>
+                <p className="text-[11px] capitalize text-muted">
+                  {c} held ({cal.byConfidence[c].resolved})
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted">
+            Were you right when you were confident? Resolve theses (expand a card) to keep score.
+          </p>
+        </div>
+      )}
 
       {/* Filters + search */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -155,6 +197,11 @@ export function LedgerView() {
                         {t.status === "updated" ? "revised" : t.status}
                       </span>
                     )}
+                    {t.outcome && (
+                      <span className={`rounded-full border px-2 py-0.5 ${OUTCOME_BADGE[t.outcome]}`}>
+                        {OUTCOME_LABEL[t.outcome]}
+                      </span>
+                    )}
                   </p>
                 </button>
 
@@ -184,6 +231,20 @@ export function LedgerView() {
                     {!t.evidenceFor && !t.steelman && !t.changeMyMind && !t.source?.title && (
                       <p className="text-xs text-muted">No extra detail captured for this thesis.</p>
                     )}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-xs uppercase tracking-wide text-muted">How did it hold up?</span>
+                      {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
+                        <button
+                          key={o}
+                          onClick={() => setOutcome(t, o)}
+                          className={`rounded-lg border px-2.5 py-1 text-xs capitalize ${
+                            t.outcome === o ? OUTCOME_BADGE[o] : "border-line text-muted hover:bg-surface"
+                          }`}
+                        >
+                          {OUTCOME_LABEL[o]}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

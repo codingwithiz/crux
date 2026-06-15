@@ -54,6 +54,8 @@ interface Row {
   source_url: string | null;
   status: string;
   created_at: string;
+  outcome: string | null;
+  resolved_at: string | null;
 }
 function rowToThesis(r: Row): Thesis {
   return {
@@ -67,6 +69,8 @@ function rowToThesis(r: Row): Thesis {
     createdAt: r.created_at,
     status: r.status as Thesis["status"],
     source: r.source_title ? { title: r.source_title, url: r.source_url ?? undefined } : undefined,
+    outcome: (r.outcome as Thesis["outcome"]) ?? undefined,
+    resolvedAt: r.resolved_at ?? undefined,
   };
 }
 
@@ -139,6 +143,8 @@ export async function updateThesis(t: Thesis): Promise<void> {
       steelman: t.steelman ?? null,
       change_my_mind: t.changeMyMind ?? null,
       status: t.status,
+      outcome: t.outcome ?? null,
+      resolved_at: t.resolvedAt ?? null,
       // Only overwrite the embedding when we actually got a fresh one.
       ...(embedding ? { embedding } : {}),
     })

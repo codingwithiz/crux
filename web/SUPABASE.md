@@ -64,6 +64,12 @@ this migration the voice still works — it just lives in `localStorage` instead
 of syncing to the account. Out of the box a strong built-in default voice is
 used, so carousels are never generic even before you set your own.
 
+Optionally run
+[`supabase/migrations/0008_thesis_outcome.sql`](./supabase/migrations/0008_thesis_outcome.sql)
+to enable **calibration scoring** — it adds `outcome`/`resolved_at` to `theses` so
+the Ledger can score how well your stated confidence matched reality. Works in
+localStorage mode without it; only cloud sync of outcomes needs the column.
+
 ## 4. Enable email auth
 In **Authentication → Providers**, ensure **Email** is enabled. For quick local
 testing you can turn **off** "Confirm email" (Authentication → Providers → Email)
@@ -102,4 +108,5 @@ applied in the browser); if no snapshot exists it falls back to a live scan.
   the Vercel project's Environment Variables. The Cron in `vercel.json` runs
   automatically once deployed.
 - Migration order recap: `0001` theses → `0002` carousels → `0003` embeddings →
-  `0004` user secrets → `0005` carousel storage → `0006` radar → `0007` voice.
+  `0004` user secrets → `0005` carousel storage → `0006` radar → `0007` voice →
+  `0008` thesis outcomes (calibration).
