@@ -19,7 +19,8 @@ The UI is **client-first**. The browser talks to two backends: our **own Next.js
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ BROWSER  — React client components                                             │
-│   ConvictionFlow · NewsPicker · CarouselStudio · GalleryView · LedgerView      │
+│   ConvictionFlow · TodayView · BrowseView · CarouselStudio · GalleryView ·     │
+│   LedgerView · VoiceEditor                                                      │
 │   SettingsButton · AuthButton · /login                                         │
 │   STATE: React + localStorage (settings, draft, offline data) + SB session     │
 └───────────────┬───────────────────────────────────────────┬───────────────────┘
@@ -69,7 +70,7 @@ The plan's agent design is deliberately **not** a multi-agent swarm — it's a p
 
 | Concept | Implementation | Type |
 |---|---|---|
-| **Curator** | `NewsPicker` + `lib/sources.ts` + `lib/rank.ts` + `/api/news`; `/api/brief` (LLM picks); `/api/cron/radar` + `/api/radar` (automated daily scan) | Deterministic fetch/rank + one LLM call |
+| **Curator** | `BrowseView` + `lib/sources.ts` + `lib/rank.ts` + `/api/news`; `/api/brief` (LLM picks, the "Curated for you" section); `/api/cron/radar` + `/api/radar` (automated daily scan); `TodayView` surfaces one pick | Deterministic fetch/rank + one LLM call |
 | **Synthesizer** | `/api/synthesize` → `generateText` + `Output.object` | One structured LLM call |
 | **Adversary** | `/api/adversary` → `streamText` + `useChat` | **Agentic, human-in-the-loop** |
 | **Expressor** | `/api/express` → `generateText` + `Output.object`, tuned by the user's **voice** (`lib/voice.ts`, `/api/voice` distiller); `/api/revoice` restyles existing slides | One structured LLM call |
@@ -173,7 +174,8 @@ Prompts live in `lib/ai/prompts.ts` — notably `ADVERSARY_SYSTEM`, the prompt-e
 ```
 app/
   page.tsx                  landing (value chain + entry cards)
-  today/ think/ news/ brief/ studio/ ledger/ gallery/ voice/ login/   page routes
+  today/ news/ think/ studio/ ledger/ gallery/ voice/ login/   page routes
+  brief/   → redirects to /news (Brief consolidated into News)
   api/synthesize|adversary|express/route.ts        the engine (LLM)
   api/revoice|voice/route.ts                        voice: restyle slides / distill guide
   api/brief|news|radar/route.ts                     curator: picks / sources / snapshot
@@ -183,7 +185,7 @@ app/
   api/slide/route.tsx                               Satori PNG render
 components/
   ConvictionFlow.tsx        the input→synth→adversary→commit state machine
-  NewsPicker.tsx  BriefView.tsx  CarouselStudio.tsx  GalleryView.tsx  LedgerView.tsx
+  TodayView.tsx  BrowseView.tsx  CarouselStudio.tsx  GalleryView.tsx  LedgerView.tsx
   VoiceEditor.tsx  Nav.tsx  SettingsButton.tsx  AuthButton.tsx
 lib/
   types.ts                  shared types

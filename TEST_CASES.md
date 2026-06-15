@@ -112,7 +112,7 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 
 | # | Goal | Steps | Expected |
 |---|---|---|---|
-| **TC22** | Curator brief | `/brief` → **Generate today's brief** | 3–5 LLM-picked items, each with *why it matters* (+ *for you* once you have theses) |
+| **TC22** | Curator picks | `/news` → **Curate top picks** | 3–5 LLM-picked items above the ranked list, each with *why it matters* (+ *for you* once you have theses). (`/brief` now redirects here.) |
 | **TC23** | Personalized ranking | `/news` with a few theses saved | List re-ranked: normalized popularity blended with relevance to your ledger |
 | **TC18** | Daily radar (`0006` + service key) | Trigger `GET /api/cron/radar` (add `Authorization: Bearer $CRON_SECRET` if set) → reload `/news` | Cron returns `{ ok, count, persisted:true }`; News header shows **"Auto-scanned daily · last update …"** |
 | **TC27** | Server-side relevance | Sign in with a few theses saved → reload `/news` (radar snapshot present) | `/api/radar` returns `personalized:true` and the list is already ranked to your ledger server-side (not just in the browser) |

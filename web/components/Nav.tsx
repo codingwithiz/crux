@@ -4,9 +4,8 @@ import { AuthButton } from "./AuthButton";
 
 const links = [
   { href: "/today", label: "Today" },
-  { href: "/brief", label: "Brief" },
-  { href: "/think", label: "Think" },
   { href: "/news", label: "News" },
+  { href: "/think", label: "Think" },
   { href: "/studio", label: "Studio" },
   { href: "/gallery", label: "Gallery" },
   { href: "/voice", label: "Voice" },

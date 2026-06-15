@@ -169,8 +169,7 @@ export function TodayView() {
       {/* Quick links */}
       <div className="flex flex-wrap gap-2 text-sm">
         {[
-          ["/brief", "Today's full brief"],
-          ["/news", "Browse the news"],
+          ["/news", "Browse & curate the news"],
           ["/think", "Start from a thought"],
           ["/ledger", "Your Ledger"],
         ].map(([href, label]) => (

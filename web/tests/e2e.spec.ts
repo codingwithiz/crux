@@ -16,9 +16,8 @@ test("landing shows the value chain and both entry cards", async ({ page }) => {
 test("all nav routes resolve", async ({ page }) => {
   const routes: [string, RegExp][] = [
     ["Today", /\/today/],
-    ["Brief", /\/brief/],
-    ["Think", /\/think/],
     ["News", /\/news/],
+    ["Think", /\/think/],
     ["Studio", /\/studio/],
     ["Gallery", /\/gallery/],
     ["Voice", /\/voice/],
@@ -72,6 +71,16 @@ test("news API returns live items", async ({ page }) => {
   expect(res.status()).toBe(200);
   const json = (await res.json()) as { items?: unknown[] };
   expect(Array.isArray(json.items)).toBeTruthy();
+});
+
+test("news page offers AI curation + a ranked list, and /brief redirects to it", async ({ page }) => {
+  await page.goto("/news");
+  await expect(page.getByText("Curated for you")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Curate top picks/i })).toBeVisible();
+  await expect(page.getByText("All signal, ranked")).toBeVisible();
+  // Old Brief path is consolidated into News.
+  await page.goto("/brief");
+  await expect(page).toHaveURL(/\/news/);
 });
 
 test("today ritual hub renders the daily prompt + streak", async ({ page }) => {
