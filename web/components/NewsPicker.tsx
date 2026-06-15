@@ -18,6 +18,7 @@ interface RadarSnapshot {
   capturedAt: string;
   count: number;
   items: NewsItem[];
+  personalized?: boolean;
 }
 
 export function NewsPicker() {
@@ -31,12 +32,15 @@ export function NewsPicker() {
       try {
         // Prefer the daily-radar snapshot (Cron-prepared); fall back to live.
         let raw: NewsItem[] = [];
+        let alreadyRanked = false;
         try {
           const r = await fetch("/api/radar");
           const rj = (await r.json()) as { snapshot?: RadarSnapshot | null };
           if (rj.snapshot?.items?.length) {
             raw = rj.snapshot.items;
             setScannedAt(rj.snapshot.capturedAt);
+            // The server already ranked these against the user's ledger.
+            alreadyRanked = Boolean(rj.snapshot.personalized);
           }
         } catch {
           /* radar not available — live fetch below */
@@ -46,8 +50,12 @@ export function NewsPicker() {
           const d = (await res.json()) as { items?: NewsItem[] };
           raw = d.items ?? [];
         }
-        const theses = (await getLedger()).map((t) => ({ topic: t.topic, statement: t.statement }));
-        setItems(rankItems(raw, theses));
+        if (alreadyRanked) {
+          setItems(raw);
+        } else {
+          const theses = (await getLedger()).map((t) => ({ topic: t.topic, statement: t.statement }));
+          setItems(rankItems(raw, theses));
+        }
       } catch (e) {
         setErr(String(e));
       }

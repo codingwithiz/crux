@@ -11,6 +11,7 @@ import { getVoice, effectiveVoice } from "@/lib/voice";
 import { saveDraft } from "@/lib/draft";
 import { thesisToSlides } from "@/lib/slides";
 import { findRelated, type RelatedThesis } from "@/lib/related";
+import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
 import type { Confidence, Settings, Slide, Synthesis, Thesis } from "@/lib/types";
 
 type Step = "input" | "synth" | "adversary" | "commit";
@@ -68,6 +69,7 @@ export function ConvictionFlow({
           input: text,
           kind: mode === "news" ? "news" : "thought",
           sourceTitle,
+          sourceUrl,
           settings: s,
         }),
       });
@@ -92,20 +94,12 @@ export function ConvictionFlow({
     }
   }
 
-  useEffect(() => {
-    if (mode === "news" && initialInput && !autosynth.current) {
-      autosynth.current = true;
-      void runSynthesis(initialInput);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // --- Adversary chat ---
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/adversary", body: { synthesis, take, settings } }),
     [synthesis, take, settings],
   );
-  const { messages, sendMessage, status } = useChat({ transport });
+  const { messages, sendMessage, status, setMessages } = useChat({ transport });
   const [chatInput, setChatInput] = useState("");
   const seeded = useRef(false);
   const thinking = status === "submitted" || status === "streaming";
@@ -126,6 +120,76 @@ export function ConvictionFlow({
   const [steelman, setSteelman] = useState("");
   const [changeMyMind, setChangeMyMind] = useState("");
   const [topic, setTopic] = useState(sourceTitle ?? "");
+  const [resumed, setResumed] = useState(false);
+  const hydrated = useRef(false);
+
+  // Mount: resume a saved in-progress conviction if one matches this flow;
+  // otherwise kick off the news auto-synthesis. One effect so there's no race
+  // between restoring and auto-running.
+  useEffect(() => {
+    const saved = loadFlow();
+    if (flowMatches(saved, mode, sourceTitle)) {
+      setStep(saved.step as Step);
+      setInput(saved.input);
+      setTake(saved.take);
+      setSynthesis(saved.synthesis);
+      setStatement(saved.commit.statement);
+      setConfidence(saved.commit.confidence);
+      setEvidenceFor(saved.commit.evidenceFor);
+      setSteelman(saved.commit.steelman);
+      setChangeMyMind(saved.commit.changeMyMind);
+      setTopic(saved.commit.topic);
+      if (saved.messages?.length) setMessages(saved.messages);
+      seeded.current = true;
+      autosynth.current = true;
+      setResumed(true);
+    } else if (mode === "news" && initialInput) {
+      autosynth.current = true;
+      void runSynthesis(initialInput);
+    }
+    hydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist progress on every change so a refresh/crash resumes here.
+  useEffect(() => {
+    if (!hydrated.current || step === "input") return;
+    saveFlow({
+      mode,
+      sourceTitle,
+      step,
+      input,
+      take,
+      synthesis,
+      messages,
+      commit: { statement, confidence, evidenceFor, steelman, changeMyMind, topic },
+      savedAt: new Date().toISOString(),
+    });
+  }, [
+    mode, sourceTitle, step, input, take, synthesis, messages,
+    statement, confidence, evidenceFor, steelman, changeMyMind, topic,
+  ]);
+
+  function startOver() {
+    clearFlow();
+    setResumed(false);
+    setSynthesis(null);
+    setTake("");
+    setMessages([]);
+    seeded.current = false;
+    setStatement("");
+    setConfidence("med");
+    setEvidenceFor("");
+    setSteelman("");
+    setChangeMyMind("");
+    setTopic(sourceTitle ?? "");
+    if (mode === "news" && initialInput) {
+      void runSynthesis(initialInput);
+    } else {
+      setInput("");
+      setStep("input");
+    }
+  }
 
   function goCommit() {
     if (!statement.trim()) setStatement(take.trim());
@@ -165,6 +229,7 @@ export function ConvictionFlow({
       /* fall back to deterministic slides */
     }
     saveDraft({ slides, handle: "@you" });
+    clearFlow();
     router.push("/studio");
   }
 
@@ -191,6 +256,15 @@ export function ConvictionFlow({
           </div>
         ))}
       </div>
+
+      {resumed && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-cool/40 bg-cool/10 px-4 py-2.5 text-sm text-cool">
+          <span>Resumed your in-progress conviction.</span>
+          <button onClick={startOver} className="rounded-md px-2 py-1 text-xs underline-offset-4 hover:underline">
+            Start over
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
@@ -224,6 +298,29 @@ export function ConvictionFlow({
             <p className="text-muted">Synthesizing the landscape…</p>
           ) : synthesis ? (
             <>
+              {mode === "news" && (
+                <div className="mb-3 flex items-center gap-2 text-xs">
+                  {synthesis.grounded ? (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
+                      ✓ Grounded in the source
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
+                      ⚠ From the model&rsquo;s knowledge — verify before you commit
+                    </span>
+                  )}
+                  {sourceUrl && (
+                    <a
+                      href={sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted underline-offset-4 hover:text-fg hover:underline"
+                    >
+                      open source ↗
+                    </a>
+                  )}
+                </div>
+              )}
               <div className="space-y-3">
                 {SYNTH_ROWS.map((r) => (
                   <div key={r.key} className="rounded-xl border border-line bg-surface/40 p-4">
@@ -239,6 +336,20 @@ export function ConvictionFlow({
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
                       {synthesis.questions.map((q, i) => (
                         <li key={i}>{q}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {synthesis.citations && synthesis.citations.length > 0 && (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-emerald-300">
+                      Receipts — quotes from the source
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                      {synthesis.citations.map((c, i) => (
+                        <li key={i} className="border-l-2 border-emerald-500/40 pl-3 text-sm italic text-muted">
+                          &ldquo;{c}&rdquo;
+                        </li>
                       ))}
                     </ul>
                   </div>

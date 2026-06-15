@@ -24,6 +24,10 @@ export interface Synthesis {
   skepticCase: string;
   implications: string[];
   questions: string[];
+  /** Short verbatim quotes from the source the synthesis relied on ("receipts"). */
+  citations?: string[];
+  /** True when synthesis was grounded in fetched source text, not just the model's memory. */
+  grounded?: boolean;
 }
 
 export type Confidence = "low" | "med" | "high";
@@ -38,6 +42,7 @@ export interface Thesis {
   steelman?: string;
   changeMyMind?: string;
   createdAt: string; // ISO
+  updatedAt?: string; // ISO, set when revised
   source?: SourceRef;
   status: "active" | "updated" | "abandoned";
 }

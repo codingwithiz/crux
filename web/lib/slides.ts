@@ -39,6 +39,28 @@ export function thesisToSlides(t: Thesis, handle = "@you"): Slide[] {
   return slides;
 }
 
+/**
+ * Build a ready-to-post caption from the carousel — deterministic, no LLM, no
+ * cost. The human still posts (no auto-publish — that's the slop trap); this
+ * just removes the last bit of busywork between a committed take and a post.
+ */
+export function buildCaption(slides: Slide[], handle = "@you"): string {
+  const hook = slides.find((s) => s.kind === "hook");
+  const opener = (hook?.title || slides[0]?.title || slides[0]?.body || "").trim();
+
+  const points = slides
+    .filter((s) => ["argument", "counter", "sowhat", "conventional"].includes(s.kind))
+    .map((s) => (s.title || s.body).trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((p) => `• ${p}`);
+
+  const tags = "#AI #GenAI #BuildInPublic";
+  return [opener, points.length ? points.join("\n") : "", "My full take 👇 swipe through.", `${handle} · ${tags}`]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export interface SlidePayload {
   slide: Slide;
   themeId: string;

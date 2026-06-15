@@ -71,7 +71,8 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 | **TC3** | Thought → conviction → carousel ⭐ | `/think` → *"AI agents will make most SaaS dashboards obsolete in 2 years"* → Synthesize → write a one-line take → Pressure-test → spar 2–3 turns → **I am ready to commit** → fill thesis → **Commit + make carousel** | Lands in **Studio**; PNGs auto-generate; preview renders |
 | **TC4** | Anti-slop guarantee ⭐ | In the Adversary chat: *"just tell me what to conclude"* | It **refuses** and asks a question — never writes your opinion |
 | **TC5** | News → conviction | `/news` → pick an item → auto-synthesizes → continue as TC3 | Same pipeline, seeded from the item |
-| **TC6** | Grounding sanity check | On the synthesis screen, read "What happened" vs the real source | Claims track the item; flag any invented "fact" (known limitation — no retrieval/citations yet) |
+| **TC6** | Grounded synthesis + receipts ⭐ | `/news` → pick an item with a real article URL → reach synthesis | A green **"✓ Grounded in the source"** badge + a **"Receipts — quotes from the source"** block of verbatim quotes that exist on the page. (Thought path / bare headlines show "⚠ From the model's knowledge".) |
+| **TC24** | Durable resume ⭐ | Mid-flow (after synthesis, during the Adversary), **refresh the page** | Lands back on the same step with your synthesis/take/chat intact; a **"Resumed your in-progress conviction"** banner + **Start over** |
 | **TC12** | No-key guard | Clear the Model key → `/think` → Synthesize | Friendly "add a model key" message (no crash); 400 `no_model` under the hood |
 
 ### B. Voice / taste (the moat)
@@ -90,6 +91,7 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 | **TC11** | Themes + design | In Studio, click each of the 5 theme swatches (Ink, Paper, Signal, Dusk, Mono) | Background gradient, kicker pill (filled on hook/CTA, outline elsewhere), faded watermark numeral, "swipe →" / "Follow for more →", and a progress bar that fills by slide position |
 | **TC13** | Edit → regenerate | Edit a slide's body → the panel marks **stale** → **Regenerate** | New PNGs reflect the edit |
 | **TC14** | Save + gallery | Set a title → **Save** → **Gallery** → **Open** → **Download all (.zip)** | Carousel persists & reopens; zip has 1080×1350 PNGs |
+| **TC25** | Copy caption | In Studio → **Copy caption** | A ready-to-post caption (hook + key points + handle + tags) lands on your clipboard; button shows "Copied ✓" |
 | **TC15** | Carousel image storage (signed in + `0005`) | Sign in → Save a carousel → open **Gallery** | Thumbnail is the **stored PNG** (not a re-render); "Saved + images uploaded" appeared on save |
 
 ### D. Accounts, sync, isolation
@@ -100,6 +102,7 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 | **TC17** | RLS isolation ⭐ | User A commits a thesis → sign out → User B → **Ledger** | B sees **none** of A's theses (row-level security) |
 | **TC20** | Key sync (signed in + `0004`) | Model menu → enter a key → **Save current key(s) to my account** → sign in elsewhere | Provider shows as set; AI calls work without re-pasting the key |
 | **TC21** | Semantic re-surfacing ⭐ (`0003` + signed in) | Commit 2–3 related theses → start a new related `/think` → reach synthesis | A **"Related to your past thinking"** panel lists prior theses — *"Does today change any of these?"* |
+| **TC26** | Revise a thesis ⭐ | **Ledger** → **Revise** on a thesis → change the statement/confidence → **Save revision** | Card shows a **"revised"** badge; **Abandon** greys + strikes it (with **Reactivate**); re-surfacing reflects the new wording |
 
 ### E. Curator & automated radar
 
@@ -108,6 +111,7 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 | **TC22** | Curator brief | `/brief` → **Generate today's brief** | 3–5 LLM-picked items, each with *why it matters* (+ *for you* once you have theses) |
 | **TC23** | Personalized ranking | `/news` with a few theses saved | List re-ranked: normalized popularity blended with relevance to your ledger |
 | **TC18** | Daily radar (`0006` + service key) | Trigger `GET /api/cron/radar` (add `Authorization: Bearer $CRON_SECRET` if set) → reload `/news` | Cron returns `{ ok, count, persisted:true }`; News header shows **"Auto-scanned daily · last update …"** |
+| **TC27** | Server-side relevance | Sign in with a few theses saved → reload `/news` (radar snapshot present) | `/api/radar` returns `personalized:true` and the list is already ranked to your ledger server-side (not just in the browser) |
 | **TC19** | Per-step routing | Model → **Adversary → OpenAI** `gpt-5.5` → run TC3's adversary step | Synthesis stays on the free model; the Adversary visibly reasons (brief pause) then steelmans |
 
 ⭐ = the cases that prove the product's thesis (anti-slop, the voice moat, the

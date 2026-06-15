@@ -30,6 +30,16 @@ function localRemove(id: string) {
     /* ignore */
   }
 }
+function localReplace(t: Thesis) {
+  try {
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify(localGet().map((x) => (x.id === t.id ? t : x))),
+    );
+  } catch {
+    /* ignore */
+  }
+}
 
 // ---- Supabase row mapping ----
 interface Row {
@@ -107,6 +117,32 @@ export async function addThesis(t: Thesis): Promise<void> {
       status: t.status,
       created_at: t.createdAt,
     });
+}
+
+/**
+ * Revise a thesis in place — edit the view / confidence / change-trigger, or
+ * flip its status (active → updated/abandoned). Re-embeds so re-surfacing
+ * reflects the new wording. This is the "update over time" step (PLAN step 7):
+ * new evidence re-surfaces a prior thesis, and you act on it here.
+ */
+export async function updateThesis(t: Thesis): Promise<void> {
+  const userId = await currentUserId();
+  if (!userId) return localReplace(t);
+  const embedding = await embedText(`${t.statement}\n${t.topic}`, getSettings());
+  await createClient()
+    .from("theses")
+    .update({
+      topic: t.topic,
+      statement: t.statement,
+      confidence: t.confidence,
+      evidence_for: t.evidenceFor ?? null,
+      steelman: t.steelman ?? null,
+      change_my_mind: t.changeMyMind ?? null,
+      status: t.status,
+      // Only overwrite the embedding when we actually got a fresh one.
+      ...(embedding ? { embedding } : {}),
+    })
+    .eq("id", t.id);
 }
 
 export async function removeThesis(id: string): Promise<void> {

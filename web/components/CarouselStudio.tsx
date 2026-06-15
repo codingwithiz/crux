@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
 import { nanoid } from "nanoid";
 import { SlideArt } from "@/lib/slide-render";
-import { THEMES, getTheme, slideSrc } from "@/lib/slides";
+import { THEMES, getTheme, slideSrc, buildCaption } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
 import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
 import { getSettings } from "@/lib/settings";
@@ -51,6 +51,17 @@ export function CarouselStudio({
   // Re-voice: rewrite the current slides in the user's saved voice.
   const [revoicing, setRevoicing] = useState(false);
   const [revoiceMsg, setRevoiceMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyCaption() {
+    try {
+      await navigator.clipboard.writeText(buildCaption(slides, handle));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked — ignore */
+    }
+  }
 
   /** Render every slide to a PNG via /api/slide and hold the blobs + object URLs. */
   async function renderAll(s: Slide[] = slides, tId: string = themeId, h: string = handle) {
@@ -312,6 +323,13 @@ export function CarouselStudio({
                   Regenerate
                 </button>
               )}
+              <button
+                onClick={copyCaption}
+                className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface"
+                title="Copy a ready-to-post caption built from your slides"
+              >
+                {copied ? "Copied ✓" : "Copy caption"}
+              </button>
               <button
                 onClick={downloadAll}
                 disabled={busy || rendering || (rendered.length === 0 && !stale)}

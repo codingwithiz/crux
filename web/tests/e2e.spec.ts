@@ -96,9 +96,10 @@ test("revoice API rejects empty slides", async ({ page }) => {
   expect(j.error).toBe("no_slides");
 });
 
-test("studio shows the rewrite-in-my-voice action", async ({ page }) => {
+test("studio shows the rewrite-in-my-voice and copy-caption actions", async ({ page }) => {
   await page.goto("/studio");
   await expect(page.getByRole("button", { name: /Rewrite in my voice/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Copy caption/i })).toBeVisible();
 });
 
 test("radar read endpoint returns a snapshot shape", async ({ page }) => {
