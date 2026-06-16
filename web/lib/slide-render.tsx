@@ -1,4 +1,5 @@
 import type { CarouselTheme, Slide, SlideKind, SlideLayout } from "./types";
+import { iconDataUri, isIconKey } from "./slide-icons";
 
 /** Default layout when a slide doesn't specify one (keeps old carousels working). */
 export function defaultLayout(kind: SlideKind): SlideLayout {
@@ -122,11 +123,24 @@ export function SlideArt({
           paddingBottom: 36,
         }}
       >
+        {slide.icon && isIconKey(slide.icon) ? (
+          <div style={{ display: "flex", marginBottom: 26 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={iconDataUri(slide.icon, theme.accent)} alt="" width={72} height={72} />
+          </div>
+        ) : slide.icon ? (
+          <div style={{ display: "flex", fontSize: 84, lineHeight: 1, marginBottom: 14 }}>{slide.icon}</div>
+        ) : null}
         <Body slide={slide} layout={layout} theme={theme} isHook={isHook} isCta={isCta} />
       </div>
 
       {/* Footer */}
       <div style={{ display: "flex", flexDirection: "column" }}>
+        {slide.source ? (
+          <div style={{ display: "flex", fontSize: 22, color: theme.muted, letterSpacing: 1, marginBottom: 16 }}>
+            SOURCE · {slide.source}
+          </div>
+        ) : null}
         <div style={{ display: "flex", height: 3, backgroundColor: theme.accent, opacity: 0.5, width: 120 }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22 }}>
           <div style={{ display: "flex", fontSize: 27, color: theme.fg, fontWeight: 800 }}>{handle}</div>

@@ -28,13 +28,17 @@ migrations, 17 automated tests passing, production build clean. It runs **free**
 end-to-end (Google Gemini free tier + localStorage), with optional paid upgrades
 (Claude on the Adversary, Supabase cloud sync, BYOK keys).
 
-**Latest (usability batch):** plain-English ELI5 on every synthesis · per-step
-model clarity + mid-flow model switching + surfaced Adversary errors · "Draft
-from my discussion" at Commit (with only thesis+confidence required) · a **bold
-multi-layout carousel** (statement / stat / quote / list / split) with per-slide
-layout picking + regenerate-one · **more sources** (arXiv + news outlets + lab
-blogs + more subreddits, deduped) · **grouped nav** · an in-app **`/guide`**
-manual. See `TEST_CASES.md` TC31–TC38.
+**Latest (UX + speed + fixes):** **faster** (free Gemini 2.5 Flash default,
+parallel carousel render, cycling progress indicators, lower reasoning effort) ·
+**model picker** redesign (scrollable dialog, provider icons, Fastest/Balanced/
+Smartest cards — no typing) · **formatted Adversary chat** (markdown) + a **"Stuck?
+Get hints"** button · **carousel personality** (emoji on hook/CTA, line icons on
+content, source credit, plain language) · **fixed the Library save bug** (errors
+now surface; "View in Library" link) · guided **wizard** step headers. Run tests
+with `npm run test:e2e` (Playwright is already installed — see §7). TC39–TC44.
+
+Earlier usability batch: plain-English ELI5, model clarity, "Draft from my
+discussion", bold multi-layout carousel, more sources, grouped nav, `/guide`.
 
 ---
 

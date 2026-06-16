@@ -1,6 +1,6 @@
 import { getSettings } from "./settings";
 import { getVoice, effectiveVoice } from "./voice";
-import { thesisToSlides } from "./slides";
+import { thesisToSlides, sourceLabel } from "./slides";
 import type { Slide, Thesis } from "./types";
 
 /**
@@ -25,5 +25,8 @@ export async function expressSlides(thesis: Thesis, handle = "@you"): Promise<Sl
   } catch {
     /* keep the deterministic fallback */
   }
+  // Stamp the source credit on the hook slide (the model isn't told the URL).
+  const src = sourceLabel(thesis);
+  if (src && slides[0]) slides[0] = { ...slides[0], source: src };
   return slides;
 }

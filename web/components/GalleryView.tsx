@@ -20,14 +20,31 @@ function download(blob: Blob, name: string) {
 export function GalleryView() {
   const [items, setItems] = useState<Carousel[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function load() {
+    listCarousels()
+      .then((cs) => {
+        setItems(cs);
+        setErr(null);
+      })
+      .catch((e) => {
+        setItems([]);
+        setErr((e as Error).message);
+      });
+  }
 
   useEffect(() => {
-    listCarousels().then(setItems);
+    load();
+    // Re-fetch when returning to the tab (e.g. after saving in the Studio).
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   async function del(id: string) {
     await removeCarousel(id);
-    setItems(await listCarousels());
+    load();
   }
 
   async function downloadZip(c: Carousel) {
@@ -53,6 +70,14 @@ export function GalleryView() {
   }
 
   if (!items) return <p className="text-muted">Loading…</p>;
+  if (err)
+    return (
+      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+        {err} — if you&rsquo;re signed in, make sure migration{" "}
+        <code className="font-mono">0002_carousels.sql</code> (and{" "}
+        <code className="font-mono">0005_carousel_storage.sql</code>) have been run.
+      </div>
+    );
   if (!items.length)
     return (
       <div className="rounded-xl border border-dashed border-line p-8 text-center text-muted">

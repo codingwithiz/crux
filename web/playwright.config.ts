@@ -4,6 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  // One dev server serves all workers; cap concurrency + retry once to absorb
+  // load-induced flakes (e.g. a dropdown click racing under saturation).
+  workers: 4,
+  retries: 1,
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

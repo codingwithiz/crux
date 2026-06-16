@@ -78,6 +78,10 @@ export interface Slide {
   bullets?: string[];
   /** For the "stat" layout — a big number + its label. */
   stat?: { value: string; label: string };
+  /** A topic icon: an emoji (hook/CTA) or a line-icon keyword (content slides). */
+  icon?: string;
+  /** Optional source credit shown on the slide (e.g. "arXiv · Attention…"). */
+  source?: string;
 }
 
 export type NewsSource = "hf" | "hn" | "github" | "reddit" | "lobsters" | "arxiv" | "news";

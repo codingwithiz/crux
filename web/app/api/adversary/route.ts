@@ -35,8 +35,9 @@ export async function POST(req: Request) {
     model: getModel(ms),
     system: context ? `${ADVERSARY_SYSTEM}\n\n${context}` : ADVERSARY_SYSTEM,
     messages: await convertToModelMessages(messages),
-    // Only affects OpenAI reasoning models (e.g. gpt-5.5); ignored by others.
-    providerOptions: { openai: { reasoningEffort: "medium" } },
+    // Keep the back-and-forth snappy. Only affects OpenAI reasoning models
+    // (e.g. gpt-5.5); ignored by others.
+    providerOptions: { openai: { reasoningEffort: "low" } },
   });
 
   return result.toUIMessageStreamResponse();

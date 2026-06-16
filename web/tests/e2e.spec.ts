@@ -39,6 +39,26 @@ test("all nav routes resolve (grouped nav)", async ({ page }) => {
   }
 });
 
+test("saving a carousel makes it appear in the Library", async ({ page }) => {
+  // Regression for the bug where a "saved" carousel never showed up.
+  // Runs in localStorage mode (no auth) and persists across navigation.
+  await page.goto("/studio");
+  await expect(page.getByRole("img", { name: "Slide 1" })).toBeVisible({ timeout: 20000 });
+  const title = `E2E ${Date.now()}`;
+  await page.getByPlaceholder("Carousel title").fill(title);
+  await page.getByRole("button", { name: /^(Save|Update)$/ }).click();
+  await expect(page.getByText(/^Saved/)).toBeVisible({ timeout: 20000 });
+  await page.goto("/gallery");
+  await expect(page.getByText(title)).toBeVisible();
+});
+
+test("hints API rejects an empty question", async ({ page }) => {
+  const res = await page.request.post("/api/hints", { data: {} });
+  expect(res.status()).toBe(400);
+  const j = (await res.json()) as { error?: string };
+  expect(j.error).toBe("no_question");
+});
+
 test("guide page renders the user manual", async ({ page }) => {
   await page.goto("/guide");
   await expect(page.getByRole("heading", { name: /How to use Conviction Engine/i })).toBeVisible();

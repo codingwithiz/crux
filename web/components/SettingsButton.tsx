@@ -6,13 +6,15 @@ import {
   saveSettings,
   settingsReady,
   DEFAULT_MODELS,
-  PROVIDER_LABELS,
   PROVIDER_SHORT,
-  MODEL_PRESETS,
+  MODEL_CATALOG,
+  TIER_LABEL,
+  type ModelOption,
 } from "@/lib/settings";
+import { ProviderIcon } from "@/lib/provider-icons";
 import type { Provider, Settings } from "@/lib/types";
 
-const PROVIDERS: Provider[] = ["google", "ollama", "anthropic", "openai"];
+const PROVIDERS: Provider[] = ["google", "openai", "anthropic", "ollama"];
 
 interface ServerStatus {
   configured?: boolean;
@@ -27,6 +29,12 @@ const CLOUD_KEYABLE: CloudKey[] = ["google", "openai", "anthropic"];
 const isCloudKey = (p?: Provider): p is CloudKey =>
   p === "google" || p === "openai" || p === "anthropic";
 
+const tierColor: Record<ModelOption["tier"], string> = {
+  fast: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10",
+  balanced: "text-cool border-cool/40 bg-cool/10",
+  smart: "text-accent border-accent/40 bg-accent/10",
+};
+
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState<Settings>({ provider: "google", model: DEFAULT_MODELS.google });
@@ -34,11 +42,13 @@ export function SettingsButton() {
   const [server, setServer] = useState<ServerStatus | null>(null);
   const [cloudMsg, setCloudMsg] = useState<string | null>(null);
   const [savingCloud, setSavingCloud] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false);
 
   useEffect(() => {
     const cur = getSettings();
     setS(cur);
     setReady(settingsReady(cur));
+    setAdvOpen(Boolean(cur.adversaryProvider));
     if (open) {
       setCloudMsg(null);
       fetch("/api/secrets")
@@ -47,40 +57,6 @@ export function SettingsButton() {
         .catch(() => setServer(null));
     }
   }, [open]);
-
-  async function saveToAccount() {
-    setSavingCloud(true);
-    setCloudMsg(null);
-    // Collect the keys the user has typed for cloud-storable providers.
-    const body: Record<string, string> = {};
-    if (isCloudKey(s.provider) && s.apiKey?.trim()) body[s.provider] = s.apiKey.trim();
-    if (isCloudKey(s.adversaryProvider) && s.adversaryApiKey?.trim()) {
-      body[s.adversaryProvider] = s.adversaryApiKey.trim();
-    }
-    if (Object.keys(body).length === 0) {
-      setCloudMsg("Type a key above first, then save it to your account.");
-      setSavingCloud(false);
-      return;
-    }
-    try {
-      const res = await fetch("/api/secrets", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error || "save_failed");
-      }
-      const refreshed = (await fetch("/api/secrets").then((r) => r.json())) as ServerStatus;
-      setServer(refreshed);
-      setCloudMsg("Saved to your account — works on any device, even without re-entering keys.");
-    } catch (e) {
-      setCloudMsg(`Couldn't save: ${(e as Error).message}`);
-    } finally {
-      setSavingCloud(false);
-    }
-  }
 
   function update(patch: Partial<Settings>) {
     setS((prev) => {
@@ -96,9 +72,42 @@ export function SettingsButton() {
   }
 
   function save() {
-    saveSettings(s);
-    setReady(settingsReady(s));
+    const next = advOpen ? s : { ...s, adversaryProvider: undefined, adversaryModel: undefined, adversaryApiKey: undefined };
+    saveSettings(next);
+    setReady(settingsReady(next));
     setOpen(false);
+  }
+
+  async function saveToAccount() {
+    setSavingCloud(true);
+    setCloudMsg(null);
+    const body: Record<string, string> = {};
+    if (isCloudKey(s.provider) && s.apiKey?.trim()) body[s.provider] = s.apiKey.trim();
+    if (isCloudKey(s.adversaryProvider) && s.adversaryApiKey?.trim()) {
+      body[s.adversaryProvider] = s.adversaryApiKey.trim();
+    }
+    if (Object.keys(body).length === 0) {
+      setCloudMsg("Type a key first, then save it to your account.");
+      setSavingCloud(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/secrets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || "save_failed");
+      }
+      setServer((await fetch("/api/secrets").then((r) => r.json())) as ServerStatus);
+      setCloudMsg("Saved to your account — synced across devices.");
+    } catch (e) {
+      setCloudMsg(`Couldn't save: ${(e as Error).message}`);
+    } finally {
+      setSavingCloud(false);
+    }
   }
 
   return (
@@ -107,189 +116,111 @@ export function SettingsButton() {
         onClick={() => setOpen(true)}
         className="ml-1 rounded-md border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
       >
-        <span
-          className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-accent"}`}
-        />
+        <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-accent"}`} />
         Model
       </button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setOpen(false)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setOpen(false)}>
           <div
-            className="ce-fade-up w-full max-w-md rounded-xl border border-line bg-surface p-6"
+            className="ce-fade-up flex max-h-[88vh] w-full max-w-md flex-col rounded-xl border border-line bg-surface"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold">Model settings</h2>
-            <p className="mt-1 text-sm text-muted">
-              Free by default. Bring your own key for a sharper adversary. Kept in this browser — or
-              save it to your account to sync across devices.
-            </p>
-
-            <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-accent">
-              Default model — Synthesize · Curator · Carousel
-            </p>
-            <label className="mt-1 block text-sm font-medium">Provider</label>
-            <select
-              value={s.provider}
-              onChange={(e) => update({ provider: e.target.value as Provider })}
-              className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
-            >
-              {PROVIDERS.map((p) => (
-                <option key={p} value={p}>
-                  {PROVIDER_LABELS[p]}
-                </option>
-              ))}
-            </select>
-
-            <label className="mt-3 block text-sm font-medium">Model</label>
-            <input
-              value={s.model ?? ""}
-              onChange={(e) => update({ model: e.target.value })}
-              list="ce-model-presets"
-              className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
-            />
-            <datalist id="ce-model-presets">
-              {(MODEL_PRESETS[s.provider] ?? []).map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-
-            {s.provider !== "ollama" ? (
-              <>
-                <label className="mt-3 block text-sm font-medium">
-                  API key{" "}
-                  {s.provider === "google" && (
-                    <span className="font-normal text-muted">— free from Google AI Studio</span>
-                  )}
-                </label>
-                <input
-                  type="password"
-                  value={s.apiKey ?? ""}
-                  onChange={(e) => update({ apiKey: e.target.value })}
-                  placeholder="AIza… / sk-…"
-                  className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
-                />
-              </>
-            ) : (
-              <>
-                <label className="mt-3 block text-sm font-medium">Ollama base URL</label>
-                <input
-                  value={s.ollamaBaseURL ?? "http://localhost:11434/v1"}
-                  onChange={(e) => update({ ollamaBaseURL: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
-                />
-              </>
-            )}
-
-            <div className="mt-5 border-t border-line pt-4">
-              <label className="block text-sm font-medium">
-                Adversary model{" "}
-                <span className="font-normal text-muted">— the reasoning step (optional upgrade)</span>
-              </label>
-              <p className="mt-1 text-xs text-muted">
-                Use a stronger model just for the Adversary (e.g. Claude Opus 4.8). Synthesis and the
-                carousel stay on your default.
+            <div className="border-b border-line p-5">
+              <h2 className="text-lg font-semibold">Model settings</h2>
+              <p className="mt-1 text-sm text-muted">
+                Free by default (Gemini). Pick a faster or smarter model, or bring your own key. Used
+                for Synthesize · Curator · Carousel.
               </p>
-              <select
-                value={s.adversaryProvider ?? ""}
-                onChange={(e) =>
-                  update({ adversaryProvider: (e.target.value || undefined) as Provider | undefined })
-                }
-                className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
-              >
-                <option value="">Same as default</option>
-                {PROVIDERS.map((p) => (
-                  <option key={p} value={p}>
-                    {PROVIDER_LABELS[p]}
-                  </option>
-                ))}
-              </select>
-              {s.adversaryProvider && (
-                <>
-                  <input
-                    value={s.adversaryModel ?? ""}
-                    onChange={(e) => update({ adversaryModel: e.target.value })}
-                    placeholder="model id"
-                    list="ce-adv-presets"
-                    className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
-                  />
-                  <datalist id="ce-adv-presets">
-                    {(MODEL_PRESETS[s.adversaryProvider] ?? []).map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                  {s.adversaryProvider !== "ollama" && (
-                    <input
-                      type="password"
-                      value={s.adversaryApiKey ?? ""}
-                      onChange={(e) => update({ adversaryApiKey: e.target.value })}
-                      placeholder="API key for the adversary model"
-                      className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5">
+              <ModelChooser
+                provider={s.provider}
+                model={s.model}
+                apiKey={s.apiKey}
+                ollamaBaseURL={s.ollamaBaseURL}
+                onProvider={(p) => update({ provider: p })}
+                onModel={(m) => update({ model: m })}
+                onKey={(k) => update({ apiKey: k })}
+                onOllama={(u) => update({ ollamaBaseURL: u })}
+              />
+
+              {/* Adversary upgrade */}
+              <div className="mt-5 border-t border-line pt-4">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={advOpen} onChange={(e) => setAdvOpen(e.target.checked)} />
+                  Use a stronger model for the Adversary
+                </label>
+                <p className="mt-1 text-xs text-muted">
+                  The reasoning-critical step. Synthesis and the carousel stay on your default.
+                </p>
+                {advOpen && (
+                  <div className="mt-3 rounded-lg border border-line bg-ink/40 p-3">
+                    <ModelChooser
+                      compact
+                      provider={s.adversaryProvider ?? "anthropic"}
+                      model={s.adversaryModel}
+                      apiKey={s.adversaryApiKey}
+                      ollamaBaseURL={s.ollamaBaseURL}
+                      onProvider={(p) => update({ adversaryProvider: p })}
+                      onModel={(m) => update({ adversaryModel: m })}
+                      onKey={(k) => update({ adversaryApiKey: k })}
+                      onOllama={(u) => update({ ollamaBaseURL: u })}
                     />
-                  )}
-                </>
+                  </div>
+                )}
+              </div>
+
+              {/* Account keys */}
+              {server?.signedIn && (
+                <div className="mt-5 rounded-lg border border-line bg-ink/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Keys saved to your account</span>
+                    <span className="text-xs text-muted">synced across devices</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {CLOUD_KEYABLE.map((p) => (
+                      <span
+                        key={p}
+                        className={`rounded-md border px-2 py-0.5 font-mono text-xs ${
+                          server[p] ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-line text-muted"
+                        }`}
+                      >
+                        {server[p] ? "✓" : "○"} {p}
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={saveToAccount}
+                    disabled={savingCloud}
+                    className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fg hover:bg-surface disabled:opacity-50"
+                  >
+                    {savingCloud ? "Saving…" : "Save current key(s) to my account"}
+                  </button>
+                  {cloudMsg && <p className="mt-2 text-xs text-cool">{cloudMsg}</p>}
+                </div>
+              )}
+
+              <p className="mt-4 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
+                This run → Default:{" "}
+                <span className="text-fg">{PROVIDER_SHORT[s.provider]} · {s.model || DEFAULT_MODELS[s.provider]}</span>
+                {" · "}Adversary:{" "}
+                <span className="text-fg">
+                  {advOpen && s.adversaryProvider
+                    ? `${PROVIDER_SHORT[s.adversaryProvider]} · ${s.adversaryModel || DEFAULT_MODELS[s.adversaryProvider]}`
+                    : "same as default"}
+                </span>
+              </p>
+              {s.provider === "google" && (
+                <p className="mt-2 text-xs text-muted">
+                  Free key: aistudio.google.com/app/apikey — 1,500 requests/day, no card.
+                </p>
               )}
             </div>
 
-            {server?.signedIn && (
-              <div className="mt-5 rounded-lg border border-line bg-ink/40 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Keys saved to your account</span>
-                  <span className="text-xs text-muted">encrypted at rest · synced across devices</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {CLOUD_KEYABLE.map((p) => (
-                    <span
-                      key={p}
-                      className={`rounded-md border px-2 py-0.5 font-mono text-xs ${
-                        server[p]
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                          : "border-line text-muted"
-                      }`}
-                    >
-                      {server[p] ? "✓" : "○"} {p}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  onClick={saveToAccount}
-                  disabled={savingCloud}
-                  className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-surface disabled:opacity-50"
-                >
-                  {savingCloud ? "Saving…" : "Save current key(s) to my account"}
-                </button>
-                {cloudMsg && <p className="mt-2 text-xs text-cool">{cloudMsg}</p>}
-              </div>
-            )}
-
-            {server && server.configured && !server.signedIn && (
-              <p className="mt-5 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
-                Sign in to save keys to your account so you don&rsquo;t have to re-enter them on every
-                device. Until then, keys live only in this browser.
-              </p>
-            )}
-
-            <p className="mt-5 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
-              This run → Synthesize · Carousel:{" "}
-              <span className="text-fg">
-                {PROVIDER_SHORT[s.provider]} · {s.model || DEFAULT_MODELS[s.provider]}
-              </span>{" "}
-              · Adversary:{" "}
-              <span className="text-fg">
-                {s.adversaryProvider
-                  ? `${PROVIDER_SHORT[s.adversaryProvider]} · ${s.adversaryModel || DEFAULT_MODELS[s.adversaryProvider]}`
-                  : "same as default"}
-              </span>
-            </p>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-4 py-2 text-sm text-muted hover:text-fg"
-              >
+            <div className="flex justify-end gap-2 border-t border-line p-4">
+              <button onClick={() => setOpen(false)} className="rounded-lg px-4 py-2 text-sm text-muted hover:text-fg">
                 Cancel
               </button>
               <button
@@ -299,15 +230,108 @@ export function SettingsButton() {
                 Save
               </button>
             </div>
-
-            {s.provider === "google" && (
-              <p className="mt-3 text-xs text-muted">
-                Get a free key at aistudio.google.com/app/apikey — 1,500 requests/day, no card.
-              </p>
-            )}
           </div>
         </div>
       )}
     </>
+  );
+}
+
+function ModelChooser({
+  provider,
+  model,
+  apiKey,
+  ollamaBaseURL,
+  onProvider,
+  onModel,
+  onKey,
+  onOllama,
+  compact,
+}: {
+  provider: Provider;
+  model?: string;
+  apiKey?: string;
+  ollamaBaseURL?: string;
+  onProvider: (p: Provider) => void;
+  onModel: (m: string) => void;
+  onKey: (k: string) => void;
+  onOllama: (u: string) => void;
+  compact?: boolean;
+}) {
+  const options = MODEL_CATALOG[provider] ?? [];
+  const known = options.some((o) => o.id === model);
+
+  return (
+    <div>
+      {!compact && <label className="block text-xs font-medium uppercase tracking-wide text-muted">Provider</label>}
+      <div className="mt-1.5 flex flex-wrap gap-2">
+        {PROVIDERS.map((p) => (
+          <button
+            key={p}
+            onClick={() => onProvider(p)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm ${
+              provider === p ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
+            }`}
+          >
+            <ProviderIcon provider={p} size={16} />
+            {PROVIDER_SHORT[p]}
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">Model</label>
+      <div className="mt-1.5 space-y-2">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => onModel(o.id)}
+            className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm ${
+              model === o.id ? "border-accent bg-accent/5" : "border-line hover:bg-surface"
+            }`}
+          >
+            <span>
+              <span className="font-medium text-fg">{o.label}</span>
+              <span className="ml-2 text-xs text-muted">{o.note}</span>
+            </span>
+            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${tierColor[o.tier]}`}>
+              {TIER_LABEL[o.tier]}
+            </span>
+          </button>
+        ))}
+      </div>
+      <details className="mt-2">
+        <summary className="cursor-pointer text-xs text-muted hover:text-fg">Custom model id</summary>
+        <input
+          value={known ? "" : model ?? ""}
+          onChange={(e) => onModel(e.target.value)}
+          placeholder="exact model id"
+          className="mt-1.5 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-xs"
+        />
+      </details>
+
+      {provider !== "ollama" ? (
+        <>
+          <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">
+            API key {provider === "google" && <span className="font-normal">— free from Google AI Studio</span>}
+          </label>
+          <input
+            type="password"
+            value={apiKey ?? ""}
+            onChange={(e) => onKey(e.target.value)}
+            placeholder={provider === "google" ? "leave blank to use the free server key" : "sk-…"}
+            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
+          />
+        </>
+      ) : (
+        <>
+          <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">Ollama base URL</label>
+          <input
+            value={ollamaBaseURL ?? "http://localhost:11434/v1"}
+            onChange={(e) => onOllama(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
+          />
+        </>
+      )}
+    </div>
   );
 }

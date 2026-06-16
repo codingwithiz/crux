@@ -58,8 +58,9 @@ export async function listCarousels(): Promise<Carousel[]> {
     .from("carousels")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error || !data) return [];
-  return (data as Row[]).map(rowToCarousel);
+  // Surface a real failure (e.g. missing table / RLS) instead of an empty list.
+  if (error) throw new Error(`Couldn't load carousels: ${error.message}`);
+  return ((data as Row[]) ?? []).map(rowToCarousel);
 }
 
 export async function getCarousel(id: string): Promise<Carousel | null> {
@@ -84,7 +85,7 @@ export async function saveCarousel(c: Carousel): Promise<void> {
     localWrite(all);
     return;
   }
-  await createClient()
+  const { error } = await createClient()
     .from("carousels")
     .upsert(
       {
@@ -99,6 +100,9 @@ export async function saveCarousel(c: Carousel): Promise<void> {
       },
       { onConflict: "id" },
     );
+  // Don't pretend it saved — let the Studio show the real reason (RLS, missing
+  // migration, etc.) so a "saved" carousel can't silently vanish from the Library.
+  if (error) throw new Error(error.message);
 }
 
 /**

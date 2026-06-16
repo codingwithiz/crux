@@ -17,6 +17,16 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   news: "News",
 };
 
+const SOURCE_ICON: Record<NewsItem["source"], string> = {
+  hf: "📄",
+  hn: "💬",
+  github: "🐙",
+  reddit: "👽",
+  lobsters: "🦞",
+  arxiv: "🔬",
+  news: "📰",
+};
+
 interface RadarSnapshot {
   capturedAt: string;
   items: NewsItem[];
@@ -161,7 +171,7 @@ export function BrowseView() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs text-accent">
-                    {String(i + 1).padStart(2, "0")} · {SOURCE_LABELS[p.source]}
+                    {String(i + 1).padStart(2, "0")} · {SOURCE_ICON[p.source]} {SOURCE_LABELS[p.source]}
                   </span>
                   <span className="text-xs text-muted">{p.meta}</span>
                 </div>
@@ -202,7 +212,9 @@ export function BrowseView() {
                 className="block w-full rounded-lg border border-line bg-surface/40 p-3 text-left transition hover:border-accent hover:bg-surface"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-accent">{SOURCE_LABELS[it.source]}</span>
+                  <span className="font-mono text-xs text-accent">
+                    {SOURCE_ICON[it.source]} {SOURCE_LABELS[it.source]}
+                  </span>
                   <span className="shrink-0 text-xs text-muted">{it.meta}</span>
                 </div>
                 <p className="mt-1 text-sm font-medium">{it.title}</p>

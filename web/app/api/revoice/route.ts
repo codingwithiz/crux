@@ -24,6 +24,7 @@ const Schema = z.object({
         layout: z.enum(LAYOUTS).optional(),
         bullets: z.array(z.string()).optional(),
         stat: z.object({ value: z.string(), label: z.string() }).optional(),
+        icon: z.string().optional(),
       }),
     )
     .min(1)
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
     layout: s.layout,
     bullets: s.bullets,
     stat: s.stat,
+    icon: s.icon,
   }));
 
   try {
@@ -72,11 +74,13 @@ export async function POST(req: Request) {
     if (output.slides.length !== slides.length) {
       return Response.json({ error: "shape_mismatch" }, { status: 422 });
     }
-    // Preserve original layout/stat if the model dropped them.
+    // Preserve original layout/stat/icon/source if the model dropped them.
     const merged = output.slides.map((s, i) => ({
       ...s,
       layout: s.layout ?? slides[i].layout,
       stat: s.stat ?? slides[i].stat,
+      icon: s.icon ?? slides[i].icon,
+      source: slides[i].source,
     }));
     return Response.json({ slides: merged });
   } catch (e) {

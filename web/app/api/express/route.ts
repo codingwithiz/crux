@@ -24,6 +24,7 @@ const Schema = z.object({
         layout: z.enum(LAYOUTS).optional(),
         bullets: z.array(z.string()).optional(),
         stat: z.object({ value: z.string(), label: z.string() }).optional(),
+        icon: z.string().optional(),
       }),
     )
     .min(5)

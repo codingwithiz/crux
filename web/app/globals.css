@@ -65,3 +65,43 @@ body {
 .ce-fade-up {
   animation: ce-fade-up 0.4s ease both;
 }
+
+/* Light formatting for the Adversary chat (markdown). */
+.ce-prose > :first-child {
+  margin-top: 0;
+}
+.ce-prose > :last-child {
+  margin-bottom: 0;
+}
+.ce-prose p {
+  margin: 0.5em 0;
+}
+.ce-prose strong {
+  color: var(--color-fg);
+  font-weight: 700;
+}
+.ce-prose ul,
+.ce-prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.25em;
+}
+.ce-prose ul {
+  list-style: disc;
+}
+.ce-prose ol {
+  list-style: decimal;
+}
+.ce-prose li {
+  margin: 0.25em 0;
+}
+.ce-prose code {
+  background: var(--color-surface-2);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+  font-size: 0.9em;
+}
+.ce-prose a {
+  color: var(--color-cool);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import JSZip from "jszip";
 import { nanoid } from "nanoid";
 import { SlideArt, defaultLayout } from "@/lib/slide-render";
+import { ICON_KEYS } from "@/lib/slide-icons";
 import { THEMES, getTheme, slideSrc, buildCaption } from "@/lib/slides";
 import { loadDraft } from "@/lib/draft";
 import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
@@ -71,20 +73,20 @@ export function CarouselStudio({
     }
   }
 
-  /** Render every slide to a PNG via /api/slide and hold the blobs + object URLs. */
+  /** Render every slide to a PNG via /api/slide and hold the blobs + object URLs.
+   *  Renders all slides in PARALLEL (was sequential — the main carousel-speed win). */
   async function renderAll(s: Slide[] = slides, tId: string = themeId, h: string = handle) {
     setRendering(true);
     setRenderErr(null);
     try {
-      const urls: string[] = [];
-      const blobs: Blob[] = [];
-      for (let i = 0; i < s.length; i++) {
-        const res = await fetch(slideSrc({ slide: s[i], themeId: tId, index: i, total: s.length, handle: h }));
-        if (!res.ok) throw new Error(`slide ${i + 1} failed to render`);
-        const blob = await res.blob();
-        blobs.push(blob);
-        urls.push(URL.createObjectURL(blob));
-      }
+      const blobs = await Promise.all(
+        s.map(async (sl, i) => {
+          const res = await fetch(slideSrc({ slide: sl, themeId: tId, index: i, total: s.length, handle: h }));
+          if (!res.ok) throw new Error(`slide ${i + 1} failed to render`);
+          return res.blob();
+        }),
+      );
+      const urls = blobs.map((b) => URL.createObjectURL(b));
       // Swap in the fresh set, then revoke the previous URLs.
       setRendered((prev) => {
         prev.forEach((u) => URL.revokeObjectURL(u));
@@ -336,7 +338,16 @@ export function CarouselStudio({
           >
             {busy ? "…" : carouselId ? "Update" : "Save"}
           </button>
-          {saveMsg && <span className="whitespace-nowrap text-xs text-muted">{saveMsg}</span>}
+          {saveMsg && (
+            <span className="whitespace-nowrap text-xs text-muted">
+              {saveMsg}
+              {saveMsg.startsWith("Saved") && (
+                <Link href="/gallery" className="ml-2 text-accent underline-offset-4 hover:underline">
+                  View in Library →
+                </Link>
+              )}
+            </span>
+          )}
         </div>
 
         {/* Auto-generated carousel: the finished, exportable PNGs. */}
@@ -531,6 +542,36 @@ export function CarouselStudio({
         >
           ✶ Regenerate this slide
         </button>
+
+        <label className="mt-4 block text-xs font-medium text-muted">Icon</label>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {["🤖", "🚀", "📈", "⚖️", "🔓", "💡", "⚠️", "🌐", "🔥", "🧠"].map((e) => (
+            <button
+              key={e}
+              onClick={() => patch({ icon: e })}
+              className={`rounded-md border px-2 py-1 text-sm ${current.icon === e ? "border-accent bg-accent/10" : "border-line hover:bg-surface"}`}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {ICON_KEYS.map((k) => (
+            <button
+              key={k}
+              onClick={() => patch({ icon: k })}
+              className={`rounded-md border px-2 py-0.5 text-[11px] ${current.icon === k ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
+            >
+              {k}
+            </button>
+          ))}
+          <button
+            onClick={() => patch({ icon: undefined })}
+            className="rounded-md border border-line px-2 py-0.5 text-[11px] text-muted hover:bg-surface"
+          >
+            none
+          </button>
+        </div>
 
         <label className="mt-4 block text-xs font-medium text-muted">Kicker</label>
         <input

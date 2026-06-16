@@ -45,18 +45,26 @@ sign-ins. For the radar (TC18) set `SUPABASE_SERVICE_ROLE_KEY` (and optionally
 
 ## 1. Automated smoke (Playwright)
 
+Playwright is **already installed** (`@playwright/test` is in `web/package.json`).
+You do **not** need `npm i` — just install the browser once and run:
+
 ```bash
 cd web
-npm i -D @playwright/test
-npx playwright install chromium
-npx playwright test         # runs web/tests/e2e.spec.ts
+npm run test:install   # one-time: downloads the Chromium browser binary
+npm run test:e2e       # runs the suite (alias for: npx playwright test)
 ```
 
-**Expect: 13 passing** — landing + value chain, every nav route, Studio renders +
-auto-generates PNGs, `/api/slide` returns image/png, login page, `/api/news` live
-items, voice page loads the default + `/api/voice` rejects empty, `/api/revoice`
-rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
-`/api/cron/radar` digest, and the no-model guard.
+> **Windows PowerShell** can block `npm`/`npx` with *"npm.ps1 cannot be loaded …
+> not digitally signed"*. One-time fix:
+> `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
+> (or call `npm.cmd` / `npx.cmd`). Note the package is `@playwright/test` — not
+> `@playright`.
+
+**Expect: ~19 passing** — landing + value chain, grouped nav, Studio renders +
+auto-generates PNGs, **a saved carousel appears in the Library** (the bug),
+`/api/slide` image, login, `/api/news` live items, voice default + `/api/voice`
+guard, `/api/revoice` + `/api/hints` + `/api/commit-suggest` guards, `/api/radar`
++ `/api/cron/radar`, `/guide`, and the no-model guard.
 
 ---
 
@@ -130,6 +138,17 @@ rejects empty + the Studio shows the rewrite action, `/api/radar` shape +
 |---|---|---|---|
 | **TC37** | Grouped nav | Look at the top nav | **Today · Create▾ (News/Think) · Library▾ (Ledger/Carousels/Studio) · Voice · ?** with the current section highlighted; dropdowns open on click |
 | **TC38** | User manual | Click **?** (or `/guide`); first-run **"2-minute guide"** tip on Today | The guide explains the value chain, a 10-minute walkthrough, every screen, and an FAQ; the tip dismisses and stays dismissed |
+
+### G. This batch — UX, speed, fixes
+
+| # | Goal | Steps | Expected |
+|---|---|---|---|
+| **TC39** | Save → Library (the bug) ⭐ | Studio → set a title → **Save** → click **View in Library** (or open `/gallery`) | The carousel **appears** in the Library. If signed in and it can't save, you now see the real reason (not a fake "Saved") |
+| **TC40** | Model picker | Open **Model** (top-right) | The dialog **scrolls** (no overlap); pick a provider chip (with icon) + a model **card** tagged Fastest/Balanced/Smartest — no typing. "Custom id" is tucked away |
+| **TC41** | Faster + progress | Run a synthesis / build a carousel | Default is **Gemini 2.5 Flash** (fast); a **cycling progress** indicator shows steps ("Fetching the source → …") so it never looks frozen; carousel images render in parallel |
+| **TC42** | Formatted chat | In the Adversary step | Replies are **formatted** (bold "Strongest counter", a bulleted "hard question") — clean, skimmable, not a wall of text |
+| **TC43** | Hints when stuck ⭐ | Adversary step → **💡 Stuck? Get hints** | 2–3 short **angles** appear as chips; clicking one prefills the input to **edit in your words** (never a finished answer) |
+| **TC44** | Carousel icons + source + plain words | Make/open a carousel | Hook/CTA show an **emoji**, content slides show a **line icon**; slide 1 shows **SOURCE · {site}**; copy avoids heavy jargon. In Studio you can change the **Icon** per slide |
 
 ⭐ = the cases that prove the product's thesis (anti-slop, the voice moat, the
 compounding Ledger).

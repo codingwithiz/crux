@@ -12,6 +12,8 @@ import { expressSlides } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
 import { findRelated, type RelatedThesis } from "@/lib/related";
 import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
+import { Markdown } from "./Markdown";
+import { ProgressSteps } from "./ProgressSteps";
 import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
 
 type Step = "input" | "synth" | "adversary" | "commit";
@@ -22,6 +24,13 @@ const STEPS: { id: Step; label: string }[] = [
   { id: "adversary", label: "Adversary" },
   { id: "commit", label: "Commit" },
 ];
+
+const STEP_WHY: Record<Step, string> = {
+  input: "Start from your own rough opinion — one sentence is enough.",
+  synth: "We read the real source and break it down. Then write your gut take.",
+  adversary: "Defend your take. The Adversary pushes back but never concludes for you.",
+  commit: "Lock in your calibrated view — it becomes a carousel in your voice.",
+};
 
 const SYNTH_ROWS: { key: keyof Synthesis; label: string }[] = [
   { key: "happened", label: "What happened" },
@@ -117,8 +126,34 @@ export function ConvictionFlow({
   );
   const { messages, sendMessage, status, setMessages, error: chatError } = useChat({ transport });
   const [chatInput, setChatInput] = useState("");
+  const [hints, setHints] = useState<string[]>([]);
+  const [hinting, setHinting] = useState(false);
   const seeded = useRef(false);
   const thinking = status === "submitted" || status === "streaming";
+
+  function msgText(m: (typeof messages)[number]): string {
+    return m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+  }
+
+  async function getHints() {
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastAssistant) return;
+    setHinting(true);
+    setHints([]);
+    try {
+      const res = await fetch("/api/hints", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: msgText(lastAssistant), take, settings: getSettings() }),
+      });
+      const j = (await res.json()) as { hints?: string[] };
+      setHints(j.hints ?? []);
+    } catch {
+      /* ignore — hints are optional */
+    } finally {
+      setHinting(false);
+    }
+  }
 
   function startAdversary() {
     setSettings(getSettings());
@@ -296,11 +331,17 @@ export function ConvictionFlow({
         ))}
       </div>
 
-      <p className="mb-4 text-[11px] text-muted">
-        Models — Synthesize · Carousel: <span className="text-fg">{modelLabel("synthesize")}</span>{" "}
-        · Adversary: <span className="text-fg">{modelLabel("adversary")}</span>{" "}
-        <span className="text-muted">· change in the Model menu (top-right)</span>
-      </p>
+      <div className="mb-4 rounded-lg border border-line bg-surface/30 px-4 py-2.5">
+        <p className="text-sm font-medium text-fg">
+          Step {activeIdx + 1} of {STEPS.length} · {STEPS[activeIdx].label}
+        </p>
+        <p className="mt-0.5 text-xs text-muted">{STEP_WHY[step]}</p>
+        <p className="mt-1.5 text-[11px] text-muted">
+          Models — Synthesize · Carousel: <span className="text-fg/80">{modelLabel("synthesize")}</span>
+          {" · "}Adversary: <span className="text-fg/80">{modelLabel("adversary")}</span>
+          {" · "}change in the Model menu
+        </p>
+      </div>
 
       {resumed && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-cool/40 bg-cool/10 px-4 py-2.5 text-sm text-cool">
@@ -340,7 +381,13 @@ export function ConvictionFlow({
       {step === "synth" && (
         <div className="ce-fade-up">
           {loading && !synthesis ? (
-            <p className="text-muted">Synthesizing the landscape…</p>
+            <ProgressSteps
+              steps={
+                mode === "news"
+                  ? ["Fetching the source", "Reading the article", "Finding the key debate", "Writing your questions"]
+                  : ["Reading your thought", "Finding the key debate", "Writing your questions"]
+              }
+            />
           ) : synthesis ? (
             <>
               {mode === "news" && (
@@ -456,18 +503,18 @@ export function ConvictionFlow({
             {messages.map((m) => (
               <div
                 key={m.id}
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-sm ${
                   m.role === "user"
                     ? "self-end bg-accent/15 text-fg"
                     : "self-start border border-line bg-ink text-fg"
                 }`}
               >
-                {m.parts.map((p, i) => (p.type === "text" ? <span key={i}>{p.text}</span> : null))}
+                {m.role === "user" ? msgText(m) : <Markdown>{msgText(m)}</Markdown>}
               </div>
             ))}
             {thinking && (
-              <div className="self-start rounded-2xl border border-line bg-ink px-4 py-2.5 text-sm text-muted">
-                thinking…
+              <div className="self-start rounded-2xl border border-line bg-ink px-4 py-2.5">
+                <ProgressSteps steps={["Reading your point", "Steelmanning the other side", "Finding the hard question"]} />
               </div>
             )}
             {chatError && (
@@ -478,12 +525,34 @@ export function ConvictionFlow({
             )}
           </div>
 
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => void getHints()}
+              disabled={hinting || thinking || messages.length === 0}
+              className="rounded-lg border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
+              title="Suggest angles to help you answer — in your own words"
+            >
+              {hinting ? "Thinking…" : "💡 Stuck? Get hints"}
+            </button>
+            {hints.map((h, i) => (
+              <button
+                key={i}
+                onClick={() => setChatInput(h)}
+                className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                title="Use as a starting point — edit it in your words"
+              >
+                {h}
+              </button>
+            ))}
+          </div>
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (chatInput.trim()) {
                 sendMessage({ text: chatInput });
                 setChatInput("");
+                setHints([]);
               }
             }}
             className="mt-3 flex gap-2"

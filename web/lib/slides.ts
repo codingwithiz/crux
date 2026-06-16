@@ -22,20 +22,35 @@ const KICKERS: Record<SlideKind, string> = {
   cta: "WRAP-UP",
 };
 
-/** Build a default carousel skeleton from a committed thesis (with layouts). */
+/** A short "where it's from" label for the source credit (domain, else a short title). */
+export function sourceLabel(t: Pick<Thesis, "source">): string | undefined {
+  const src = t.source;
+  if (!src) return undefined;
+  if (src.url) {
+    try {
+      return new URL(src.url).hostname.replace(/^www\./, "");
+    } catch {
+      /* fall through */
+    }
+  }
+  return src.title ? src.title.slice(0, 40) : undefined;
+}
+
+/** Build a default carousel skeleton from a committed thesis (with layouts + icons). */
 export function thesisToSlides(t: Thesis, handle = "@you"): Slide[] {
+  const src = sourceLabel(t);
   const slides: Slide[] = [
-    { kind: "hook", kicker: KICKERS.hook, title: t.statement, body: t.topic, layout: "quote" },
+    { kind: "hook", kicker: KICKERS.hook, title: t.statement, body: t.topic, layout: "quote", icon: "💡", source: src },
   ];
   if (t.source?.title)
-    slides.push({ kind: "context", kicker: KICKERS.context, title: t.source.title, body: "", layout: "statement" });
+    slides.push({ kind: "context", kicker: KICKERS.context, title: t.source.title, body: "", layout: "statement", icon: "globe" });
   if (t.evidenceFor)
-    slides.push({ kind: "argument", kicker: KICKERS.argument, title: "", body: t.evidenceFor, layout: "statement" });
+    slides.push({ kind: "argument", kicker: KICKERS.argument, title: "", body: t.evidenceFor, layout: "statement", icon: "bulb" });
   if (t.steelman)
-    slides.push({ kind: "counter", kicker: KICKERS.counter, title: "The strongest counter", body: t.steelman, layout: "split" });
+    slides.push({ kind: "counter", kicker: KICKERS.counter, title: "The strongest counter", body: t.steelman, layout: "split", icon: "scale" });
   if (t.changeMyMind)
-    slides.push({ kind: "sowhat", kicker: "WHAT WOULD CHANGE MY MIND", title: "", body: t.changeMyMind, layout: "statement" });
-  slides.push({ kind: "cta", kicker: KICKERS.cta, title: "Takes that survive scrutiny.", body: handle, layout: "statement" });
+    slides.push({ kind: "sowhat", kicker: "WHAT WOULD CHANGE MY MIND", title: "", body: t.changeMyMind, layout: "statement", icon: "trend" });
+  slides.push({ kind: "cta", kicker: KICKERS.cta, title: "Takes that survive scrutiny.", body: handle, layout: "statement", icon: "🚀" });
   return slides;
 }
 
