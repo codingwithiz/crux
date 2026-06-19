@@ -9,6 +9,26 @@ Most AI writing tools generate your opinion *for* you. That's slop. This one is 
 
 ---
 
+## 📸 Screenshots
+
+**The Studio** — live preview, 12 styles, undo, LLM‑backed module editing, one‑click PNG/ZIP export:
+
+![The carousel Studio](docs/studio.png)
+
+**Dynamic per‑topic theming** — one editorial system, a different brand color world + **official logo** for each topic:
+
+![Per-topic brand theming](docs/theming.png)
+
+**The Thesis Ledger** — calibration scoring + re‑surfacing ("time to score these") · **Mobile‑first + Google sign‑in**:
+
+| Ledger | Mobile |
+| --- | --- |
+| ![Thesis Ledger](docs/ledger.png) | ![Mobile + Google auth](docs/mobile.png) |
+
+> The dev‑only `/lab` route renders every style and module for quick visual review.
+
+---
+
 ## ✨ What makes it different
 
 ### 🧠 A thinking pipeline, not a content generator
