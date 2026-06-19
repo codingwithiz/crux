@@ -1,5 +1,5 @@
 import { CarouselStudio } from "@/components/CarouselStudio";
-import { thesisToSlides } from "@/lib/slides";
+import { thesisToCarousel } from "@/lib/carousel/fallback";
 import type { Thesis } from "@/lib/types";
 
 const SAMPLE: Thesis = {
@@ -33,7 +33,7 @@ export default async function StudioPage({
         </p>
       </div>
       <CarouselStudio
-        initialSlides={thesisToSlides(SAMPLE, "@you")}
+        initialSlides={thesisToCarousel(SAMPLE, "@you")}
         loadId={typeof c === "string" ? c : undefined}
       />
     </div>

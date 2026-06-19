@@ -1,6 +1,6 @@
-import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getModel, modelReady } from "@/lib/ai/model";
+import { modelReady } from "@/lib/ai/model";
+import { generateStructured } from "@/lib/ai/generate";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { CURATOR_SYSTEM } from "@/lib/ai/prompts";
@@ -50,10 +50,11 @@ export async function POST(req: Request) {
       .join("\n") || "(none yet)";
 
   try {
-    const { output } = await generateText({
-      model: getModel(ms),
-      output: Output.object({ schema: Schema }),
+    const output = await generateStructured({
+      ms,
+      schema: Schema,
       system: CURATOR_SYSTEM,
+      label: "brief",
       prompt: `Today's candidate items (JSON):\n${JSON.stringify(candidates)}\n\nMy existing theses:\n${priors}\n\nSelect the 3-5 items most worth forming an opinion on, using the exact id values above.`,
     });
 

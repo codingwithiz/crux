@@ -15,6 +15,14 @@ const LIBRARY = [
   { href: "/gallery", label: "Carousels" },
   { href: "/studio", label: "Studio" },
 ];
+// Flattened list for the mobile menu.
+const ALL_LINKS = [
+  { href: "/today", label: "Today" },
+  ...CREATE,
+  ...LIBRARY,
+  { href: "/voice", label: "Voice" },
+  { href: "/guide", label: "How it works" },
+];
 
 const base = "rounded-md px-3 py-1.5 text-sm transition";
 const activeCls = "bg-surface text-fg";
@@ -23,6 +31,7 @@ const idleCls = "text-muted hover:bg-surface hover:text-fg";
 export function Nav() {
   const pathname = usePathname() ?? "/";
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink/80 backdrop-blur">
@@ -31,26 +40,52 @@ export function Nav() {
           <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent" />
           Conviction<span className="text-muted">Engine</span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
-          <Link href="/today" className={`${base} ${isActive("/today") ? activeCls : idleCls}`}>
-            Today
-          </Link>
+
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-1 text-sm md:flex">
+          <Link href="/today" className={`${base} ${isActive("/today") ? activeCls : idleCls}`}>Today</Link>
           <NavGroup label="Create" items={CREATE} isActive={isActive} />
           <NavGroup label="Library" items={LIBRARY} isActive={isActive} />
-          <Link href="/voice" className={`${base} ${isActive("/voice") ? activeCls : idleCls}`}>
-            Voice
-          </Link>
-          <Link
-            href="/guide"
-            title="How it works"
-            className={`${base} ${isActive("/guide") ? activeCls : idleCls}`}
-          >
-            ?
-          </Link>
+          <Link href="/voice" className={`${base} ${isActive("/voice") ? activeCls : idleCls}`}>Voice</Link>
+          <Link href="/guide" title="How it works" className={`${base} ${isActive("/guide") ? activeCls : idleCls}`}>?</Link>
           <SettingsButton />
           <AuthButton />
         </nav>
+
+        {/* Mobile cluster */}
+        <div className="flex items-center gap-1 md:hidden">
+          <SettingsButton />
+          <button
+            onClick={() => setMobileOpen((o) => !o)}
+            aria-label="Menu"
+            aria-expanded={mobileOpen}
+            className="rounded-md border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
+          >
+            {mobileOpen ? "✕" : "☰"}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile panel */}
+      {mobileOpen && (
+        <div className="border-t border-line bg-ink px-4 py-3 md:hidden">
+          <div className="flex flex-col gap-1">
+            {ALL_LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setMobileOpen(false)}
+                className={`rounded-md px-3 py-2.5 text-sm ${isActive(l.href) ? activeCls : idleCls}`}
+              >
+                {l.label}
+              </Link>
+            ))}
+            <div className="mt-2 border-t border-line pt-2">
+              <AuthButton />
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -78,11 +113,7 @@ function NavGroup({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className={`${base} ${groupActive ? activeCls : idleCls}`}
-      >
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className={`${base} ${groupActive ? activeCls : idleCls}`}>
         {label} <span className="text-[10px]">▾</span>
       </button>
       {open && (
@@ -92,9 +123,7 @@ function NavGroup({
               key={i.href}
               href={i.href}
               onClick={() => setOpen(false)}
-              className={`block rounded-md px-3 py-2 text-sm ${
-                isActive(i.href) ? "bg-ink text-fg" : "text-muted hover:bg-ink hover:text-fg"
-              }`}
+              className={`block rounded-md px-3 py-2 text-sm ${isActive(i.href) ? "bg-ink text-fg" : "text-muted hover:bg-ink hover:text-fg"}`}
             >
               {i.label}
             </Link>

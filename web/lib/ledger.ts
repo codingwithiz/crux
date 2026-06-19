@@ -5,6 +5,14 @@ import { embedText } from "./related";
 
 const KEY = "ce.ledger";
 
+// Postgres `id` columns are uuid; legacy localStorage records used nanoid. Coerce
+// so a stray non-uuid id can never crash the insert. (Phase 2 cloud migration owns
+// the persistent remap of any legacy local data.)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toUuid(id: string): string {
+  return UUID_RE.test(id) ? id : crypto.randomUUID();
+}
+
 // ---- localStorage fallback (anonymous / offline) ----
 function localGet(): Thesis[] {
   try {
@@ -107,7 +115,7 @@ export async function addThesis(t: Thesis): Promise<void> {
   await createClient()
     .from("theses")
     .insert({
-      id: t.id,
+      id: toUuid(t.id),
       user_id: userId,
       embedding: embedding ?? null,
       topic: t.topic,

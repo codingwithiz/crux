@@ -1,6 +1,6 @@
-import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getModel, modelReady } from "@/lib/ai/model";
+import { modelReady } from "@/lib/ai/model";
+import { generateStructured } from "@/lib/ai/generate";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { COMMIT_SUGGEST_SYSTEM } from "@/lib/ai/prompts";
@@ -53,12 +53,7 @@ ${transcript || "(no discussion yet — base the draft on my gut take only)"}
 Draft my commit fields.`;
 
   try {
-    const { output } = await generateText({
-      model: getModel(ms),
-      output: Output.object({ schema: Schema }),
-      system: COMMIT_SUGGEST_SYSTEM,
-      prompt,
-    });
+    const output = await generateStructured({ ms, schema: Schema, system: COMMIT_SUGGEST_SYSTEM, label: "commit-suggest", prompt });
     return Response.json(output);
   } catch (e) {
     return Response.json({ error: (e as Error).message ?? "suggest_failed" }, { status: 500 });

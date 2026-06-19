@@ -1,6 +1,6 @@
-import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getModel, modelReady } from "@/lib/ai/model";
+import { modelReady } from "@/lib/ai/model";
+import { generateStructured } from "@/lib/ai/generate";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { SYNTHESIZER_SYSTEM, GROUNDED_SYNTHESIZER_SYSTEM } from "@/lib/ai/prompts";
@@ -71,12 +71,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { output } = await generateText({
-      model: getModel(ms),
-      output: Output.object({ schema: Schema }),
-      system,
-      prompt,
-    });
+    const output = await generateStructured({ ms, schema: Schema, system, prompt, label: "synthesize" });
     return Response.json({ ...output, grounded });
   } catch (e) {
     return Response.json({ error: (e as Error).message ?? "synthesis_failed" }, { status: 500 });

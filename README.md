@@ -1,44 +1,132 @@
-# Agentic AI Content Pipeline → **Conviction Engine**
+# Agentic Conviction Content Engine
 
-A thinking-augmentation system for technologists. **Not** a content factory — content is the exhaust. The product helps you move through the chain that actually matters:
+**Turn AI news — or a raw thought — into a *defensible* opinion, then a world‑class social carousel that sounds like you.**
 
-> **Information → Understanding → Insight → Opinion → Content**
+Most AI writing tools generate your opinion *for* you. That's slop. This one is built on the opposite bet: the value isn't the content, it's the **conviction** behind it. The AI is a thinking partner that *sharpens your view* and never writes it for you — then expresses your committed take as a studio‑grade carousel.
 
-The defensible territory is the **middle** (Understanding → Insight → Opinion) — the part neither the free news tools (TLDR, Feedly, Perplexity) nor the crowded posting tools (Taplio, Hypefury) touch.
+> Information → Understanding → **Conviction** → Content.
+> Everyone automates the first and last steps. The defensible wedge is the middle — so that's what this engine protects.
 
-## One-line thesis
-> It doesn't write your posts. It makes you someone worth reading.
+---
 
-## Status: **MVP built** — a free-forever app in [`web/`](./web)
+## ✨ What makes it different
 
-Pick trending AI news **or** type your own thought → grounded synthesis → an **Adversary** that makes you defend a take (it refuses to conclude for you) → commit a calibrated thesis → export a **carousel** (free PNGs via Satori). Free models by default (Gemini free tier / Ollama), optional BYOK.
+### 🧠 A thinking pipeline, not a content generator
+A 6‑agent, human‑in‑the‑loop flow where **you** own the opinion:
 
-- **[PLAN.md](./PLAN.md)** — full research, competitor landscape, architecture, MVP, monetization, risks.
-- **[web/](./web)** — the application (Next.js 16 + AI SDK v6 + Tailwind v4).
-- **[pilot/](./pilot/)** — the original no-code pilot kit (now an optional parallel sanity-check).
+`Input → Synthesize → Discuss → Commit → Carousel`
 
-### Run it
+- **Synthesizer** — reads the real source (NotebookLM‑style, source‑grounded) and breaks it down in plain English: what happened, what's genuinely new vs. repackaged, the key debate, the skeptic's case, and the questions you must answer first. Returns **verbatim citations** so claims are receipted, not hallucinated.
+- **Coach / Spar (the Adversary, reimagined)** — *optional and adaptive*. **Coach** mode is supportive: it reflects what's good in your take and offers angles to help you *find* a view. **Spar** mode is a hard adversary that escalates and pressure‑tests you. Either way it **refuses to write your conclusion** — and it's forced to be **concrete and specific**, never vague.
+- **Compile‑to‑commit** — when you're done talking it through, it compiles *your own* argued points into a draft thesis you can commit in one click.
+- **Expressor** — turns your committed thesis into a carousel: it picks a narrative *format* and a *visual style* that fit the topic, chooses a concrete visual module per slide, detects the brand, and writes it in your voice — grounded in the synthesis, **never inventing numbers**.
+
+### 🎨 A world‑class carousel engine
+- **Real HTML/CSS rendering, exported client‑side** (`modern-screenshot`) — the on‑screen preview *is* the exported 1080×1350 PNG. Full CSS: blur, shadows, real fonts, gradients. No server render cost.
+- **Topic‑aligned dynamic theming** — the LLM detects the subject brand (Redis, OpenAI, Stripe, Discord…) and the carousel renders its **official full‑color logo** + a color world derived from the **official brand hex**. Curated logos in‑app + a CDN fallback for the long tail.
+- **A 10‑module visualization library** the LLM fills per slide: stat bars, bar chart, line/trend chart, donut, big stat, timeline, icon flow, comparison, key→value, and callout — all real SVG/CSS, all export‑faithful.
+- **10 narrative formats** (explainer, myth‑vs‑reality, "N levels", before/after, hidden‑cost, contrarian, listicle, timeline, case study, conviction arc) so every topic doesn't tell the same story.
+- **12 cohesive design styles** (editorial paper, clean product, brutalist, pastel, magazine, dusk, ink, slate, blueprint, terminal, aurora mesh, neon night) — each with its own serif/sans/mono type personality. The LLM picks one per topic; a **brand‑lock** toggle pins one look for a consistent page.
+- **Distinct slide layouts** — hero cover, content explainer, bold statement, closing CTA — that actually look different.
+
+### 🛠️ A real editing Studio
+- **Undo** for structural edits, a live preview, a 12‑style picker + brand‑lock, **revoice the whole deck**, copy‑caption, and **one‑click PNG / ZIP export**.
+- **LLM‑backed module switching** — switch a slide's visual module and it regenerates *meaningful, slide‑specific data* (real keys/labels, not "point 1") from that slide's content, with an instant heuristic fallback.
+
+### 🗣️ Your voice, as a signature
+- Distill your real posts into a reusable style guide, or start from **voice presets** (Punchy operator · Calm analyst · Playful builder · Clear academic). Your voice steers the copy *and* nudges the format/style picks — so the output is recognizably yours, not generic AI.
+
+### 📒 The Thesis Ledger — a compounding moat
+- Every committed opinion is saved, searchable, and revisable. **Calibration scoring** keeps score: were you right *when you were confident?* And **re‑surfacing** nudges you to score older convictions ("Time to score these"), closing the loop so you actually learn.
+
+### ⚙️ Built like a product, not a demo
+- **Durable AI workflow** — a `generateStructured` wrapper adds retries, **schema‑repair** (re‑asks the model when its JSON fails validation), provider fallback, and latency logging across every structured call.
+- **An eval / benchmark harness** (`POST /api/eval`, dev‑only) — runs a golden set through the *real* pipeline and scores it with an LLM‑as‑judge on grounding, sharpness, no‑fabrication, and quality, plus a **deterministic citation‑faithfulness** check. Quality is a tracked number, not a vibe.
+- **Mobile‑first** responsive UI and **Google OAuth** (Supabase) with local→cloud migration on first sign‑in. Works fully offline in `localStorage` mode with no account.
+
+---
+
+## 🧩 The flow
+
+```
+        ┌──────────┐   ┌────────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────────┐
+ news / │  INPUT   │ → │ SYNTHESIZE │ → │   DISCUSS    │ → │  COMMIT  │ → │   CAROUSEL   │
+ thought│ your take│   │ grounded + │   │ Coach / Spar │   │ compile  │   │ format +     │
+        │          │   │ citations  │   │  (optional)  │   │ your take│   │ style + voice│
+        └──────────┘   └────────────┘   └──────────────┘   └──────────┘   └──────────────┘
+                                  the human owns "form view" + "commit"
+```
+
+---
+
+## 🚀 Getting started
+
 ```bash
 cd web
 npm install
-npm run dev        # http://localhost:3000
+npm run dev          # http://localhost:3000
 ```
-Then click **Model** (top-right) and paste a **free** Google AI Studio key
-(aistudio.google.com/app/apikey — 1,500 req/day, no card). Or choose **Ollama**
-for fully-local, or bring your own Claude/OpenAI key. Keys are stored only in your
-browser. (Alternatively, set `GOOGLE_GENERATIVE_AI_API_KEY` in `web/.env.local`.)
 
-**Want Claude on the Adversary?** In **Model → Adversary model**, pick Anthropic + paste an `console.anthropic.com` API key — synthesis/carousel stay on the free model; only the reasoning step uses Claude Opus 4.8.
+The app lives in [`web/`](web) (Next.js 16 App Router). It runs out of the box in **localStorage mode** with no account. Add keys to enable cloud sync + live models.
 
-**Optional cloud sync + accounts:** see **[web/SUPABASE.md](./web/SUPABASE.md)** to enable Supabase (multi-user login + a cloud Thesis Ledger via row-level security). Without it, the app works locally in your browser.
+### Environment (`web/.env.local`)
 
-## Start today
-1. Open **[pilot/README.md](./pilot/README.md)**.
-2. Do the ~15–20 min daily ritual: pick one item → synthesize → interrogate yourself → commit a thesis → (optionally) make a carousel.
-3. Log it in **[pilot/daily-log.md](./pilot/daily-log.md)**; record opinions in **[pilot/thesis-ledger.md](./pilot/thesis-ledger.md)**.
-4. After ~2 weeks, apply the **Go/Kill gate** in the pilot README.
+```bash
+# AI providers (any one works; OpenAI is the default server key)
+OPENAI_API_KEY=...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+# ANTHROPIC_API_KEY=...        # optional (BYOK)
 
-Phase 1 (a thin Next.js + AI SDK app) begins **only if** the pilot clears its gate.
+# Cloud sync + auth (optional — app works locally without these)
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...  # for the daily radar cron only
 
-## Niche (for now)
-AI / GenAI. Output format being prototyped: IG/LinkedIn carousels.
+# Eval judge override (optional)
+# JUDGE_PROVIDER=google
+# JUDGE_MODEL=gemini-2.5-pro
+```
+
+> `.env.local` is gitignored. For Google sign‑in, enable the Google provider in your Supabase dashboard and add `…/auth/callback` to the allowed redirect URLs. See [`web/SUPABASE.md`](web/SUPABASE.md) for the cloud setup.
+
+### Useful commands
+
+```bash
+npm run dev        # dev server
+npm run build      # production build
+npm run lint       # eslint
+npm run test:e2e   # Playwright tests
+```
+
+Run the benchmark (with the dev server running): `POST http://localhost:3000/api/eval`.
+
+---
+
+## 🏗️ Tech stack
+
+- **Next.js 16** (App Router, React 19) · **TypeScript** · **Tailwind v4**
+- **AI SDK v6** (`ai`) with OpenAI / Google / Anthropic / Ollama providers
+- **Supabase** (Postgres + Auth + RLS) with a `localStorage` fallback
+- **modern-screenshot** (client PNG export) · **simple-icons** + curated logos · **Framer Motion**
+- **Zod** structured outputs · **JSZip** carousel export
+
+## 📁 Structure (high level)
+
+```
+web/
+  app/            # routes (today, news, think, studio, gallery, ledger, voice, login) + /api/*
+  components/     # ConvictionFlow, CarouselStudio, LedgerView, VoiceEditor, Nav, …
+    carousel/     # SlideCanvas (HTML/CSS renderer) + decor primitives
+  lib/
+    ai/           # model router, prompts, generateStructured (durable), step routing
+    carousel/     # design system (12 styles), formats (10), modules, brand resolution, llm schema, export
+    ledger.ts · carousels.ts · voice.ts · settings.ts · supabase/
+```
+
+---
+
+## 📌 Status
+
+Built and verified across phases: backend fixes → world‑class carousel engine + visualization library → mobile + Google auth → durable AI + eval harness → friendlier flow, creative variety, voice, and ledger calibration. The dev‑only `/lab` route showcases the rendering engine and every style.
+
+*Anti‑slop principle, always: the AI scaffolds and expresses; the human forms the view and owns the commit.*

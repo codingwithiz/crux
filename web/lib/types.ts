@@ -1,3 +1,5 @@
+import type { CarouselSlide } from "./carousel/design";
+
 export type Provider = "google" | "anthropic" | "openai" | "ollama";
 
 export interface Settings {
@@ -9,6 +11,8 @@ export interface Settings {
   adversaryProvider?: Provider;
   adversaryApiKey?: string;
   adversaryModel?: string;
+  /** When set, pins this carousel design for all carousels (brand-lock). */
+  brandLockDesignId?: string;
 }
 
 export interface SourceRef {
@@ -46,6 +50,8 @@ export interface Thesis {
   evidenceFor?: string;
   steelman?: string;
   changeMyMind?: string;
+  /** The synthesis that grounded this thesis — lets the carousel cite what happened. */
+  synthesis?: Synthesis;
   createdAt: string; // ISO
   updatedAt?: string; // ISO, set when revised
   source?: SourceRef;
@@ -135,8 +141,9 @@ export interface CarouselTheme {
 export interface Carousel {
   id: string;
   title: string;
-  slides: Slide[];
-  themeId: string;
+  slides: CarouselSlide[];
+  /** Base design id (paper/dusk/ink) — persisted in the carousels.theme_id column. */
+  designId: string;
   handle: string;
   createdAt: string;
   /** Public URLs of the rendered PNGs in Supabase Storage (signed-in users). */

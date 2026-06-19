@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSettings } from "@/lib/settings";
-import { getVoice, saveVoice, DEFAULT_VOICE } from "@/lib/voice";
+import { getVoice, saveVoice, DEFAULT_VOICE, VOICE_PRESETS } from "@/lib/voice";
 import type { VoiceProfile } from "@/lib/types";
 
 export function VoiceEditor() {
@@ -101,6 +101,13 @@ export function VoiceEditor() {
     setMsg("Loaded the built-in default — edit and Save to keep it.");
   }
 
+  function applyPreset(p: { guide: string; tone: string; emoji: boolean }) {
+    setGuide(p.guide);
+    setTone(p.tone);
+    setEmoji(p.emoji);
+    setMsg("Loaded a preset — tweak it, add your samples, then Save.");
+  }
+
   if (!loaded) return <p className="text-muted">Loading your voice…</p>;
 
   return (
@@ -114,6 +121,22 @@ export function VoiceEditor() {
           Expressor writes will match your voice — your hooks, rhythm, and tone. It only borrows
           STYLE; your committed thesis stays the opinion.
         </p>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Start from a preset</label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {VOICE_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => applyPreset(p)}
+              title={p.blurb}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>

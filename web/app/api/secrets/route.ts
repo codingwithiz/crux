@@ -2,28 +2,46 @@ import { createServerSupabase, supabaseConfiguredServer } from "@/lib/supabase/s
 
 export const runtime = "nodejs";
 
+// Which providers have a shared key configured on the server (env). Lets the UI
+// tell users they can leave the key field blank for that provider.
+const serverKeys = () => ({
+  google: Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
+  openai: Boolean(process.env.OPENAI_API_KEY),
+  anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+});
+
 // Returns which keys are set for the signed-in user (booleans only, never values).
+// serverKeys (the env-key hint) is always included so the UI can show the key
+// field as optional even when Supabase/auth is unavailable.
 export async function GET() {
-  if (!supabaseConfiguredServer()) return Response.json({ configured: false });
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return Response.json({ configured: true, signedIn: false });
+  const keys = serverKeys();
+  if (!supabaseConfiguredServer()) {
+    return Response.json({ configured: false, serverKeys: keys });
+  }
+  try {
+    const supabase = await createServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return Response.json({ configured: true, signedIn: false, serverKeys: keys });
 
-  const { data } = await supabase
-    .from("user_secrets")
-    .select("google_key,openai_key,anthropic_key")
-    .eq("user_id", user.id)
-    .maybeSingle();
+    const { data } = await supabase
+      .from("user_secrets")
+      .select("google_key,openai_key,anthropic_key")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  return Response.json({
-    configured: true,
-    signedIn: true,
-    google: Boolean(data?.google_key),
-    openai: Boolean(data?.openai_key),
-    anthropic: Boolean(data?.anthropic_key),
-  });
+    return Response.json({
+      configured: true,
+      signedIn: true,
+      serverKeys: keys,
+      google: Boolean(data?.google_key),
+      openai: Boolean(data?.openai_key),
+      anthropic: Boolean(data?.anthropic_key),
+    });
+  } catch {
+    return Response.json({ configured: true, signedIn: false, serverKeys: keys });
+  }
 }
 
 interface SaveBody {

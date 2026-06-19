@@ -136,7 +136,11 @@ export function TodayView() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="font-mono text-xs text-accent">{dateLabel}</p>
+          {/* Date is formatted in the user's locale/timezone, which the server
+              can't match — suppress the expected hydration diff. */}
+          <p className="font-mono text-xs text-accent" suppressHydrationWarning>
+            {dateLabel}
+          </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">
             {doneToday ? "Conviction formed today ✓" : "Form one conviction today"}
           </h1>

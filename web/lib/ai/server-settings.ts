@@ -13,7 +13,7 @@ interface SecretsRow {
  * (handled later in getModel). So signed-in users need not send keys in the body.
  */
 export async function resolveServerSettings(s: Settings | undefined): Promise<Settings> {
-  const base: Settings = s ?? { provider: "google" };
+  const base: Settings = s ?? { provider: "openai" };
   if (!supabaseConfiguredServer()) return base;
   try {
     const supabase = await createServerSupabase();

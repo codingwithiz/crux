@@ -50,6 +50,15 @@ export function LedgerView() {
 
   const stats = useMemo(() => ledgerStats(items ?? []), [items]);
   const cal = useMemo(() => calibration(items ?? []), [items]);
+  // Re-surface convictions committed a while ago that still have no recorded
+  // outcome — the nudge that closes the calibration loop.
+  const due = useMemo(() => {
+    const cutoff = Date.now() - 14 * 86400000;
+    return (items ?? [])
+      .filter((t) => t.status === "active" && !t.outcome && new Date(t.createdAt).getTime() < cutoff)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(0, 5);
+  }, [items]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (items ?? []).filter((t) => {
@@ -62,8 +71,8 @@ export function LedgerView() {
   async function makeCarousel(t: Thesis) {
     setBusyId(t.id);
     try {
-      const slides = await expressSlides(t, "@you");
-      saveDraft({ slides, handle: "@you" });
+      const { slides, designId } = await expressSlides(t, "@you");
+      saveDraft({ slides, handle: "@you", designId });
       router.push("/studio");
     } finally {
       setBusyId(null);
@@ -139,6 +148,33 @@ export function LedgerView() {
           <p className="mt-2 text-[11px] text-muted">
             Were you right when you were confident? Resolve theses (expand a card) to keep score.
           </p>
+        </div>
+      )}
+
+      {due.length > 0 && (
+        <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <p className="font-mono text-xs uppercase tracking-wide text-amber-200">Time to score these</p>
+          <p className="mt-1 text-xs text-muted">
+            You committed these a while ago. How did they hold up? Scoring keeps your calibration honest.
+          </p>
+          <div className="mt-3 space-y-2">
+            {due.map((t) => (
+              <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-ink/40 p-2.5">
+                <span className="min-w-0 flex-1 truncate text-sm text-fg" title={t.statement}>{t.statement}</span>
+                <span className="shrink-0 text-[11px] text-muted">{daysAgo(t.createdAt)}d ago</span>
+                {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => setOutcome(t, o)}
+                    title={`Mark as ${OUTCOME_LABEL[o]}`}
+                    className="shrink-0 rounded-md border border-line px-2 py-1 text-[11px] capitalize text-muted hover:bg-surface hover:text-fg"
+                  >
+                    {OUTCOME_LABEL[o]}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -291,6 +327,10 @@ export function LedgerView() {
       )}
     </div>
   );
+}
+
+function daysAgo(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 }
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {

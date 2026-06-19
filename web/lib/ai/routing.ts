@@ -1,23 +1,46 @@
-import type { Settings } from "../types";
+import type { Provider, Settings } from "../types";
 import type { ModelSettings } from "./model";
 
 export type Step = "synthesize" | "adversary" | "express";
 
 /**
- * Per-step model routing. The Adversary (the reasoning-critical step) can use a
- * stronger model (e.g. Claude Opus 4.8) when configured; synthesis and express
- * stay on the default free/cheap model. Pure function — safe on client + server.
+ * The Adversary is a fast back-and-forth chat, so when the user hasn't picked a
+ * dedicated Adversary model we default it to a snappier model than the heavy
+ * default used for Synthesize/Carousel. (gpt-5.5 has a ~1.6s time-to-first-token
+ * and slow streaming; gpt-5-mini is ~2.7x faster end-to-end and still incisive.)
+ * Only OpenAI is remapped — Gemini's default (flash) is already fast, and other
+ * providers inherit the default model.
+ */
+const FAST_ADVERSARY_MODEL: Partial<Record<Provider, string>> = {
+  openai: "gpt-5-mini",
+};
+
+/**
+ * Per-step model routing. The Adversary defaults to a fast model (see above) and
+ * can be upgraded to a stronger one (e.g. Claude Opus 4.8) via the override;
+ * Synthesis and Express stay on the user's default. Pure function — safe on
+ * client + server.
  */
 export function stepModelSettings(s: Settings | undefined, step: Step): ModelSettings {
   if (!s) return {};
 
-  if (step === "adversary" && s.adversaryProvider) {
-    // Select the override whenever a provider is chosen; modelReady/getModel
-    // handle the key (UI key, or the server env fallback like OPENAI_API_KEY).
+  if (step === "adversary") {
+    if (s.adversaryProvider) {
+      // Explicit override. modelReady/getModel handle the key (UI key, or the
+      // server env fallback like OPENAI_API_KEY).
+      return {
+        provider: s.adversaryProvider,
+        apiKey: s.adversaryApiKey,
+        model: s.adversaryModel,
+        ollamaBaseURL: s.ollamaBaseURL,
+      };
+    }
+    // No override: inherit the default provider/key but prefer a faster model
+    // for this chat step (e.g. gpt-5-mini instead of gpt-5.5).
     return {
-      provider: s.adversaryProvider,
-      apiKey: s.adversaryApiKey,
-      model: s.adversaryModel,
+      provider: s.provider,
+      apiKey: s.apiKey,
+      model: FAST_ADVERSARY_MODEL[s.provider] ?? s.model,
       ollamaBaseURL: s.ollamaBaseURL,
     };
   }

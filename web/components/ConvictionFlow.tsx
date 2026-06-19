@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { nanoid } from "nanoid";
 import { getSettings, SETTINGS_EVENT, PROVIDER_SHORT, DEFAULT_MODELS } from "@/lib/settings";
 import { stepModelSettings, type Step as ModelStep } from "@/lib/ai/routing";
 import { addThesis } from "@/lib/ledger";
@@ -21,16 +20,22 @@ type Step = "input" | "synth" | "adversary" | "commit";
 const STEPS: { id: Step; label: string }[] = [
   { id: "input", label: "Input" },
   { id: "synth", label: "Synthesize" },
-  { id: "adversary", label: "Adversary" },
+  { id: "adversary", label: "Discuss" },
   { id: "commit", label: "Commit" },
 ];
 
 const STEP_WHY: Record<Step, string> = {
   input: "Start from your own rough opinion — one sentence is enough.",
   synth: "We read the real source and break it down. Then write your gut take.",
-  adversary: "Defend your take. The Adversary pushes back but never concludes for you.",
-  commit: "Lock in your calibrated view — it becomes a carousel in your voice.",
+  adversary: "Optional: talk it through. Coach helps you find your take; Spar stress-tests it. It never writes it for you.",
+  commit: "Lock in your view — it becomes a carousel in your voice.",
 };
+
+// Stable arrays (module scope) so ProgressSteps doesn't get a new reference on
+// every parent render — important during the high-churn streaming step.
+const SYNTH_STEPS_NEWS = ["Fetching the source", "Reading the article", "Finding the key debate", "Writing your questions"];
+const SYNTH_STEPS_THOUGHT = ["Reading your thought", "Finding the key debate", "Writing your questions"];
+const ADVERSARY_THINKING_STEPS = ["Reading your point", "Steelmanning the other side", "Finding the hard question"];
 
 const SYNTH_ROWS: { key: keyof Synthesis; label: string }[] = [
   { key: "happened", label: "What happened" },
@@ -77,7 +82,7 @@ export function ConvictionFlow({
   // Human-readable "which model runs which step" summary.
   function modelLabel(stepKind: ModelStep): string {
     const ms = stepModelSettings(settings ?? undefined, stepKind);
-    const p = ms.provider ?? "google";
+    const p = ms.provider ?? "openai";
     return `${PROVIDER_SHORT[p]} · ${ms.model ?? DEFAULT_MODELS[p]}`;
   }
 
@@ -120,14 +125,19 @@ export function ConvictionFlow({
   }
 
   // --- Adversary chat ---
-  const transport = useMemo(
-    () => new DefaultChatTransport({ api: "/api/adversary", body: { synthesis, take, settings } }),
-    [synthesis, take, settings],
-  );
+  // Stable transport, created ONCE. Recreating DefaultChatTransport on every
+  // synthesis/take/settings change and swapping it into useChat churned the
+  // chat's internal state; instead we send the per-message context as the
+  // request `body` at each sendMessage call (see adversaryBody()).
+  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/adversary" }), []);
   const { messages, sendMessage, status, setMessages, error: chatError } = useChat({ transport });
   const [chatInput, setChatInput] = useState("");
+  const [adversaryMode, setAdversaryMode] = useState<"coach" | "spar">("coach");
   const [hints, setHints] = useState<string[]>([]);
   const [hinting, setHinting] = useState(false);
+  // Draft takes to react to when stuck at the gut-take step.
+  const [drafts, setDrafts] = useState<string[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
   const seeded = useRef(false);
   const thinking = status === "submitted" || status === "streaming";
 
@@ -155,14 +165,48 @@ export function ConvictionFlow({
     }
   }
 
+  // Fetch 2-3 divergent draft takes the user can react to and edit. They still
+  // pick one, make it theirs, and defend it against the Adversary.
+  async function getDrafts() {
+    if (!synthesis) return;
+    setDraftsLoading(true);
+    setDrafts([]);
+    try {
+      const res = await fetch("/api/take-drafts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ synthesis, settings: getSettings() }),
+      });
+      const j = (await res.json()) as { drafts?: string[] };
+      setDrafts(j.drafts ?? []);
+    } catch {
+      /* optional — ignore */
+    } finally {
+      setDraftsLoading(false);
+    }
+  }
+
   function startAdversary() {
     setSettings(getSettings());
     setStep("adversary");
-    if (!seeded.current && take.trim()) {
-      seeded.current = true;
-      sendMessage({ text: `My take: ${take}` });
-    }
   }
+
+  // Single source of truth for seeding the Adversary's opening message: once
+  // we're on its step with a take but no conversation yet, send the seed. This
+  // covers both a fresh "Pressure-test" click and resuming directly into this
+  // step. (Previously resume set seeded=true without ever sending the seed,
+  // which hung the chat on "Starting the interrogation…" forever.)
+  useEffect(() => {
+    if (step !== "adversary" || seeded.current) return;
+    if (messages.length > 0) {
+      seeded.current = true; // resumed mid-conversation — don't re-seed
+      return;
+    }
+    // Wait for the take and settings so the request routes to gpt-5-mini.
+    if (!take.trim() || !settings) return;
+    seeded.current = true;
+    sendMessage({ text: `My take: ${take}` }, { body: { synthesis, take, settings, mode: adversaryMode } });
+  }, [step, take, settings, synthesis, messages.length, sendMessage, adversaryMode]);
 
   // --- Commit ---
   const [statement, setStatement] = useState("");
@@ -192,8 +236,13 @@ export function ConvictionFlow({
       setSteelman(saved.commit.steelman);
       setChangeMyMind(saved.commit.changeMyMind);
       setTopic(saved.commit.topic);
-      if (saved.messages?.length) setMessages(saved.messages);
-      seeded.current = true;
+      // Only mark as seeded when there's an actual conversation to restore;
+      // otherwise the seeding effect above will start the Adversary so a
+      // resumed-but-unstarted flow doesn't hang.
+      if (saved.messages?.length) {
+        setMessages(saved.messages);
+        seeded.current = true;
+      }
       autosynth.current = true;
       setResumed(true);
     } else if (mode === "news" && initialInput) {
@@ -249,6 +298,14 @@ export function ConvictionFlow({
     setStep("commit");
   }
 
+  // End Coach/Spar: compile the user's OWN argued points into a draft (commit-suggest)
+  // and jump to Commit pre-filled — so they can review and commit in one click.
+  async function finishConversation() {
+    if (!statement.trim()) setStatement(take.trim());
+    await draftFromDiscussion();
+    setStep("commit");
+  }
+
   // Draft the commit fields by organizing the user's OWN take + Adversary
   // answers. Never auto-commits; the user edits before committing.
   async function draftFromDiscussion() {
@@ -288,21 +345,24 @@ export function ConvictionFlow({
     setLoading(true);
     setError(null);
     const thesis: Thesis = {
-      id: nanoid(),
+      id: crypto.randomUUID(),
       topic: topic.trim() || (mode === "news" ? sourceTitle ?? "AI" : "My take"),
       statement: statement.trim() || take.trim(),
       confidence,
       evidenceFor: evidenceFor.trim() || undefined,
       steelman: steelman.trim() || undefined,
       changeMyMind: changeMyMind.trim() || undefined,
+      // Carry the synthesis so the carousel can ground itself in what actually
+      // happened (the Expressor reads thesis.synthesis via express-client).
+      synthesis: synthesis ?? undefined,
       createdAt: new Date().toISOString(),
       source: sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined,
       status: "active",
     };
     await addThesis(thesis);
 
-    const slides = await expressSlides(thesis, "@you");
-    saveDraft({ slides, handle: "@you" });
+    const { slides, designId } = await expressSlides(thesis, "@you");
+    saveDraft({ slides, handle: "@you", designId });
     clearFlow();
     router.push("/studio");
   }
@@ -381,13 +441,7 @@ export function ConvictionFlow({
       {step === "synth" && (
         <div className="ce-fade-up">
           {loading && !synthesis ? (
-            <ProgressSteps
-              steps={
-                mode === "news"
-                  ? ["Fetching the source", "Reading the article", "Finding the key debate", "Writing your questions"]
-                  : ["Reading your thought", "Finding the key debate", "Writing your questions"]
-              }
-            />
+            <ProgressSteps steps={mode === "news" ? SYNTH_STEPS_NEWS : SYNTH_STEPS_THOUGHT} />
           ) : synthesis ? (
             <>
               {mode === "news" && (
@@ -483,13 +537,51 @@ export function ConvictionFlow({
                   placeholder="Write your gut take. The Adversary will pressure-test it."
                   className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
                 />
-                <button
-                  onClick={startAdversary}
-                  disabled={!take.trim()}
-                  className="mt-3 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
-                >
-                  Pressure-test this →
-                </button>
+
+                <div className="mt-2">
+                  <button
+                    onClick={() => void getDrafts()}
+                    disabled={draftsLoading}
+                    className="rounded-lg border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
+                    title="See 2-3 divergent draft takes to react to and edit"
+                  >
+                    {draftsLoading ? "Thinking…" : "Not sure? See draft takes"}
+                  </button>
+                  {drafts.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="text-[11px] text-muted">
+                        Starting points, not the answer — pick one, make it yours, then defend it.
+                      </p>
+                      {drafts.map((d, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setTake(d)}
+                          className="block w-full rounded-lg border border-line bg-ink/60 px-3 py-2 text-left text-sm text-fg transition hover:border-cool/50 hover:bg-surface"
+                          title="Use as a starting point — then edit it into your own words"
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={startAdversary}
+                    disabled={!take.trim()}
+                    className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+                  >
+                    Talk it through →
+                  </button>
+                  <button
+                    onClick={goCommit}
+                    disabled={!take.trim()}
+                    className="rounded-lg border border-line px-4 py-2.5 text-sm text-muted transition hover:bg-surface hover:text-fg disabled:opacity-50"
+                  >
+                    Skip — make my take →
+                  </button>
+                </div>
               </div>
             </>
           ) : null}
@@ -498,8 +590,22 @@ export function ConvictionFlow({
 
       {step === "adversary" && (
         <div className="ce-fade-up">
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted">Mode</span>
+            {(["coach", "spar"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setAdversaryMode(m)}
+                className={`rounded-full border px-3 py-1 transition ${adversaryMode === m ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
+                title={m === "coach" ? "Supportive — helps you find your take" : "Tough — stress-tests your take"}
+              >
+                {m === "coach" ? "Coach" : "Spar"}
+              </button>
+            ))}
+            <span className="text-muted">{adversaryMode === "coach" ? "· gentle, helps you find it" : "· tough, stress-tests it"}</span>
+          </div>
           <div className="flex min-h-[320px] flex-col gap-3 rounded-xl border border-line bg-surface/40 p-4">
-            {messages.length === 0 && <p className="text-sm text-muted">Starting the interrogation…</p>}
+            {messages.length === 0 && <p className="text-sm text-muted">Getting started…</p>}
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -514,7 +620,7 @@ export function ConvictionFlow({
             ))}
             {thinking && (
               <div className="self-start rounded-2xl border border-line bg-ink px-4 py-2.5">
-                <ProgressSteps steps={["Reading your point", "Steelmanning the other side", "Finding the hard question"]} />
+                <ProgressSteps steps={ADVERSARY_THINKING_STEPS} />
               </div>
             )}
             {chatError && (
@@ -550,7 +656,7 @@ export function ConvictionFlow({
             onSubmit={(e) => {
               e.preventDefault();
               if (chatInput.trim()) {
-                sendMessage({ text: chatInput });
+                sendMessage({ text: chatInput }, { body: { synthesis, take, settings } });
                 setChatInput("");
                 setHints([]);
               }
@@ -572,15 +678,16 @@ export function ConvictionFlow({
             </button>
           </form>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-xs text-muted">
-              The Adversary will not hand you a conclusion. Commit when your view is sharper.
+              It won&rsquo;t hand you a conclusion — it helps you shape your own. Done whenever you&rsquo;re ready.
             </p>
             <button
-              onClick={goCommit}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+              onClick={finishConversation}
+              disabled={suggesting}
+              className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
             >
-              I am ready to commit →
+              {suggesting ? "Compiling…" : "Compile my take →"}
             </button>
           </div>
         </div>

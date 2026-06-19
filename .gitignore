@@ -28,3 +28,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Local verification artifacts (screenshots + Playwright MCP output)
+.playwright-mcp/
+/*.png
+CAROUSEL_SYNTHESIS_FIX.md

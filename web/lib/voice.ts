@@ -33,6 +33,54 @@ export const DEFAULT_VOICE: VoiceProfile = {
   updatedAt: "default",
 };
 
+/** One-click starting points so a user gets a distinct voice without samples. */
+export interface VoicePreset {
+  id: string;
+  name: string;
+  blurb: string;
+  guide: string;
+  tone: string;
+  emoji: boolean;
+}
+export const VOICE_PRESETS: VoicePreset[] = [
+  {
+    id: "operator",
+    name: "Punchy operator",
+    blurb: "Direct, concrete, results-first.",
+    tone: "direct, concrete, confident, no fluff",
+    emoji: false,
+    guide:
+      "Write like a sharp operator who respects the reader's time. Open with the point, never a wind-up. Short declarative sentences, one idea per line. Concrete nouns, real numbers, named specifics over adjectives. End on the implication, not a summary. No hedging, no hype, no emoji.",
+  },
+  {
+    id: "analyst",
+    name: "Calm analyst",
+    blurb: "Measured, precise, evidence-led.",
+    tone: "measured, precise, neutral, evidence-led",
+    emoji: false,
+    guide:
+      "Write like a careful analyst. Lead with the claim, then the evidence. Define any term in a few words. Separate what is known from what is uncertain. Prefer 'because' and 'so' over drama. Calm and exact — no exclamation marks, no emoji. Close with the so-what.",
+  },
+  {
+    id: "builder",
+    name: "Playful builder",
+    blurb: "Energetic, story-driven, a little fun.",
+    tone: "energetic, concrete, humble-confident, lightly playful",
+    emoji: true,
+    guide:
+      "Write like an energetic builder telling a story. Bold, specific hook — a transformation arc or a hard number. Show the struggle and the lesson. Use rhetorical teasers ('The wild part?') then deliver. Tight, bold-headed takeaways. Light, natural humor and the occasional emoji — never forced. Forward-looking close.",
+  },
+  {
+    id: "academic",
+    name: "Clear academic",
+    blurb: "Rigorous but readable.",
+    tone: "rigorous, structured, plain, didactic",
+    emoji: false,
+    guide:
+      "Write like a great teacher: rigorous but plain. Build from first principles, one step at a time. Define terms, give a concrete example for each abstract point, and state assumptions. Structured and numbered where it helps. No jargon for its own sake, no emoji. End with the general principle.",
+  },
+];
+
 function localRead(): VoiceProfile | null {
   try {
     const raw = window.localStorage.getItem(KEY);

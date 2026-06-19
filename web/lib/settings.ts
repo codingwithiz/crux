@@ -73,7 +73,7 @@ export const MODEL_PRESETS: Record<Provider, string[]> = {
 /** Fired on the window whenever settings are saved, so open views can re-read them. */
 export const SETTINGS_EVENT = "ce:settings";
 
-const DEFAULTS: Settings = { provider: "google", model: DEFAULT_MODELS.google };
+const DEFAULTS: Settings = { provider: "openai", model: DEFAULT_MODELS.openai };
 
 /** Client-only. Reads the user's free/BYOK model settings from localStorage. */
 export function getSettings(): Settings {

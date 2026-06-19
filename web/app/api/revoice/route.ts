@@ -1,48 +1,34 @@
-import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getModel, modelReady } from "@/lib/ai/model";
+import { modelReady } from "@/lib/ai/model";
+import { generateStructured } from "@/lib/ai/generate";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { REVOICE_SYSTEM } from "@/lib/ai/prompts";
 import { voiceBlock } from "@/lib/ai/voice-prompt";
-import type { Settings, Slide, VoiceProfile } from "@/lib/types";
+import type { CarouselSlide } from "@/lib/carousel/design";
+import type { Settings, VoiceProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const KINDS = ["hook", "context", "conventional", "argument", "counter", "sowhat", "cta"] as const;
-const LAYOUTS = ["statement", "stat", "quote", "list", "split"] as const;
-
 const Schema = z.object({
   slides: z
-    .array(
-      z.object({
-        kind: z.enum(KINDS),
-        kicker: z.string(),
-        title: z.string(),
-        body: z.string(),
-        layout: z.enum(LAYOUTS).optional(),
-        bullets: z.array(z.string()).optional(),
-        stat: z.object({ value: z.string(), label: z.string() }).optional(),
-        icon: z.string().optional(),
-      }),
-    )
+    .array(z.object({ headline: z.string(), body: z.string().optional(), kicker: z.string().optional() }))
     .min(1)
     .max(12),
 });
 
 interface Body {
-  slides?: Slide[];
+  slides?: CarouselSlide[];
   settings?: Settings;
   voice?: VoiceProfile;
 }
 
-// Rewrites existing carousel slides in the user's voice, preserving meaning,
-// order, count, and each slide's kind.
+// Rewrites carousel copy (headline/body/kicker) in the user's voice, preserving
+// order, count, and each slide's visual module + data.
 export async function POST(req: Request) {
   const { slides, settings: rawSettings, voice } = (await req.json().catch(() => ({}))) as Body;
-  if (!Array.isArray(slides) || slides.length === 0)
-    return Response.json({ error: "no_slides" }, { status: 400 });
+  if (!Array.isArray(slides) || slides.length === 0) return Response.json({ error: "no_slides" }, { status: 400 });
 
   const settings = await resolveServerSettings(rawSettings);
   const ms = stepModelSettings(settings, "express");
@@ -50,37 +36,22 @@ export async function POST(req: Request) {
 
   const vb = voiceBlock(voice);
   const system = vb ? `${REVOICE_SYSTEM}\n\n${vb}` : REVOICE_SYSTEM;
-
-  const compact = slides.map((s) => ({
-    kind: s.kind,
-    kicker: s.kicker,
-    title: s.title,
-    body: s.body,
-    layout: s.layout,
-    bullets: s.bullets,
-    stat: s.stat,
-    icon: s.icon,
-  }));
+  const compact = slides.map((s) => ({ headline: s.headline, body: s.body, kicker: s.kicker }));
 
   try {
-    const { output } = await generateText({
-      model: getModel(ms),
-      output: Output.object({ schema: Schema }),
+    const output = await generateStructured({
+      ms,
+      schema: Schema,
       system,
-      prompt: `Current slides (JSON):\n${JSON.stringify(compact)}\n\nRewrite them in my voice. Return the same ${slides.length} slides, same order, same kinds, and KEEP each slide's "layout" and any "stat" values. If a slide has "bullets", rewrite the bullet text in my voice but keep the same number of bullets.`,
+      label: "revoice",
+      prompt: `Current slides (JSON):\n${JSON.stringify(compact)}\n\nRewrite them in my voice. Return the same ${slides.length} slides, in the same order. Only change headline, body, and kicker.`,
     });
-
-    // Guard: if the model changed the count, keep the originals to stay safe.
-    if (output.slides.length !== slides.length) {
-      return Response.json({ error: "shape_mismatch" }, { status: 422 });
-    }
-    // Preserve original layout/stat/icon/source if the model dropped them.
-    const merged = output.slides.map((s, i) => ({
-      ...s,
-      layout: s.layout ?? slides[i].layout,
-      stat: s.stat ?? slides[i].stat,
-      icon: s.icon ?? slides[i].icon,
-      source: slides[i].source,
+    if (output.slides.length !== slides.length) return Response.json({ error: "shape_mismatch" }, { status: 422 });
+    const merged: CarouselSlide[] = slides.map((orig, i) => ({
+      ...orig,
+      headline: output.slides[i].headline || orig.headline,
+      body: output.slides[i].body ?? orig.body,
+      kicker: output.slides[i].kicker ?? orig.kicker,
     }));
     return Response.json({ slides: merged });
   } catch (e) {

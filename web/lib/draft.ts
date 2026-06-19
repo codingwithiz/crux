@@ -1,10 +1,11 @@
-import type { Slide } from "./types";
+import type { CarouselSlide } from "./carousel/design";
 
 const KEY = "ce.draft";
 
 export interface Draft {
-  slides: Slide[];
+  slides: CarouselSlide[];
   handle: string;
+  designId?: string;
 }
 
 /** Hand a carousel draft from the conviction flow to the Studio (client-only). */

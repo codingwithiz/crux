@@ -1,7 +1,16 @@
-import type { Carousel, Slide } from "./types";
+import type { Carousel } from "./types";
+import { coerceSlides } from "./carousel/convert";
 import { createClient, supabaseConfigured } from "./supabase/client";
 
 const KEY = "ce.carousels";
+
+// Postgres `id` columns are uuid; legacy localStorage records used nanoid. Coerce
+// so a stray non-uuid id can never crash the insert. (Phase 2 cloud migration owns
+// the persistent remap of any legacy local data.)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toUuid(id: string): string {
+  return UUID_RE.test(id) ? id : crypto.randomUUID();
+}
 
 function localList(): Carousel[] {
   try {
@@ -22,7 +31,7 @@ function localWrite(all: Carousel[]) {
 interface Row {
   id: string;
   title: string;
-  slides: Slide[];
+  slides: unknown[];
   theme_id: string;
   handle: string;
   created_at: string;
@@ -32,8 +41,8 @@ function rowToCarousel(r: Row): Carousel {
   return {
     id: r.id,
     title: r.title,
-    slides: r.slides ?? [],
-    themeId: r.theme_id,
+    slides: coerceSlides(r.slides ?? []),
+    designId: r.theme_id,
     handle: r.handle,
     createdAt: r.created_at,
     imageUrls: r.image_urls ?? undefined,
@@ -89,11 +98,11 @@ export async function saveCarousel(c: Carousel): Promise<void> {
     .from("carousels")
     .upsert(
       {
-        id: c.id,
+        id: toUuid(c.id),
         user_id: uid,
         title: c.title,
         slides: c.slides,
-        theme_id: c.themeId,
+        theme_id: c.designId,
         handle: c.handle,
         created_at: c.createdAt,
         image_urls: c.imageUrls ?? [],

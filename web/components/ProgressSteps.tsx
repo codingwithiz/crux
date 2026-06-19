@@ -9,9 +9,15 @@ import { useEffect, useState } from "react";
 export function ProgressSteps({ steps, intervalMs = 1600 }: { steps: string[]; intervalMs?: number }) {
   const [i, setI] = useState(0);
 
-  useEffect(() => {
+  // Reset when the set of steps actually changes. Done during render (React's
+  // supported "adjust state on prop change" pattern, keyed on content not array
+  // reference) so a caller passing a fresh array literal each render can't churn.
+  const key = steps.join("");
+  const [prevKey, setPrevKey] = useState(key);
+  if (key !== prevKey) {
+    setPrevKey(key);
     setI(0);
-  }, [steps]);
+  }
 
   useEffect(() => {
     if (i >= steps.length - 1) return;

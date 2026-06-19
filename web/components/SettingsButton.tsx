@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   getSettings,
   saveSettings,
-  settingsReady,
   DEFAULT_MODELS,
   PROVIDER_SHORT,
+  PROVIDER_LABELS,
   MODEL_CATALOG,
   TIER_LABEL,
   type ModelOption,
@@ -16,18 +17,30 @@ import type { Provider, Settings } from "@/lib/types";
 
 const PROVIDERS: Provider[] = ["google", "openai", "anthropic", "ollama"];
 
+type CloudKey = "google" | "openai" | "anthropic";
+type ServerKeys = Record<CloudKey, boolean>;
+
 interface ServerStatus {
   configured?: boolean;
   signedIn?: boolean;
   google?: boolean;
   openai?: boolean;
   anthropic?: boolean;
+  /** Which providers have a shared key on the server (so the key field is optional). */
+  serverKeys?: ServerKeys;
 }
 
-type CloudKey = "google" | "openai" | "anthropic";
 const CLOUD_KEYABLE: CloudKey[] = ["google", "openai", "anthropic"];
 const isCloudKey = (p?: Provider): p is CloudKey =>
   p === "google" || p === "openai" || p === "anthropic";
+
+/** Can this provider actually run? Ollama always; otherwise a user key OR a server key. */
+function providerReady(s: Settings, srv: ServerStatus | null): boolean {
+  if (s.provider === "ollama") return true;
+  if (s.apiKey && s.apiKey.trim()) return true;
+  if (isCloudKey(s.provider)) return Boolean(srv?.serverKeys?.[s.provider]);
+  return false;
+}
 
 const tierColor: Record<ModelOption["tier"], string> = {
   fast: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10",
@@ -37,35 +50,48 @@ const tierColor: Record<ModelOption["tier"], string> = {
 
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
-  const [s, setS] = useState<Settings>({ provider: "google", model: DEFAULT_MODELS.google });
-  const [ready, setReady] = useState(true);
+  const [s, setS] = useState<Settings>({ provider: "openai", model: DEFAULT_MODELS.openai });
   const [server, setServer] = useState<ServerStatus | null>(null);
   const [cloudMsg, setCloudMsg] = useState<string | null>(null);
   const [savingCloud, setSavingCloud] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
 
+  // Status dot — derived, not stored. Green once the provider can actually run.
+  const ready = providerReady(s, server);
+
+  // Load saved settings on mount (localStorage is client-only).
   useEffect(() => {
     const cur = getSettings();
     setS(cur);
-    setReady(settingsReady(cur));
     setAdvOpen(Boolean(cur.adversaryProvider));
-    if (open) {
-      setCloudMsg(null);
-      fetch("/api/secrets")
-        .then((r) => r.json())
-        .then((j: ServerStatus) => setServer(j))
-        .catch(() => setServer(null));
-    }
+  }, []);
+
+  // Fetch server status on mount and whenever the dialog opens (refresh after a
+  // key save). Tells us which providers have a shared server key.
+  useEffect(() => {
+    fetch("/api/secrets")
+      .then((r) => r.json())
+      .then((j: ServerStatus) => setServer(j))
+      .catch(() => setServer(null));
   }, [open]);
 
   function update(patch: Partial<Settings>) {
     setS((prev) => {
       const next = { ...prev, ...patch };
-      if (patch.provider && patch.model === undefined) next.model = DEFAULT_MODELS[patch.provider];
-      if (patch.adversaryProvider !== undefined && patch.adversaryModel === undefined) {
-        next.adversaryModel = patch.adversaryProvider
-          ? DEFAULT_MODELS[patch.adversaryProvider]
-          : undefined;
+      // Switching the default provider: default its model and clear the key
+      // field (the previous provider's key won't authenticate the new one).
+      if (patch.provider && patch.provider !== prev.provider) {
+        if (patch.model === undefined) next.model = DEFAULT_MODELS[patch.provider];
+        if (patch.apiKey === undefined) next.apiKey = undefined;
+      }
+      // Same for the Adversary override.
+      if (patch.adversaryProvider !== undefined && patch.adversaryProvider !== prev.adversaryProvider) {
+        if (patch.adversaryModel === undefined) {
+          next.adversaryModel = patch.adversaryProvider
+            ? DEFAULT_MODELS[patch.adversaryProvider]
+            : undefined;
+        }
+        if (patch.adversaryApiKey === undefined) next.adversaryApiKey = undefined;
       }
       return next;
     });
@@ -74,7 +100,6 @@ export function SettingsButton() {
   function save() {
     const next = advOpen ? s : { ...s, adversaryProvider: undefined, adversaryModel: undefined, adversaryApiKey: undefined };
     saveSettings(next);
-    setReady(settingsReady(next));
     setOpen(false);
   }
 
@@ -113,24 +138,30 @@ export function SettingsButton() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setCloudMsg(null);
+          setOpen(true);
+        }}
         className="ml-1 rounded-md border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
       >
         <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-accent"}`} />
         Model
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setOpen(false)}>
+      {open && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4"
+          onClick={() => setOpen(false)}
+        >
           <div
-            className="ce-fade-up flex max-h-[88vh] w-full max-w-md flex-col rounded-xl border border-line bg-surface"
+            className="ce-fade-up my-auto flex max-h-[88dvh] w-full max-w-md flex-col rounded-xl border border-line bg-surface shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-line p-5">
               <h2 className="text-lg font-semibold">Model settings</h2>
               <p className="mt-1 text-sm text-muted">
-                Free by default (Gemini). Pick a faster or smarter model, or bring your own key. Used
-                for Synthesize · Curator · Carousel.
+                Defaults to OpenAI (server key). Pick a faster or smarter model, switch to free Gemini,
+                or bring your own key. Used for Synthesize · Curator · Carousel.
               </p>
             </div>
 
@@ -140,6 +171,7 @@ export function SettingsButton() {
                 model={s.model}
                 apiKey={s.apiKey}
                 ollamaBaseURL={s.ollamaBaseURL}
+                serverKeys={server?.serverKeys}
                 onProvider={(p) => update({ provider: p })}
                 onModel={(m) => update({ model: m })}
                 onKey={(k) => update({ apiKey: k })}
@@ -163,6 +195,7 @@ export function SettingsButton() {
                       model={s.adversaryModel}
                       apiKey={s.adversaryApiKey}
                       ollamaBaseURL={s.ollamaBaseURL}
+                      serverKeys={server?.serverKeys}
                       onProvider={(p) => update({ adversaryProvider: p })}
                       onModel={(m) => update({ adversaryModel: m })}
                       onKey={(k) => update({ adversaryApiKey: k })}
@@ -212,11 +245,6 @@ export function SettingsButton() {
                     : "same as default"}
                 </span>
               </p>
-              {s.provider === "google" && (
-                <p className="mt-2 text-xs text-muted">
-                  Free key: aistudio.google.com/app/apikey — 1,500 requests/day, no card.
-                </p>
-              )}
             </div>
 
             <div className="flex justify-end gap-2 border-t border-line p-4">
@@ -231,7 +259,8 @@ export function SettingsButton() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
@@ -242,6 +271,7 @@ function ModelChooser({
   model,
   apiKey,
   ollamaBaseURL,
+  serverKeys,
   onProvider,
   onModel,
   onKey,
@@ -252,6 +282,7 @@ function ModelChooser({
   model?: string;
   apiKey?: string;
   ollamaBaseURL?: string;
+  serverKeys?: ServerKeys;
   onProvider: (p: Provider) => void;
   onModel: (m: string) => void;
   onKey: (k: string) => void;
@@ -260,6 +291,7 @@ function ModelChooser({
 }) {
   const options = MODEL_CATALOG[provider] ?? [];
   const known = options.some((o) => o.id === model);
+  const hasServerKey = isCloudKey(provider) && Boolean(serverKeys?.[provider]);
 
   return (
     <div>
@@ -278,6 +310,7 @@ function ModelChooser({
           </button>
         ))}
       </div>
+      <p className="mt-1.5 text-xs text-muted">{PROVIDER_LABELS[provider]}</p>
 
       <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">Model</label>
       <div className="mt-1.5 space-y-2">
@@ -311,16 +344,32 @@ function ModelChooser({
 
       {provider !== "ollama" ? (
         <>
-          <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">
-            API key {provider === "google" && <span className="font-normal">— free from Google AI Studio</span>}
-          </label>
+          <div className="mt-3 flex items-center justify-between">
+            <label className="text-xs font-medium uppercase tracking-wide text-muted">API key</label>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                hasServerKey
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : "border-accent/40 bg-accent/10 text-accent"
+              }`}
+            >
+              {hasServerKey ? "Optional" : "Required"}
+            </span>
+          </div>
           <input
             type="password"
             value={apiKey ?? ""}
             onChange={(e) => onKey(e.target.value)}
-            placeholder={provider === "google" ? "leave blank to use the free server key" : "sk-…"}
+            placeholder={hasServerKey ? "leave blank to use the shared server key" : "paste your key (sk-…)"}
             className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
           />
+          <p className="mt-1.5 text-xs text-muted">
+            {hasServerKey
+              ? "A shared server key is configured — leave blank to use it, or paste your own."
+              : provider === "google"
+                ? "Free from Google AI Studio (aistudio.google.com/app/apikey) — 1,500 requests/day, no card."
+                : `Bring your own ${PROVIDER_SHORT[provider]} key to use this provider.`}
+          </p>
         </>
       ) : (
         <>

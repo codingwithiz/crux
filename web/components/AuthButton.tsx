@@ -4,24 +4,25 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { migrateLocalToCloud } from "@/lib/migrate";
 
 export function AuthButton() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  // Lazy init avoids a synchronous setState in the effect (cascading renders).
+  const [ready, setReady] = useState(() => !supabaseConfigured());
 
   useEffect(() => {
-    if (!supabaseConfigured()) {
-      setReady(true);
-      return;
-    }
+    if (!supabaseConfigured()) return;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       setEmail(data.user?.email ?? null);
       setReady(true);
+      if (data.user) void migrateLocalToCloud();
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       setEmail(session?.user?.email ?? null);
+      if (event === "SIGNED_IN") void migrateLocalToCloud();
     });
     return () => sub.subscription.unsubscribe();
   }, []);

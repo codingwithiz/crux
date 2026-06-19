@@ -2,7 +2,7 @@ import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { getModel, modelReady } from "@/lib/ai/model";
 import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
-import { ADVERSARY_SYSTEM } from "@/lib/ai/prompts";
+import { ADVERSARY_SYSTEM, COACH_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -13,11 +13,24 @@ interface Body {
   synthesis?: Synthesis;
   take?: string;
   settings?: Settings;
+  /** "coach" = supportive (default, helps you find a take); "spar" = hard adversary. */
+  mode?: "coach" | "spar";
+}
+
+// Fastest reasoning effort accepted by each OpenAI model — they disagree:
+// gpt-5.5 accepts "none" (rejects "minimal"); gpt-5-mini/nano accept "minimal"
+// (reject "none"). "low" is the safe fallback for any other/custom id.
+function fastReasoningEffort(model?: string): "none" | "minimal" | "low" {
+  const m = (model ?? "gpt-5.5").toLowerCase();
+  if (m.includes("mini") || m.includes("nano")) return "minimal";
+  if (m.startsWith("gpt-5.5")) return "none";
+  return "low";
 }
 
 export async function POST(req: Request) {
-  const { messages, synthesis, take, settings: rawSettings } = (await req.json()) as Body;
+  const { messages, synthesis, take, settings: rawSettings, mode } = (await req.json()) as Body;
   const settings = await resolveServerSettings(rawSettings);
+  const baseSystem = mode === "spar" ? ADVERSARY_SYSTEM : COACH_SYSTEM;
 
   const ms = stepModelSettings(settings, "adversary");
   if (!modelReady(ms)) {
@@ -33,11 +46,12 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: getModel(ms),
-    system: context ? `${ADVERSARY_SYSTEM}\n\n${context}` : ADVERSARY_SYSTEM,
+    system: context ? `${baseSystem}\n\n${context}` : baseSystem,
     messages: await convertToModelMessages(messages),
-    // Keep the back-and-forth snappy. Only affects OpenAI reasoning models
-    // (e.g. gpt-5.5); ignored by others.
-    providerOptions: { openai: { reasoningEffort: "low" } },
+    // Keep the back-and-forth snappy: minimize hidden reasoning (value is
+    // model-specific, see fastReasoningEffort) and keep replies terse. Only
+    // affects OpenAI reasoning models; ignored by other providers.
+    providerOptions: { openai: { reasoningEffort: fastReasoningEffort(ms.model), textVerbosity: "low" } },
   });
 
   return result.toUIMessageStreamResponse();
