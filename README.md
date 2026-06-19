@@ -1,6 +1,23 @@
+<div align="center">
+
 # Agentic Conviction Content Engine
 
 **Turn AI news — or a raw thought — into a *defensible* opinion, then a world‑class social carousel that sounds like you.**
+
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![AI SDK](https://img.shields.io/badge/AI%20SDK-v6-000)
+![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcodingwithiz%2FAgentic-Conviction-Content-Engine&root-directory=web&project-name=conviction-engine&repository-name=Agentic-Conviction-Content-Engine&env=OPENAI_API_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=An%20AI%20provider%20key%20(plus%20optional%20Supabase%20cloud%20sync))
+
+_One carousel, restyled across the built‑in design system — every topic gets its own look:_
+
+![Demo — one carousel restyled across the built-in design system](docs/demo.gif)
+
+</div>
 
 Most AI writing tools generate your opinion *for* you. That's slop. This one is built on the opposite bet: the value isn't the content, it's the **conviction** behind it. The AI is a thinking partner that *sharpens your view* and never writes it for you — then expresses your committed take as a studio‑grade carousel.
 
@@ -108,6 +125,16 @@ SUPABASE_SERVICE_ROLE_KEY=...  # for the daily radar cron only
 ```
 
 > `.env.local` is gitignored. For Google sign‑in, enable the Google provider in your Supabase dashboard and add `…/auth/callback` to the allowed redirect URLs. See [`web/SUPABASE.md`](web/SUPABASE.md) for the cloud setup.
+
+### Deploy
+
+One click with the **Deploy with Vercel** button at the top — it preconfigures `web/` as the project root and prompts for the env keys. Or via CLI:
+
+```bash
+cd web && vercel --prod
+```
+
+> After deploying, add your production URL's `…/auth/callback` to the **Supabase → Authentication → URL Configuration** redirect allowlist (and to your Google OAuth client) so sign‑in works on the live domain.
 
 ### Useful commands
 

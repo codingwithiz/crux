@@ -28,9 +28,9 @@ interface HNHit {
   points: number;
   objectID: string;
 }
-async function fetchHN(): Promise<NewsItem[]> {
+async function fetchHN(query = "AI"): Promise<NewsItem[]> {
   const d = (await jget(
-    "https://hn.algolia.com/api/v1/search?tags=story&query=AI&hitsPerPage=10",
+    `https://hn.algolia.com/api/v1/search?tags=story&query=${encodeURIComponent(query)}&hitsPerPage=10`,
   )) as { hits?: HNHit[] };
   return (d.hits ?? [])
     .filter((h) => h.title)
@@ -212,11 +212,20 @@ const RSS_FEEDS: { url: string; label: string }[] = [
   { url: "https://blog.google/technology/ai/rss/", label: "Google AI" },
   { url: "https://deepmind.google/blog/rss.xml", label: "DeepMind" },
   { url: "https://ai.meta.com/blog/rss/", label: "Meta AI" },
+  { url: "https://www.anthropic.com/rss.xml", label: "Anthropic" },
+  { url: "https://huggingface.co/blog/feed.xml", label: "Hugging Face" },
+  { url: "https://www.microsoft.com/en-us/research/feed/", label: "Microsoft Research" },
+  { url: "https://blogs.nvidia.com/feed/", label: "NVIDIA" },
+  { url: "https://mistral.ai/news/rss.xml", label: "Mistral" },
+  { url: "https://arstechnica.com/ai/feed/", label: "Ars Technica" },
+  { url: "https://simonwillison.net/atom/everything/", label: "Simon Willison" },
+  { url: "https://www.latent.space/feed", label: "Latent Space" },
+  { url: "https://thegradient.pub/rss/", label: "The Gradient" },
 ];
 
 /** Drop near-duplicate items and cap how many each source contributes. */
 function dedupe(items: NewsItem[]): NewsItem[] {
-  const cap: Partial<Record<NewsSource, number>> = { news: 10, arxiv: 8 };
+  const cap: Partial<Record<NewsSource, number>> = { news: 14, arxiv: 8, reddit: 8, hn: 8 };
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   const seen = new Set<string>();
   const count: Record<string, number> = {};
@@ -246,7 +255,8 @@ function interleave(arrays: NewsItem[][]): NewsItem[] {
 export async function getNews(): Promise<NewsItem[]> {
   const [coreS, feedS] = await Promise.all([
     Promise.allSettled([
-      fetchHN(),
+      fetchHN("AI"),
+      fetchHN("LLM"),
       fetchHF(),
       fetchGitHub(),
       fetchReddit("MachineLearning"),
@@ -254,6 +264,8 @@ export async function getNews(): Promise<NewsItem[]> {
       fetchReddit("singularity"),
       fetchReddit("OpenAI"),
       fetchReddit("artificial"),
+      fetchReddit("StableDiffusion"),
+      fetchReddit("ChatGPT"),
       fetchLobsters(),
       fetchArxiv(),
     ]),

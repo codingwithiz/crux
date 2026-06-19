@@ -109,7 +109,7 @@ export default function LabPage() {
   function Card({ slide, i, design }: { slide: CarouselSlide; i: number; design: ReturnType<typeof getDesign> }) {
     return (
       <div className="flex flex-col gap-2">
-        <div style={{ width: 1080 * scale, height: 1350 * scale, overflow: "hidden", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.35)" }}>
+        <div id={`demoframe-${i}`} style={{ width: 1080 * scale, height: 1350 * scale, overflow: "hidden", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.35)" }}>
           <div style={{ width: 1080, height: 1350, transform: `scale(${scale})`, transformOrigin: "top left" }}>
             <SlideCanvas
               slide={slide}
