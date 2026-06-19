@@ -116,7 +116,7 @@ export default function LabPage() {
               design={design}
               index={i}
               total={5}
-              handle="@itsnextwork"
+              handle="@ingzhen"
               innerRef={(el) => { refs.current[i] = el; }}
             />
           </div>
@@ -131,7 +131,7 @@ export default function LabPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
       <h1 className="text-2xl font-bold">Carousel engine lab</h1>
-      <p className="mt-1 text-sm text-muted">HTML/CSS SlideCanvas · client export · @itsnextwork aesthetic.</p>
+      <p className="mt-1 text-sm text-muted">HTML/CSS SlideCanvas · client export · editorial aesthetic.</p>
 
       <div className="mt-4 flex gap-2">
         {DESIGN_IDS.map((id) => (
