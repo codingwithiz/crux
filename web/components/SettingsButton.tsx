@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Check, Circle } from "lucide-react";
 import {
   getSettings,
   saveSettings,
@@ -216,11 +217,11 @@ export function SettingsButton() {
                     {CLOUD_KEYABLE.map((p) => (
                       <span
                         key={p}
-                        className={`rounded-md border px-2 py-0.5 font-mono text-xs ${
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-xs ${
                           server[p] ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-line text-muted"
                         }`}
                       >
-                        {server[p] ? "✓" : "○"} {p}
+                        {server[p] ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />} {p}
                       </span>
                     ))}
                   </div>

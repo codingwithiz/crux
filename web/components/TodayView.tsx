@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Flame, Check, ArrowLeft } from "lucide-react";
 import { ConvictionFlow } from "./ConvictionFlow";
 import { getLedger } from "@/lib/ledger";
 import { ledgerStats, dailyStreak } from "@/lib/ledger-stats";
@@ -24,23 +25,6 @@ export function TodayView() {
   const [ledger, setLedger] = useState<Thesis[] | null>(null);
   const [pick, setPick] = useState<NewsItem | null>(null);
   const [started, setStarted] = useState(false);
-  const [showTip, setShowTip] = useState(false);
-
-  useEffect(() => {
-    try {
-      setShowTip(!window.localStorage.getItem("ce.guide.seen"));
-    } catch {
-      /* ignore */
-    }
-  }, []);
-  function dismissTip() {
-    try {
-      window.localStorage.setItem("ce.guide.seen", "1");
-    } catch {
-      /* ignore */
-    }
-    setShowTip(false);
-  }
 
   useEffect(() => {
     void (async () => {
@@ -94,8 +78,11 @@ export function TodayView() {
   if (started && pick) {
     return (
       <div>
-        <button onClick={() => setStarted(false)} className="mb-4 text-sm text-muted hover:text-fg">
-          ← Back to Today
+        <button
+          onClick={() => setStarted(false)}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Today
         </button>
         <div className="mb-5 rounded-lg border border-line bg-surface/40 p-3">
           <span className="font-mono text-xs text-accent">{SOURCE_LABELS[pick.source]}</span>
@@ -119,18 +106,35 @@ export function TodayView() {
 
   return (
     <div className="space-y-6">
-      {showTip && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-cool/40 bg-cool/10 px-4 py-2.5 text-sm text-cool">
-          <span>
-            New here? The{" "}
-            <Link href="/guide" className="font-medium underline underline-offset-4">
-              2-minute guide
-            </Link>{" "}
-            shows how to turn one article into a defended take.
-          </span>
-          <button onClick={dismissTip} className="shrink-0 rounded-md px-2 py-1 text-xs hover:underline">
-            Got it
-          </button>
+      {ledger && stats.total === 0 && (
+        <div className="rounded-2xl border border-cool/40 bg-cool/5 p-5">
+          <p className="font-mono text-xs uppercase tracking-wide text-cool">Welcome</p>
+          <h2 className="mt-1 text-lg font-semibold">Form your first conviction — in three steps</h2>
+          <ol className="mt-3 space-y-2.5 text-sm">
+            {[
+              "Pick a news item or type a raw thought — we break down the real source for you.",
+              "Talk it through with Coach (optional). It never writes your opinion — it sharpens it.",
+              "Commit your take. It becomes a studio-grade carousel in your voice.",
+            ].map((s, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cool/40 bg-cool/10 text-xs font-semibold text-cool">
+                  {i + 1}
+                </span>
+                <span className="text-fg">{s}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Link
+              href="/think"
+              className="ce-press inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+            >
+              Start now
+            </Link>
+            <Link href="/guide" className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
+              or read the 2-minute guide
+            </Link>
+          </div>
         </div>
       )}
 
@@ -142,14 +146,22 @@ export function TodayView() {
             {dateLabel}
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">
-            {doneToday ? "Conviction formed today ✓" : "Form one conviction today"}
+            {doneToday ? (
+              <span className="inline-flex items-center gap-2">
+                Conviction formed today <Check className="h-6 w-6 text-emerald-400" />
+              </span>
+            ) : (
+              "Form one conviction today"
+            )}
           </h1>
           <p className="mt-1 text-muted">
             Ten minutes of real thinking beats a day of scrolling. One item, one defended take.
           </p>
         </div>
         <div className="rounded-xl border border-line bg-surface/40 px-4 py-3 text-center">
-          <p className="text-2xl font-bold text-accent">🔥 {streak}</p>
+          <p className="flex items-center justify-center gap-1.5 text-2xl font-bold text-accent">
+            <Flame className="h-5 w-5" /> {streak}
+          </p>
           <p className="text-xs text-muted">day streak</p>
         </div>
       </div>

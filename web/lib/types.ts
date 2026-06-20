@@ -146,6 +146,8 @@ export interface Carousel {
   designId: string;
   handle: string;
   createdAt: string;
+  /** Planned publish date (ISO) — drives the Queue. */
+  scheduledAt?: string;
   /** Public URLs of the rendered PNGs in Supabase Storage (signed-in users). */
   imageUrls?: string[];
 }

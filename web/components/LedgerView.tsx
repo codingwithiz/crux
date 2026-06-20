@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BookMarked, ExternalLink, Share2 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { RepurposeModal } from "@/components/RepurposeModal";
+import { Skeleton } from "@/components/Skeleton";
 import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
 import { ledgerStats, calibration } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
 import { expressSlides } from "@/lib/express-client";
+import { getBrandKit } from "@/lib/brand-kit";
 import type { Confidence, Outcome, Thesis } from "@/lib/types";
 
 const CONF_COLOR: Record<Confidence, string> = {
@@ -43,6 +48,7 @@ export function LedgerView() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [repTo, setRepTo] = useState<Thesis | null>(null);
 
   useEffect(() => {
     getLedger().then(setItems);
@@ -71,8 +77,9 @@ export function LedgerView() {
   async function makeCarousel(t: Thesis) {
     setBusyId(t.id);
     try {
-      const { slides, designId } = await expressSlides(t, "@you");
-      saveDraft({ slides, handle: "@you", designId });
+      const handle = getBrandKit().handle;
+      const { slides, designId } = await expressSlides(t, handle);
+      saveDraft({ slides, handle, designId });
       router.push("/studio");
     } finally {
       setBusyId(null);
@@ -97,15 +104,22 @@ export function LedgerView() {
     setItems(await getLedger());
   }
 
-  if (!items) return <p className="text-muted">Loading…</p>;
+  if (!items)
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-20" />
+        ))}
+      </div>
+    );
   if (!items.length)
     return (
-      <div className="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-        No committed theses yet.{" "}
-        <a href="/think" className="text-accent underline-offset-4 hover:underline">
-          Form your first one →
-        </a>
-      </div>
+      <EmptyState
+        icon={BookMarked}
+        title="No convictions yet"
+        description="Every opinion you commit is saved here with a calibration score — so you learn whether you were right when you were confident."
+        cta={{ href: "/think", label: "Form your first conviction" }}
+      />
     );
 
   return (
@@ -257,7 +271,7 @@ export function LedgerView() {
                             rel="noopener noreferrer"
                             className="text-cool underline-offset-4 hover:underline"
                           >
-                            {t.source.title} ↗
+                            {t.source.title} <ExternalLink className="inline h-3 w-3 align-middle" />
                           </a>
                         ) : (
                           t.source.title
@@ -293,6 +307,12 @@ export function LedgerView() {
                     {busyId === t.id ? "Building…" : "Make carousel"}
                   </button>
                   <button
+                    onClick={() => setRepTo(t)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-fg hover:bg-surface"
+                  >
+                    <Share2 className="h-3.5 w-3.5" /> Repurpose
+                  </button>
+                  <button
                     onClick={() => setEditId(t.id)}
                     className="rounded-lg border border-line px-3 py-1.5 text-xs text-fg hover:bg-surface"
                   >
@@ -325,6 +345,8 @@ export function LedgerView() {
           )}
         </div>
       )}
+
+      {repTo && <RepurposeModal thesis={repTo} onClose={() => setRepTo(null)} />}
     </div>
   );
 }

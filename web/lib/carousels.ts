@@ -35,6 +35,7 @@ interface Row {
   theme_id: string;
   handle: string;
   created_at: string;
+  scheduled_at?: string | null;
   image_urls?: string[] | null;
 }
 function rowToCarousel(r: Row): Carousel {
@@ -45,6 +46,7 @@ function rowToCarousel(r: Row): Carousel {
     designId: r.theme_id,
     handle: r.handle,
     createdAt: r.created_at,
+    scheduledAt: r.scheduled_at ?? undefined,
     imageUrls: r.image_urls ?? undefined,
   };
 }
@@ -105,6 +107,7 @@ export async function saveCarousel(c: Carousel): Promise<void> {
         theme_id: c.designId,
         handle: c.handle,
         created_at: c.createdAt,
+        scheduled_at: c.scheduledAt ?? null,
         image_urls: c.imageUrls ?? [],
       },
       { onConflict: "id" },
@@ -112,6 +115,13 @@ export async function saveCarousel(c: Carousel): Promise<void> {
   // Don't pretend it saved — let the Studio show the real reason (RLS, missing
   // migration, etc.) so a "saved" carousel can't silently vanish from the Library.
   if (error) throw new Error(error.message);
+}
+
+/** Set or clear a carousel's planned publish date (drives the Queue). */
+export async function scheduleCarousel(id: string, scheduledAt: string | undefined): Promise<void> {
+  const c = await getCarousel(id);
+  if (!c) return;
+  await saveCarousel({ ...c, scheduledAt });
 }
 
 /**

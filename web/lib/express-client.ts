@@ -30,6 +30,32 @@ export async function fillModule(slide: CarouselSlide, type: string): Promise<Sl
  * grounded in the thesis's synthesis. Falls back to a deterministic skeleton
  * when there's no model key or the call fails — so it never blocks.
  */
+export interface Repurposed {
+  thread: string[];
+  linkedin: string;
+}
+
+/**
+ * Re-express a committed thesis as an X thread + a LinkedIn post (same opinion,
+ * the user's voice, grounded only in the thesis). Throws on no-model/failure so
+ * the caller can surface a clear message.
+ */
+export async function repurpose(thesis: Thesis): Promise<Repurposed> {
+  const voice = effectiveVoice(await getVoice());
+  const res = await fetch("/api/repurpose", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ thesis, settings: getSettings(), voice }),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(
+      j.error === "no_model" ? "No model key — add one in the Model menu (top-right)." : j.error || "Repurpose failed",
+    );
+  }
+  return (await res.json()) as Repurposed;
+}
+
 export async function expressSlides(
   thesis: Thesis,
   handle = "@you",

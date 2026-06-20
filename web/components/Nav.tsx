@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Menu, X, ChevronDown, HelpCircle, Search } from "lucide-react";
 import { SettingsButton } from "./SettingsButton";
 import { AuthButton } from "./AuthButton";
+import { LogoMark } from "./Logo";
+import { cn } from "@/lib/utils";
 
 const CREATE = [
   { href: "/news", label: "From the news" },
@@ -14,6 +17,7 @@ const LIBRARY = [
   { href: "/ledger", label: "Ledger" },
   { href: "/gallery", label: "Carousels" },
   { href: "/studio", label: "Studio" },
+  { href: "/queue", label: "Queue" },
 ];
 // Flattened list for the mobile menu.
 const ALL_LINKS = [
@@ -37,8 +41,8 @@ export function Nav() {
     <header className="sticky top-0 z-40 border-b border-line bg-ink/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent" />
-          Conviction<span className="text-muted">Engine</span>
+          <LogoMark className="h-[22px] w-[22px]" />
+          <span>Conviction<span className="text-muted">Engine</span></span>
         </Link>
 
         {/* Desktop nav */}
@@ -47,7 +51,17 @@ export function Nav() {
           <NavGroup label="Create" items={CREATE} isActive={isActive} />
           <NavGroup label="Library" items={LIBRARY} isActive={isActive} />
           <Link href="/voice" className={`${base} ${isActive("/voice") ? activeCls : idleCls}`}>Voice</Link>
-          <Link href="/guide" title="How it works" className={`${base} ${isActive("/guide") ? activeCls : idleCls}`}>?</Link>
+          <Link href="/guide" title="How it works" aria-label="How it works" className={`${base} ${isActive("/guide") ? activeCls : idleCls}`}><HelpCircle className="h-4 w-4" /></Link>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("ce:command-open"))}
+            aria-label="Open command menu"
+            title="Command menu (Ctrl/⌘ K)"
+            className={`${base} ${idleCls} hidden items-center gap-1.5 lg:flex`}
+          >
+            <Search className="h-3.5 w-3.5" />
+            <kbd className="font-mono text-[10px] tracking-wide text-muted">⌘K</kbd>
+          </button>
           <SettingsButton />
           <AuthButton />
         </nav>
@@ -61,7 +75,7 @@ export function Nav() {
             aria-expanded={mobileOpen}
             className="rounded-md border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
           >
-            {mobileOpen ? "✕" : "☰"}
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
@@ -114,7 +128,7 @@ function NavGroup({
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className={`${base} ${groupActive ? activeCls : idleCls}`}>
-        {label} <span className="text-[10px]">▾</span>
+        {label} <ChevronDown className={cn("ml-0.5 inline h-3.5 w-3.5 opacity-70 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-1 min-w-[180px] rounded-lg border border-line bg-surface p-1 shadow-2xl">

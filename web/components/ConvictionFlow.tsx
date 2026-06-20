@@ -9,10 +9,15 @@ import { stepModelSettings, type Step as ModelStep } from "@/lib/ai/routing";
 import { addThesis } from "@/lib/ledger";
 import { expressSlides } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
+import { getBrandKit } from "@/lib/brand-kit";
+import { INSPIRATION } from "@/lib/inspiration";
 import { findRelated, type RelatedThesis } from "@/lib/related";
 import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
 import { Markdown } from "./Markdown";
 import { ProgressSteps } from "./ProgressSteps";
+import { MicButton } from "./MicButton";
+import { Check, AlertTriangle, Lightbulb, Sparkles, Copy, ExternalLink, Square } from "lucide-react";
+import { toast } from "sonner";
 import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
 
 type Step = "input" | "synth" | "adversary" | "commit";
@@ -36,6 +41,13 @@ const STEP_WHY: Record<Step, string> = {
 const SYNTH_STEPS_NEWS = ["Fetching the source", "Reading the article", "Finding the key debate", "Writing your questions"];
 const SYNTH_STEPS_THOUGHT = ["Reading your thought", "Finding the key debate", "Writing your questions"];
 const ADVERSARY_THINKING_STEPS = ["Reading your point", "Steelmanning the other side", "Finding the hard question"];
+
+// Instant reply-starters (anti-slop: they prefill a stem the user finishes).
+const FOLLOWUPS = [
+  { label: "Push back", text: "I push back: " },
+  { label: "Concede + refine", text: "Fair point. I'd refine my take to: " },
+  { label: "My evidence", text: "My evidence is: " },
+];
 
 const SYNTH_ROWS: { key: keyof Synthesis; label: string }[] = [
   { key: "happened", label: "What happened" },
@@ -130,7 +142,7 @@ export function ConvictionFlow({
   // chat's internal state; instead we send the per-message context as the
   // request `body` at each sendMessage call (see adversaryBody()).
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/adversary" }), []);
-  const { messages, sendMessage, status, setMessages, error: chatError } = useChat({ transport });
+  const { messages, sendMessage, status, setMessages, stop, error: chatError } = useChat({ transport });
   const [chatInput, setChatInput] = useState("");
   const [adversaryMode, setAdversaryMode] = useState<"coach" | "spar">("coach");
   const [hints, setHints] = useState<string[]>([]);
@@ -140,9 +152,18 @@ export function ConvictionFlow({
   const [draftsLoading, setDraftsLoading] = useState(false);
   const seeded = useRef(false);
   const thinking = status === "submitted" || status === "streaming";
+  const awaiting = status === "submitted"; // before the first token arrives
+  const streaming = status === "streaming";
 
   function msgText(m: (typeof messages)[number]): string {
     return m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+  }
+
+  function copyLastReply() {
+    const last = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!last) return;
+    void navigator.clipboard.writeText(msgText(last));
+    toast.success("Copied the reply");
   }
 
   async function getHints() {
@@ -361,8 +382,9 @@ export function ConvictionFlow({
     };
     await addThesis(thesis);
 
-    const { slides, designId } = await expressSlides(thesis, "@you");
-    saveDraft({ slides, handle: "@you", designId });
+    const handle = getBrandKit().handle;
+    const { slides, designId } = await expressSlides(thesis, handle);
+    saveDraft({ slides, handle, designId });
     clearFlow();
     router.push("/studio");
   }
@@ -428,6 +450,9 @@ export function ConvictionFlow({
             placeholder="e.g. AI agents will make most SaaS dashboards obsolete within two years."
             className="mt-2 w-full resize-none rounded-xl border border-line bg-surface/40 px-4 py-3 text-base outline-none focus:border-accent"
           />
+          <div className="mt-2">
+            <MicButton onText={(t) => setInput((p) => (p ? `${p} ${t}` : t))} />
+          </div>
           <button
             onClick={() => runSynthesis(input)}
             disabled={loading || !input.trim()}
@@ -435,6 +460,22 @@ export function ConvictionFlow({
           >
             {loading ? "Synthesizing…" : "Synthesize →"}
           </button>
+
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="text-xs text-muted">Blank page? Start from a spark — then make it your own:</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {INSPIRATION.slice(0, 6).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setInput(s)}
+                  className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:border-cool/50 hover:bg-surface hover:text-fg"
+                  title="Use as a starting point — edit it into your own words"
+                >
+                  {s.length > 52 ? s.slice(0, 50) + "…" : s}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -447,12 +488,12 @@ export function ConvictionFlow({
               {mode === "news" && (
                 <div className="mb-3 flex items-center gap-2 text-xs">
                   {synthesis.grounded ? (
-                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
-                      ✓ Grounded in the source
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
+                      <Check className="h-3 w-3" /> Grounded in the source
                     </span>
                   ) : (
-                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
-                      ⚠ From the model&rsquo;s knowledge — verify before you commit
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
+                      <AlertTriangle className="h-3 w-3" /> From the model&rsquo;s knowledge — verify before you commit
                     </span>
                   )}
                   {sourceUrl && (
@@ -460,9 +501,9 @@ export function ConvictionFlow({
                       href={sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-muted underline-offset-4 hover:text-fg hover:underline"
+                      className="inline-flex items-center gap-1 text-muted underline-offset-4 hover:text-fg hover:underline"
                     >
-                      open source ↗
+                      open source <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
@@ -537,6 +578,9 @@ export function ConvictionFlow({
                   placeholder="Write your gut take. The Adversary will pressure-test it."
                   className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
                 />
+                <div className="mt-2">
+                  <MicButton onText={(t) => setTake((p) => (p ? `${p} ${t}` : t))} />
+                </div>
 
                 <div className="mt-2">
                   <button
@@ -605,7 +649,12 @@ export function ConvictionFlow({
             <span className="text-muted">{adversaryMode === "coach" ? "· gentle, helps you find it" : "· tough, stress-tests it"}</span>
           </div>
           <div className="flex min-h-[320px] flex-col gap-3 rounded-xl border border-line bg-surface/40 p-4">
-            {messages.length === 0 && <p className="text-sm text-muted">Getting started…</p>}
+            {messages.length === 0 && (
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent" />
+                Starting the conversation…
+              </p>
+            )}
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -615,10 +664,19 @@ export function ConvictionFlow({
                     : "self-start border border-line bg-ink text-fg"
                 }`}
               >
-                {m.role === "user" ? msgText(m) : <Markdown>{msgText(m)}</Markdown>}
+                {m.role === "user" ? (
+                  msgText(m)
+                ) : (
+                  <>
+                    <Markdown>{msgText(m)}</Markdown>
+                    {streaming && m.id === messages[messages.length - 1]?.id && (
+                      <span className="ml-0.5 inline-block h-3.5 w-[3px] animate-pulse rounded-sm bg-accent align-middle" />
+                    )}
+                  </>
+                )}
               </div>
             ))}
-            {thinking && (
+            {awaiting && (
               <div className="self-start rounded-2xl border border-line bg-ink px-4 py-2.5">
                 <ProgressSteps steps={ADVERSARY_THINKING_STEPS} />
               </div>
@@ -631,14 +689,34 @@ export function ConvictionFlow({
             )}
           </div>
 
+          {(streaming || (!thinking && messages.some((m) => m.role === "assistant"))) && (
+            <div className="mt-2 flex items-center gap-2">
+              {streaming ? (
+                <button
+                  onClick={() => stop()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                >
+                  <Square className="h-3 w-3" /> Stop
+                </button>
+              ) : (
+                <button
+                  onClick={copyLastReply}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                >
+                  <Copy className="h-3 w-3" /> Copy reply
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={() => void getHints()}
               disabled={hinting || thinking || messages.length === 0}
-              className="rounded-lg border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
               title="Suggest angles to help you answer — in your own words"
             >
-              {hinting ? "Thinking…" : "💡 Stuck? Get hints"}
+              <Lightbulb className="h-3.5 w-3.5" /> {hinting ? "Thinking…" : "Stuck? Get hints"}
             </button>
             {hints.map((h, i) => (
               <button
@@ -650,6 +728,19 @@ export function ConvictionFlow({
                 {h}
               </button>
             ))}
+            {hints.length === 0 &&
+              !thinking &&
+              messages.some((m) => m.role === "assistant") &&
+              FOLLOWUPS.map((f) => (
+                <button
+                  key={f.label}
+                  onClick={() => setChatInput(f.text)}
+                  className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                  title="Start your reply — then finish it in your own words"
+                >
+                  {f.label}
+                </button>
+              ))}
           </div>
 
           <form
@@ -706,7 +797,7 @@ export function ConvictionFlow({
               disabled={suggesting}
               className="shrink-0 rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
             >
-              {suggesting ? "Drafting…" : "✶ Draft from my discussion"}
+              {suggesting ? "Drafting…" : <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Draft from my discussion</span>}
             </button>
           </div>
 

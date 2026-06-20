@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import JSZip from "jszip";
+import { Images } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
 import { SlideCanvas } from "@/components/carousel/SlideCanvas";
 import { getDesign } from "@/lib/carousel/design";
 import { applyBrand } from "@/lib/carousel/brand";
@@ -67,7 +70,14 @@ export function GalleryView() {
     }
   }
 
-  if (!items) return <p className="text-muted">Loading…</p>;
+  if (!items)
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28" />
+        ))}
+      </div>
+    );
   if (err)
     return (
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
@@ -78,10 +88,12 @@ export function GalleryView() {
     );
   if (!items.length)
     return (
-      <div className="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-        No saved carousels yet. Make one in the{" "}
-        <Link href="/studio" className="text-accent underline-offset-4 hover:underline">Studio</Link> and hit Save.
-      </div>
+      <EmptyState
+        icon={Images}
+        title="No carousels yet"
+        description="Turn a committed opinion into a studio-grade carousel — saved decks land here, ready to re-open and export."
+        cta={{ href: "/studio", label: "Open the Studio" }}
+      />
     );
 
   const s = 0.16;

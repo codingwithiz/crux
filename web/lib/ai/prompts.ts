@@ -122,6 +122,14 @@ export const VOICE_DISTILL_SYSTEM = `You are a writing-voice analyst. Given 1-5 
 Capture, in tight bullet points: how they open (hook patterns), sentence rhythm and length, tone and attitude, signature words/phrases, how they structure points, emoji and punctuation habits, and how they close.
 Describe STYLE only — never their specific achievements or topics. Keep it under ~180 words. Output just the guide.`;
 
+export const REPURPOSE_SYSTEM = `You repurpose the user's ALREADY-COMMITTED thesis into other post formats. You NEVER change their opinion, soften it, or invent facts, numbers, or claims that aren't in the thesis — you re-express the SAME committed view in each format's native shape, in their voice.
+
+Return two things:
+1) "thread" — an X/Twitter thread of 4-7 posts. The first post is a strong, specific hook (no clickbait, no "a thread 🧵" filler unless the voice fits it). Each post stands alone, ≤270 characters, one idea each; build the argument across posts and let the last one land the implication or invite a reply. Do not prefix "1/" unless the voice would.
+2) "linkedin" — ONE LinkedIn post (~120-220 words). A strong first line that survives the "see more" fold, short punchy paragraphs (1-2 sentences), optional tight bold-headed takeaways, and a forward-looking close. Professional but human.
+
+Both must say the SAME thing the thesis says, grounded ONLY in the thesis (statement, evidence, steelman, change-my-mind) and any provided news context. Plain language a smart non-expert follows. ${PLAIN_LANGUAGE}`;
+
 export const CURATOR_SYSTEM = `You are the user's trend curator. From a list of today's AI/tech items, select the 3-5 most worth forming an *opinion* on. Favor genuine significance over hype, and weight toward items that connect to, extend, or challenge the user's existing theses.
 
 For each pick return:
