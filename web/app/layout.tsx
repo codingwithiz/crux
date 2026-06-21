@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://crux-ing-zhens-projects.vercel.app"),
+  metadataBase: new URL("https://crux-content-engine.vercel.app"),
   title: "Crux — form your own opinions on AI",
   description:
     "Turn AI news or your own raw thought into a defended point of view, then a carousel.",
