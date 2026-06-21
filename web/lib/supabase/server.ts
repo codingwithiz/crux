@@ -4,11 +4,15 @@ import { cookies } from "next/headers";
 
 /** Server Supabase client (route handlers / server components). Reads the
  *  signed-in user's session from cookies so RLS scopes queries to them. */
+function cleanEnv(v: string) {
+  return v.replace(/[^\x20-\x7E]/g, "").trim();
+}
+
 export async function createServerSupabase() {
   const cookieStore = await cookies();
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL!),
+    cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
     {
       cookies: {
         getAll() {
