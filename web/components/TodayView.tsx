@@ -186,7 +186,7 @@ export function TodayView() {
             {pick.detail && <p className="mt-1 line-clamp-2 text-sm text-muted">{pick.detail}</p>}
             <button
               onClick={() => setStarted(true)}
-              className="mt-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
+              className="ce-press mt-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
             >
               {doneToday ? "Form another →" : "Form today's conviction →"}
             </button>

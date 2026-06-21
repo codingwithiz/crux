@@ -1,8 +1,8 @@
 <div align="center">
 
-# Agentic Conviction Content Engine
+# Crux
 
-**Turn AI news — or a raw thought — into a *defensible* opinion, then a world‑class social carousel that sounds like you.**
+**Turn AI news or a raw thought into a world‑class social carousel — two modes, one engine: form your own *defensible* opinion, or brief your audience with a clear explainer.**
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white)
@@ -23,6 +23,13 @@ Most AI writing tools generate your opinion *for* you. That's slop. This one is 
 
 > Information → Understanding → **Conviction** → Content.
 > Everyone automates the first and last steps. The defensible wedge is the middle — so that's what this engine protects.
+
+## Two ways to use it
+
+Pick per item — the engine is the same, the intent differs:
+
+- **🎯 Form a take** — the conviction flow. Synthesize the source → (optionally) sharpen it with Coach/Spar → commit *your* opinion → a carousel in your voice. The AI never writes the opinion; you own it.
+- **📰 Explain it** — the explainer flow. Synthesize the source → a neutral, easy‑to‑follow carousel with the key takeaways ("what to note"), ready to brief your audience. No opinion required.
 
 ---
 
@@ -79,20 +86,27 @@ A 6‑agent, human‑in‑the‑loop flow where **you** own the opinion:
 ### ⚙️ Built like a product, not a demo
 - **Durable AI workflow** — a `generateStructured` wrapper adds retries, **schema‑repair** (re‑asks the model when its JSON fails validation), provider fallback, and latency logging across every structured call.
 - **An eval / benchmark harness** (`POST /api/eval`, dev‑only) — runs a golden set through the *real* pipeline and scores it with an LLM‑as‑judge on grounding, sharpness, no‑fabrication, and quality, plus a **deterministic citation‑faithfulness** check. Quality is a tracked number, not a vibe.
-- **Mobile‑first** responsive UI and **Google OAuth** (Supabase) with local→cloud migration on first sign‑in. Works fully offline in `localStorage` mode with no account.
+- **Mobile‑first** responsive UI with **email + Google sign‑in** (Supabase, per‑user RLS). The app is **login‑only** — your convictions and carousels save to your account.
+
+### 🔁 A real publishing workflow
+- **Repurpose** — turn one committed conviction into an **X thread** and a **LinkedIn post** in your voice (same opinion, nothing invented), with per‑post copy.
+- **Queue** — a planning board: schedule carousels by date and hand them off to X / LinkedIn / Instagram. Live auto‑publishing slots in behind a pluggable `Publisher` once platform access is connected.
+- **Brand kit** — set your handle once; it's stamped on every carousel.
+- **Voice input** — dictate your thought or take with the browser's built‑in speech‑to‑text.
+- **Inspiration sparks** — beat the blank page with a spicy AI/tech take you make your own.
+- **⌘K command palette**, a design‑token system, lucide iconography, tasteful motion, and real empty states — built to feel like a premium product, not a demo.
 
 ---
 
 ## 🧩 The flow
 
 ```
-        ┌──────────┐   ┌────────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────────┐
- news / │  INPUT   │ → │ SYNTHESIZE │ → │   DISCUSS    │ → │  COMMIT  │ → │   CAROUSEL   │
- thought│ your take│   │ grounded + │   │ Coach / Spar │   │ compile  │   │ format +     │
-        │          │   │ citations  │   │  (optional)  │   │ your take│   │ style + voice│
-        └──────────┘   └────────────┘   └──────────────┘   └──────────┘   └──────────────┘
-                                  the human owns "form view" + "commit"
+                              ┌─ Form a take → Discuss (Coach/Spar, optional) → Commit ─┐
+ news / thought ─→ SYNTHESIZE ─┤   you own the opinion                                   ├─→ CAROUSEL ─→ Repurpose · Queue
+   (grounded + citations)      └─ Explain it  → neutral, key‑takeaways deck ─────────────┘     (thread/LinkedIn · schedule)
 ```
+
+The human owns "form view" + "commit" in *Form a take*; *Explain it* stays neutral by design.
 
 ---
 
@@ -104,7 +118,7 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-The app lives in [`web/`](web) (Next.js 16 App Router). It runs out of the box in **localStorage mode** with no account. Add keys to enable cloud sync + live models.
+The app lives in [`web/`](web) (Next.js 16 App Router). It's **login‑only** — add your Supabase + AI keys to `web/.env.local` (below), then sign in with email or Google.
 
 ### Environment (`web/.env.local`)
 
@@ -153,7 +167,7 @@ Run the benchmark (with the dev server running): `POST http://localhost:3000/api
 
 - **Next.js 16** (App Router, React 19) · **TypeScript** · **Tailwind v4**
 - **AI SDK v6** (`ai`) with OpenAI / Google / Anthropic / Ollama providers
-- **Supabase** (Postgres + Auth + RLS) with a `localStorage` fallback
+- **Supabase** (Postgres + Auth + RLS) — login required (email + Google)
 - **modern-screenshot** (client PNG export) · **simple-icons** + curated logos · **Framer Motion**
 - **Zod** structured outputs · **JSZip** carousel export
 
@@ -174,6 +188,6 @@ web/
 
 ## 📌 Status
 
-Built and verified across phases: backend fixes → world‑class carousel engine + visualization library → mobile + Google auth → durable AI + eval harness → friendlier flow, creative variety, voice, and ledger calibration. The dev‑only `/lab` route showcases the rendering engine and every style.
+Built and verified across phases: backend fixes → world‑class carousel engine + visualization library → mobile + Google auth → durable AI + eval harness → friendlier flow, creative variety, voice, ledger calibration → a design‑system + brand refresh, multi‑format repurpose, a scheduling Queue, brand kit, voice input, inspiration sparks, and a second **Explain it** mode (neutral news → explainer carousel). The dev‑only `/lab` route showcases the rendering engine and every style.
 
 *Anti‑slop principle, always: the AI scaffolds and expresses; the human forms the view and owns the commit.*

@@ -27,7 +27,7 @@ export default function LoginPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push("/ledger");
+        router.push("/today");
         router.refresh();
       }
     } catch (err) {
@@ -41,7 +41,7 @@ export default function LoginPage() {
     try {
       await createClient().auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=/ledger` },
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=/today` },
       });
     } catch (err) {
       setMsg((err as Error).message);
@@ -50,13 +50,12 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col px-5 py-16">
-      <p className="font-mono text-xs text-accent">cloud sync</p>
+      <p className="font-mono text-xs text-accent">welcome to crux</p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight">
         {mode === "signin" ? "Sign in" : "Create account"}
       </h1>
       <p className="mt-2 text-muted">
-        Sync your Thesis Ledger across devices. Without an account the app still works locally in
-        this browser.
+        Crux saves your convictions and carousels to your account. Sign in or create one to start.
       </p>
 
       {!configured ? (

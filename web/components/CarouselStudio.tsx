@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import JSZip from "jszip";
 import { SlideCanvas } from "@/components/carousel/SlideCanvas";
+import { BrandPicker } from "@/components/carousel/BrandPicker";
 import {
   DESIGNS,
   getDesign,
@@ -450,10 +451,8 @@ export function CarouselStudio({
         <Label>Underline phrase (in headline)</Label>
         <Input value={current.underline ?? ""} onChange={(v) => patch({ underline: v || undefined })} />
 
-        <Label>Brand name</Label>
-        <Input value={current.brand?.name ?? ""} onChange={(v) => patch({ brand: v ? { name: v, slug: current.brand?.slug } : undefined })} />
-        <Label>Brand logo slug (simple-icons)</Label>
-        <Input value={current.brand?.slug ?? ""} onChange={(v) => patch({ brand: { name: current.brand?.name ?? v, slug: v || undefined } })} placeholder="redis, openai, vercel…" />
+        <Label>Brand (logo + name on the slide)</Label>
+        <BrandPicker value={current.brand} onChange={(b) => patch({ brand: b })} />
 
         <Label>Visual module</Label>
         <select

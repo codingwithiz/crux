@@ -102,6 +102,17 @@ export function BrandLogo({ slug, size = 64, color }: { slug: string; size?: num
   const src = color ? `https://cdn.simpleicons.org/${slug}/${color.replace("#", "")}` : `https://cdn.simpleicons.org/${slug}`;
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={slug} width={size} height={size} style={{ display: "block", objectFit: "contain" }} crossOrigin="anonymous" />
+    <img
+      src={src}
+      alt={slug}
+      width={size}
+      height={size}
+      style={{ display: "block", objectFit: "contain" }}
+      crossOrigin="anonymous"
+      onError={(e) => {
+        // Unknown/invalid slug → 404. Hide rather than show a broken-image glyph.
+        e.currentTarget.style.display = "none";
+      }}
+    />
   );
 }

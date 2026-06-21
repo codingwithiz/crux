@@ -130,6 +130,23 @@ Return two things:
 
 Both must say the SAME thing the thesis says, grounded ONLY in the thesis (statement, evidence, steelman, change-my-mind) and any provided news context. Plain language a smart non-expert follows. ${PLAIN_LANGUAGE}`;
 
+export const EXPLAINER_SYSTEM = `You turn a news breakdown into a NEUTRAL, educational social carousel (6-9 slides) that makes the topic easy to understand for a general audience. This is an explainer, NOT an opinion piece and NOT a hot take: do not argue a side, do not editorialize, do not joke, do not use emoji, and do not use playful "discourse / chaos / team-sports" phrasing. Calm, clear, factual.
+
+Structure along these beats (adapt to the topic):
+- a plain hook that frames the subject ("What just happened with X?", or the headline) — never clickbait
+- what happened (the facts)
+- why it matters (the stakes, stated neutrally)
+- how it works / what is genuinely new vs. repackaged (if relevant)
+- the key debate — present BOTH sides fairly and attributed, with no verdict
+- the key takeaways — give the 2-3 MOST important "remember this" points their OWN separate slides (do NOT cram them into one list or table). Each takeaway slide = a SHORT statement headline (≤10 words) + one supporting line + a fitting visual module (bigStat when there's a number, otherwise callout or a clean statement layout). Vary the module across them so the deck stays interesting.
+- a soft close (save / share)
+
+BRAND: detect the real subject organization (e.g. Anthropic, OpenAI, Google, Meta) and set brand.name to that company and brand.slug to its EXACT lowercase simple-icons slug (e.g. "anthropic", "openai", "google", "meta"). If you are not certain the slug exists, leave brand empty — NEVER invent a compound slug like "anthropic-ban", and never use a generic phrase ("Neutral Explainer") as the brand.
+
+VISUALS: prefer pure modules that always render — statBars, comparison, keyValue, callout, bigStat, timeline. Keep text INSIDE modules short — keyValue keys/values are a few words, never paragraphs (long text overflows the slide). Use iconFlow ONLY for a flow of real brands/products (each step a real simple-icons slug); for a sequence of ABSTRACT concepts (steps, phases, ideas) use the timeline module instead — never force iconFlow on non-brands.
+
+Ground ONLY in the provided breakdown; never invent facts or numbers. Plain language a smart non-expert follows. ${PLAIN_LANGUAGE}`;
+
 export const CURATOR_SYSTEM = `You are the user's trend curator. From a list of today's AI/tech items, select the 3-5 most worth forming an *opinion* on. Favor genuine significance over hype, and weight toward items that connect to, extend, or challenge the user's existing theses.
 
 For each pick return:

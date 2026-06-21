@@ -2,7 +2,7 @@ import { getSettings } from "./settings";
 import { getVoice, effectiveVoice } from "./voice";
 import { thesisToCarousel } from "./carousel/fallback";
 import type { CarouselSlide, SlideModule } from "./carousel/design";
-import type { Thesis } from "./types";
+import type { Synthesis, Thesis } from "./types";
 
 /**
  * Fill one visual module with concrete, slide-specific data via the LLM (used
@@ -33,6 +33,46 @@ export async function fillModule(slide: CarouselSlide, type: string): Promise<Sl
 export interface Repurposed {
   thread: string[];
   linkedin: string;
+}
+
+/**
+ * "Explain it" mode: build a NEUTRAL educational carousel from an ALREADY-computed
+ * synthesis (no opinion, no commit, no voice). Falls back to a deterministic
+ * skeleton if the express step fails — so it never blocks.
+ */
+export async function explainerFromSynthesis(
+  synthesis: Synthesis,
+  sourceTitle?: string,
+  sourceUrl?: string,
+  handle = "@you",
+): Promise<{ slides: CarouselSlide[]; designId?: string }> {
+  let slides = thesisToCarousel(
+    {
+      id: "explainer",
+      topic: sourceTitle || "Explainer",
+      statement: synthesis.plainEnglish || sourceTitle || "Explainer",
+      confidence: "med",
+      createdAt: new Date().toISOString(),
+      status: "active",
+    },
+    handle,
+  );
+  let designId: string | undefined;
+  try {
+    const eRes = await fetch("/api/explain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ synthesis, sourceTitle, sourceUrl, settings: getSettings() }),
+    });
+    if (eRes.ok) {
+      const j = (await eRes.json()) as { slides?: CarouselSlide[]; designId?: string };
+      if (Array.isArray(j.slides) && j.slides.length) slides = j.slides;
+      designId = j.designId;
+    }
+  } catch {
+    /* keep the deterministic fallback */
+  }
+  return { slides, designId };
 }
 
 /**

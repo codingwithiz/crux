@@ -1,4 +1,4 @@
-# Conviction Engine — Brand & Design System
+# Crux — Brand & Design System
 
 The one promise: **It doesn't write your posts. It makes you someone worth reading.**
 Anti-slop is the soul — the AI sharpens *your* opinion, it never authors it.
@@ -35,5 +35,5 @@ Reserve full saturation for CTAs and status; let greys carry the rhythm.
 - Visible `:focus-visible` ring (amber) on every interactive element.
 
 ## Logomark
-An amber rounded-square tile with a dark editorial "C" (`web/components/Logo.tsx`,
-`web/app/icon.svg`). Pairs with the wordmark **Conviction**Engine (muted "Engine").
+An amber rounded-square tile with a dark **crosshair** — "get to the crux" (`web/components/Logo.tsx`,
+`web/app/icon.svg`). Pairs with the **Crux** wordmark.

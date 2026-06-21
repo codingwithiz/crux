@@ -7,7 +7,7 @@ import { DefaultChatTransport } from "ai";
 import { getSettings, SETTINGS_EVENT, PROVIDER_SHORT, DEFAULT_MODELS } from "@/lib/settings";
 import { stepModelSettings, type Step as ModelStep } from "@/lib/ai/routing";
 import { addThesis } from "@/lib/ledger";
-import { expressSlides } from "@/lib/express-client";
+import { expressSlides, explainerFromSynthesis } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
 import { getBrandKit } from "@/lib/brand-kit";
 import { INSPIRATION } from "@/lib/inspiration";
@@ -16,7 +16,7 @@ import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
 import { Markdown } from "./Markdown";
 import { ProgressSteps } from "./ProgressSteps";
 import { MicButton } from "./MicButton";
-import { Check, AlertTriangle, Lightbulb, Sparkles, Copy, ExternalLink, Square } from "lucide-react";
+import { Check, AlertTriangle, Lightbulb, Sparkles, Copy, ExternalLink, Square, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
 
@@ -75,6 +75,7 @@ export function ConvictionFlow({
   const [related, setRelated] = useState<RelatedThesis[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
+  const [explaining, setExplaining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autosynth = useRef(false);
 
@@ -362,6 +363,24 @@ export function ConvictionFlow({
     }
   }
 
+  // Skip the opinion entirely: build a NEUTRAL explainer carousel from the
+  // synthesis we already have (no adversary, no commit), then go to the Studio.
+  async function makeExplainer() {
+    if (!synthesis) return;
+    setExplaining(true);
+    setError(null);
+    try {
+      const handle = getBrandKit().handle;
+      const { slides, designId } = await explainerFromSynthesis(synthesis, sourceTitle, sourceUrl, handle);
+      saveDraft({ slides, handle, designId });
+      clearFlow();
+      router.push("/studio");
+    } catch (e) {
+      setError((e as Error).message);
+      setExplaining(false);
+    }
+  }
+
   async function commit() {
     setLoading(true);
     setError(null);
@@ -568,9 +587,27 @@ export function ConvictionFlow({
                 </div>
               )}
 
+              <div className="mt-6 rounded-xl border border-cool/40 bg-cool/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Just want to explain it?</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Skip the opinion — make a neutral explainer carousel with the key takeaways for your audience.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => void makeExplainer()}
+                    disabled={explaining}
+                    className="ce-press inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-cool/15 px-4 py-2 text-sm font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
+                  >
+                    <BookOpen className="h-4 w-4" /> {explaining ? "Building…" : "Make explainer carousel →"}
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-6 rounded-xl border border-accent/40 bg-accent/5 p-4">
                 <label className="block text-sm font-medium">
-                  Now — what do <span className="text-accent">you</span> think? (one sentence)
+                  Or — form <span className="text-accent">your</span> own take (one sentence)
                 </label>
                 <input
                   value={take}

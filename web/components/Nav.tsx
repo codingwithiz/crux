@@ -42,7 +42,7 @@ export function Nav() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
           <LogoMark className="h-[22px] w-[22px]" />
-          <span>Conviction<span className="text-muted">Engine</span></span>
+          <span>Crux</span>
         </Link>
 
         {/* Desktop nav */}

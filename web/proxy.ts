@@ -25,7 +25,20 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Login-only: redirect unauthenticated visitors to /login. The landing page
+  // and the auth routes stay public.
+  const path = request.nextUrl.pathname;
+  const isPublic = path === "/" || path === "/login" || path.startsWith("/auth");
+  if (!user && !isPublic) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
+  }
+
   return response;
 }
 

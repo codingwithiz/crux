@@ -12,11 +12,11 @@ const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://conviction-engine-ing-zhens-projects.vercel.app"),
-  title: "Conviction Engine — form your own opinions on AI",
+  title: "Crux — form your own opinions on AI",
   description:
-    "Turn AI news or your own raw thought into a defended point of view, then a carousel. Free forever.",
+    "Turn AI news or your own raw thought into a defended point of view, then a carousel.",
   openGraph: {
-    title: "Conviction Engine",
+    title: "Crux",
     description:
       "It doesn’t write your posts. It makes you someone worth reading — turn the AI firehose into your own defensible opinion, then a carousel.",
     type: "website",

@@ -44,7 +44,7 @@ export default function Home() {
     <div className="mx-auto max-w-6xl px-5">
       {/* Hero */}
       <section className="ce-fade-up py-20 sm:py-28">
-        <p className="font-mono text-sm text-accent">conviction engine</p>
+        <p className="font-mono text-sm text-accent">crux</p>
         <h1 className="mt-4 max-w-3xl font-serif text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl">
           It doesn’t write your posts. It makes you someone worth reading.
         </h1>
@@ -86,6 +86,28 @@ export default function Home() {
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/demo.gif" alt="A carousel restyled across the built-in design system" width={460} className="mx-auto rounded-lg" />
+        </div>
+      </section>
+
+      {/* Two modes */}
+      <section className="border-t border-line py-14">
+        <h2 className="text-2xl font-bold tracking-tight">Two ways to use it</h2>
+        <p className="mt-1 text-muted">Same engine, your call per item.</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-line bg-surface/40 p-6">
+            <p className="font-mono text-xs uppercase tracking-wide text-accent">Form a take</p>
+            <h3 className="mt-2 text-lg font-semibold">Your own defensible opinion</h3>
+            <p className="mt-1 text-sm text-muted">
+              Synthesize → sharpen with Coach/Spar → commit your view → a carousel in your voice. The AI never writes the opinion.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-line bg-surface/40 p-6">
+            <p className="font-mono text-xs uppercase tracking-wide text-cool">Explain it</p>
+            <h3 className="mt-2 text-lg font-semibold">Brief your audience, clearly</h3>
+            <p className="mt-1 text-sm text-muted">
+              Synthesize → a neutral, easy-to-follow carousel with the key takeaways. No opinion required — just make the news land.
+            </p>
+          </div>
         </div>
       </section>
 

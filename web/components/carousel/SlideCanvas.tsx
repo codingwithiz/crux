@@ -8,7 +8,7 @@
 import type { CSSProperties, ReactNode, Ref } from "react";
 import type { CarouselDesign, CarouselSlide, ChartTone, SlideModule, StatBarRow } from "@/lib/carousel/design";
 import { DoodleEye, DoodleGhost, GrainOverlay, HandArrow, Squiggle } from "./decor";
-import { BrandMark } from "@/lib/carousel/logos";
+import { BrandMark, BRAND_LOGOS } from "@/lib/carousel/logos";
 
 const SERIF = "var(--font-newsreader), Georgia, serif";
 const SANS = "var(--font-geist-sans), system-ui, sans-serif";
@@ -244,7 +244,7 @@ function IconFlow({ mod, design }: { mod: Extract<SlideModule, { type: "iconFlow
                 boxShadow: design.mode === "light" ? "0 10px 30px rgba(27,23,20,0.10)" : "none",
               }}
             >
-              {s.slug ? <BrandMark slug={s.slug} size={56} /> : <div style={{ fontFamily: SERIF, fontSize: 44, color: design.accent }}>{s.label[0]}</div>}
+              {s.slug && BRAND_LOGOS[s.slug.toLowerCase()] ? <BrandMark slug={s.slug} size={56} /> : <div style={{ fontFamily: SANS, fontSize: 40, fontWeight: 700, color: design.accent }}>{i + 1}</div>}
             </div>
             <div style={{ fontFamily: SANS, fontSize: 24, fontWeight: 600, color: design.fg, textAlign: "center" }}>{s.label}</div>
           </div>

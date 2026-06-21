@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Circle } from "lucide-react";
 import {
   getSettings,
   saveSettings,
@@ -31,7 +30,6 @@ interface ServerStatus {
   serverKeys?: ServerKeys;
 }
 
-const CLOUD_KEYABLE: CloudKey[] = ["google", "openai", "anthropic"];
 const isCloudKey = (p?: Provider): p is CloudKey =>
   p === "google" || p === "openai" || p === "anthropic";
 
@@ -53,8 +51,6 @@ export function SettingsButton() {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState<Settings>({ provider: "openai", model: DEFAULT_MODELS.openai });
   const [server, setServer] = useState<ServerStatus | null>(null);
-  const [cloudMsg, setCloudMsg] = useState<string | null>(null);
-  const [savingCloud, setSavingCloud] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
 
   // Status dot — derived, not stored. Green once the provider can actually run.
@@ -104,45 +100,10 @@ export function SettingsButton() {
     setOpen(false);
   }
 
-  async function saveToAccount() {
-    setSavingCloud(true);
-    setCloudMsg(null);
-    const body: Record<string, string> = {};
-    if (isCloudKey(s.provider) && s.apiKey?.trim()) body[s.provider] = s.apiKey.trim();
-    if (isCloudKey(s.adversaryProvider) && s.adversaryApiKey?.trim()) {
-      body[s.adversaryProvider] = s.adversaryApiKey.trim();
-    }
-    if (Object.keys(body).length === 0) {
-      setCloudMsg("Type a key first, then save it to your account.");
-      setSavingCloud(false);
-      return;
-    }
-    try {
-      const res = await fetch("/api/secrets", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error || "save_failed");
-      }
-      setServer((await fetch("/api/secrets").then((r) => r.json())) as ServerStatus);
-      setCloudMsg("Saved to your account — synced across devices.");
-    } catch (e) {
-      setCloudMsg(`Couldn't save: ${(e as Error).message}`);
-    } finally {
-      setSavingCloud(false);
-    }
-  }
-
   return (
     <>
       <button
-        onClick={() => {
-          setCloudMsg(null);
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className="ml-1 rounded-md border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
       >
         <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-accent"}`} />
@@ -159,10 +120,9 @@ export function SettingsButton() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-line p-5">
-              <h2 className="text-lg font-semibold">Model settings</h2>
+              <h2 className="text-lg font-semibold">Model</h2>
               <p className="mt-1 text-sm text-muted">
-                Defaults to OpenAI (server key). Pick a faster or smarter model, switch to free Gemini,
-                or bring your own key. Used for Synthesize · Curator · Carousel.
+                Pick the model used for Synthesize · Coach/Spar · Carousel. Runs on the shared server key — no setup needed.
               </p>
             </div>
 
@@ -170,12 +130,10 @@ export function SettingsButton() {
               <ModelChooser
                 provider={s.provider}
                 model={s.model}
-                apiKey={s.apiKey}
                 ollamaBaseURL={s.ollamaBaseURL}
                 serverKeys={server?.serverKeys}
                 onProvider={(p) => update({ provider: p })}
                 onModel={(m) => update({ model: m })}
-                onKey={(k) => update({ apiKey: k })}
                 onOllama={(u) => update({ ollamaBaseURL: u })}
               />
 
@@ -194,47 +152,15 @@ export function SettingsButton() {
                       compact
                       provider={s.adversaryProvider ?? "anthropic"}
                       model={s.adversaryModel}
-                      apiKey={s.adversaryApiKey}
                       ollamaBaseURL={s.ollamaBaseURL}
                       serverKeys={server?.serverKeys}
                       onProvider={(p) => update({ adversaryProvider: p })}
                       onModel={(m) => update({ adversaryModel: m })}
-                      onKey={(k) => update({ adversaryApiKey: k })}
                       onOllama={(u) => update({ ollamaBaseURL: u })}
                     />
                   </div>
                 )}
               </div>
-
-              {/* Account keys */}
-              {server?.signedIn && (
-                <div className="mt-5 rounded-lg border border-line bg-ink/40 p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Keys saved to your account</span>
-                    <span className="text-xs text-muted">synced across devices</span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {CLOUD_KEYABLE.map((p) => (
-                      <span
-                        key={p}
-                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-xs ${
-                          server[p] ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-line text-muted"
-                        }`}
-                      >
-                        {server[p] ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />} {p}
-                      </span>
-                    ))}
-                  </div>
-                  <button
-                    onClick={saveToAccount}
-                    disabled={savingCloud}
-                    className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fg hover:bg-surface disabled:opacity-50"
-                  >
-                    {savingCloud ? "Saving…" : "Save current key(s) to my account"}
-                  </button>
-                  {cloudMsg && <p className="mt-2 text-xs text-cool">{cloudMsg}</p>}
-                </div>
-              )}
 
               <p className="mt-4 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
                 This run → Default:{" "}
@@ -270,23 +196,19 @@ export function SettingsButton() {
 function ModelChooser({
   provider,
   model,
-  apiKey,
   ollamaBaseURL,
   serverKeys,
   onProvider,
   onModel,
-  onKey,
   onOllama,
   compact,
 }: {
   provider: Provider;
   model?: string;
-  apiKey?: string;
   ollamaBaseURL?: string;
   serverKeys?: ServerKeys;
   onProvider: (p: Provider) => void;
   onModel: (m: string) => void;
-  onKey: (k: string) => void;
   onOllama: (u: string) => void;
   compact?: boolean;
 }) {
@@ -343,36 +265,7 @@ function ModelChooser({
         />
       </details>
 
-      {provider !== "ollama" ? (
-        <>
-          <div className="mt-3 flex items-center justify-between">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted">API key</label>
-            <span
-              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                hasServerKey
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                  : "border-accent/40 bg-accent/10 text-accent"
-              }`}
-            >
-              {hasServerKey ? "Optional" : "Required"}
-            </span>
-          </div>
-          <input
-            type="password"
-            value={apiKey ?? ""}
-            onChange={(e) => onKey(e.target.value)}
-            placeholder={hasServerKey ? "leave blank to use the shared server key" : "paste your key (sk-…)"}
-            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
-          />
-          <p className="mt-1.5 text-xs text-muted">
-            {hasServerKey
-              ? "A shared server key is configured — leave blank to use it, or paste your own."
-              : provider === "google"
-                ? "Free from Google AI Studio (aistudio.google.com/app/apikey) — 1,500 requests/day, no card."
-                : `Bring your own ${PROVIDER_SHORT[provider]} key to use this provider.`}
-          </p>
-        </>
-      ) : (
+      {provider === "ollama" ? (
         <>
           <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">Ollama base URL</label>
           <input
@@ -381,6 +274,12 @@ function ModelChooser({
             className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
           />
         </>
+      ) : (
+        <p className="mt-3 text-xs text-muted">
+          {hasServerKey
+            ? "Runs on the shared server key — nothing to set up."
+            : `No server key configured for ${PROVIDER_SHORT[provider]} — the admin needs to add one.`}
+        </p>
       )}
     </div>
   );
