@@ -3,18 +3,24 @@ import { createServerSupabase, supabaseConfiguredServer } from "@/lib/supabase/s
 
 /**
  * OAuth callback (Google sign-in via Supabase, PKCE). Exchanges the `code` for a
- * session (sets auth cookies), then redirects to `next`. Supabase must have the
+ * session (sets auth cookies), then redirects to /today. Supabase must have the
  * Google provider enabled and this URL in its allowed redirect list.
+ *
+ * Uses x-forwarded-host on Vercel because request.url origin can be an internal
+ * hostname rather than the public domain.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/ledger";
+
+  // On Vercel the public host comes via x-forwarded-host; fall back to origin.
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost ? `https://${forwardedHost}` : origin;
 
   if (code && supabaseConfiguredServer()) {
     const supabase = await createServerSupabase();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return NextResponse.redirect(`${host}/today`);
   }
-  return NextResponse.redirect(`${origin}/login?error=oauth`);
+  return NextResponse.redirect(`${host}/login?error=oauth`);
 }

@@ -41,7 +41,7 @@ export default function LoginPage() {
     try {
       await createClient().auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=/today` },
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
       });
     } catch (err) {
       setMsg((err as Error).message);
