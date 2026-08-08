@@ -11,6 +11,7 @@ import { ledgerStats, calibration } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
 import { expressSlides } from "@/lib/express-client";
 import { getBrandKit } from "@/lib/brand-kit";
+import { saveFlow, parkedToFlow } from "@/lib/flow-session";
 import type { Confidence, Outcome, Thesis } from "@/lib/types";
 
 const CONF_COLOR: Record<Confidence, string> = {
@@ -23,6 +24,7 @@ const STATUS_BADGE: Record<Thesis["status"], string | null> = {
   active: null,
   updated: "border-cool/40 bg-cool/10 text-cool",
   abandoned: "border-line bg-surface text-muted",
+  draft: "border-line bg-surface text-muted",
 };
 
 const OUTCOME_LABEL: Record<Outcome, string> = { held: "held up", mixed: "mixed", broke: "broke" };
@@ -32,12 +34,13 @@ const OUTCOME_BADGE: Record<Outcome, string> = {
   broke: "border-red-500/40 bg-red-500/10 text-red-300",
 };
 
-type Filter = "all" | "active" | "updated" | "abandoned";
+type Filter = "all" | "active" | "updated" | "abandoned" | "draft";
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "active", label: "Active" },
   { id: "updated", label: "Revised" },
   { id: "abandoned", label: "Abandoned" },
+  { id: "draft", label: "Parked" },
 ];
 
 export function LedgerView() {
@@ -68,11 +71,18 @@ export function LedgerView() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (items ?? []).filter((t) => {
-      if (filter !== "all" && t.status !== filter) return false;
+      // "All" means all your opinions. Parked drafts aren't opinions yet, so
+      // they live behind their own chip instead of diluting the ledger.
+      if (filter === "all" ? t.status === "draft" : t.status !== filter) return false;
       if (q && !`${t.topic} ${t.statement}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [items, filter, query]);
+
+  function resumeParked(t: Thesis) {
+    saveFlow(parkedToFlow(t));
+    router.push("/think");
+  }
 
   async function makeCarousel(t: Thesis) {
     setBusyId(t.id);
@@ -232,10 +242,16 @@ export function LedgerView() {
                   className="block w-full text-left"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <p className={`text-fg ${t.status === "abandoned" ? "line-through" : ""}`}>{t.statement}</p>
-                    <span className={`shrink-0 font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
-                      {t.confidence}
-                    </span>
+                    {/* A parked draft has no statement yet — that's the point of
+                        parking — so lead with the topic instead of a blank line. */}
+                    <p className={`text-fg ${t.status === "abandoned" ? "line-through" : ""}`}>
+                      {t.status === "draft" ? t.topic : t.statement}
+                    </p>
+                    {t.status !== "draft" && (
+                      <span className={`shrink-0 font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
+                        {t.confidence}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <span>
@@ -244,7 +260,7 @@ export function LedgerView() {
                     </span>
                     {STATUS_BADGE[t.status] && (
                       <span className={`rounded-full border px-2 py-0.5 ${STATUS_BADGE[t.status]}`}>
-                        {t.status === "updated" ? "revised" : t.status}
+                        {t.status === "updated" ? "revised" : t.status === "draft" ? "parked" : t.status}
                       </span>
                     )}
                     {t.outcome && (
@@ -299,6 +315,25 @@ export function LedgerView() {
                 )}
 
                 <div className="mt-3 flex flex-wrap gap-2">
+                  {t.status === "draft" ? (
+                    // Parked work has one sensible next move: go back and finish
+                    // thinking. Carousels and repurposing need an opinion first.
+                    <>
+                      <button
+                        onClick={() => resumeParked(t)}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
+                      >
+                        Continue
+                      </button>
+                      <button
+                        onClick={() => del(t.id)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-red-400"
+                      >
+                        Discard
+                      </button>
+                    </>
+                  ) : (
+                  <>
                   <button
                     onClick={() => makeCarousel(t)}
                     disabled={busyId === t.id}
@@ -339,6 +374,8 @@ export function LedgerView() {
                   >
                     Delete
                   </button>
+                  </>
+                  )}
                 </div>
               </div>
             ),

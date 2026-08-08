@@ -10,11 +10,20 @@ export interface LedgerStats {
 }
 
 /**
+ * Parked drafts are saved understanding, explicitly NOT opinions — counting one
+ * as a conviction would inflate the track record and fake a daily streak for a
+ * day you deliberately declined to take a position. Filtered here rather than at
+ * each call site so every scoring surface agrees.
+ */
+const committed = (items: Thesis[]) => items.filter((t) => t.status !== "draft");
+
+/**
  * Your track record — the "keep score" surface (PLAN step 7 / moat #3). Pure so
  * it's trivially testable. Counts by status + confidence and how many you
  * committed in the last 7 days (the habit signal).
  */
-export function ledgerStats(items: Thesis[]): LedgerStats {
+export function ledgerStats(all: Thesis[]): LedgerStats {
+  const items = committed(all);
   const weekAgo = Date.now() - 7 * 86_400_000;
   const s: LedgerStats = {
     total: items.length,
@@ -41,7 +50,8 @@ const DAY = "YYYY-MM-DD".length; // 10
  * you committed at least one conviction — the habit-loop signal (moat #3). Dates
  * compared in UTC for consistency with the stored ISO timestamps.
  */
-export function dailyStreak(items: Thesis[]): number {
+export function dailyStreak(all: Thesis[]): number {
+  const items = committed(all);
   if (!items.length) return 0;
   const days = new Set(items.map((t) => t.createdAt.slice(0, DAY)));
   const oneDay = 86_400_000;

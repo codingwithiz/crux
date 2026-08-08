@@ -1,5 +1,5 @@
 import type { UIMessage } from "ai";
-import type { Confidence, Synthesis } from "./types";
+import type { Confidence, Synthesis, Thesis } from "./types";
 
 /**
  * A snapshot of an in-progress conviction. We persist this to localStorage on
@@ -13,6 +13,11 @@ export interface FlowSession {
   step: string;
   input: string;
   take: string;
+  /**
+   * Set when this flow was resumed from a parked draft, so committing an
+   * opinion can retire the draft instead of leaving a duplicate behind.
+   */
+  draftId?: string;
   synthesis: Synthesis | null;
   messages: UIMessage[];
   commit: {
@@ -51,6 +56,33 @@ export function clearFlow(): void {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Reopen a parked draft as an in-progress flow. Parking and resuming ride on
+ * the existing session machinery rather than a second restore path: write the
+ * session, then navigate to /think and let ConvictionFlow's mount-restore do
+ * the rest. `draftId` travels along so committing can retire the placeholder.
+ */
+export function parkedToFlow(t: Thesis): FlowSession {
+  return {
+    mode: "thought",
+    step: "synth",
+    input: t.topic,
+    take: "",
+    draftId: t.id,
+    synthesis: t.synthesis ?? null,
+    messages: [],
+    commit: {
+      statement: "",
+      confidence: t.confidence,
+      evidenceFor: "",
+      steelman: "",
+      changeMyMind: "",
+      topic: t.topic,
+    },
+    savedAt: new Date().toISOString(),
+  };
 }
 
 /** Is this saved session the same flow we're now opening, and does it have real progress worth restoring? */

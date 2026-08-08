@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Flame, Check, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Flame, Check, ArrowLeft, BookOpen } from "lucide-react";
 import { ConvictionFlow } from "./ConvictionFlow";
-import { getLedger } from "@/lib/ledger";
+import { getLedger, removeThesis } from "@/lib/ledger";
+import { saveFlow, parkedToFlow } from "@/lib/flow-session";
 import { ledgerStats, dailyStreak } from "@/lib/ledger-stats";
 import { rankItems } from "@/lib/rank";
 import type { NewsItem, Thesis } from "@/lib/types";
@@ -22,6 +24,7 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
 export function TodayView() {
+  const router = useRouter();
   const [ledger, setLedger] = useState<Thesis[] | null>(null);
   const [pick, setPick] = useState<NewsItem | null>(null);
   const [started, setStarted] = useState(false);
@@ -65,8 +68,9 @@ export function TodayView() {
 
   const stats = useMemo(() => ledgerStats(ledger ?? []), [ledger]);
   const streak = useMemo(() => dailyStreak(ledger ?? []), [ledger]);
+  // Parking is explicitly declining to take a position, so it doesn't count.
   const doneToday = useMemo(
-    () => (ledger ?? []).some((t) => t.createdAt.slice(0, 10) === todayKey()),
+    () => (ledger ?? []).some((t) => t.status !== "draft" && t.createdAt.slice(0, 10) === todayKey()),
     [ledger],
   );
   // The oldest still-active thesis is the best candidate to re-examine.
@@ -74,6 +78,17 @@ export function TodayView() {
     const active = (ledger ?? []).filter((t) => t.status === "active");
     return active.length ? active[active.length - 1] : null;
   }, [ledger]);
+  const parked = useMemo(() => (ledger ?? []).filter((t) => t.status === "draft"), [ledger]);
+
+  function resumeParked(t: Thesis) {
+    saveFlow(parkedToFlow(t));
+    router.push("/think");
+  }
+
+  async function discardParked(t: Thesis) {
+    await removeThesis(t.id);
+    setLedger((prev) => (prev ?? []).filter((x) => x.id !== t.id));
+  }
 
   if (started && pick) {
     return (
@@ -135,6 +150,42 @@ export function TodayView() {
               or read the 2-minute guide
             </Link>
           </div>
+        </div>
+      )}
+
+      {parked.length > 0 && (
+        <div className="rounded-2xl border border-line bg-surface/40 p-5">
+          <p className="font-mono text-xs uppercase tracking-wide text-muted">Continue where you left off</p>
+          <ul className="mt-3 space-y-2">
+            {parked.map((t) => (
+              <li
+                key={t.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-ink/40 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-fg">{t.topic}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    Parked {new Date(t.createdAt).toLocaleDateString()}
+                    {t.synthesis?.grounded ? " · grounded in the source" : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => resumeParked(t)}
+                    className="ce-press inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110"
+                  >
+                    <BookOpen className="h-4 w-4" /> Continue
+                  </button>
+                  <button
+                    onClick={() => void discardParked(t)}
+                    className="rounded-lg px-3 py-1.5 text-sm text-muted hover:text-fg"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

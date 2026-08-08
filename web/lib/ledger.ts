@@ -1,4 +1,4 @@
-import type { Thesis } from "./types";
+import type { Synthesis, Thesis } from "./types";
 import { createClient, supabaseConfigured } from "./supabase/client";
 import { getSettings } from "./settings";
 import { embedText } from "./related";
@@ -64,6 +64,7 @@ interface Row {
   created_at: string;
   outcome: string | null;
   resolved_at: string | null;
+  synthesis: Synthesis | null;
 }
 function rowToThesis(r: Row): Thesis {
   return {
@@ -79,6 +80,9 @@ function rowToThesis(r: Row): Thesis {
     source: r.source_title ? { title: r.source_title, url: r.source_url ?? undefined } : undefined,
     outcome: (r.outcome as Thesis["outcome"]) ?? undefined,
     resolvedAt: r.resolved_at ?? undefined,
+    // Carrying this back is what keeps a carousel made from the Ledger months
+    // later as grounded as one made during the original flow.
+    synthesis: r.synthesis ?? undefined,
   };
 }
 
@@ -110,8 +114,12 @@ export async function getLedger(): Promise<Thesis[]> {
 export async function addThesis(t: Thesis): Promise<void> {
   const userId = await currentUserId();
   if (!userId) return localAdd(t);
-  // Embed for semantic re-surfacing (best-effort; null if no embed key).
-  const embedding = await embedText(`${t.statement}\n${t.topic}`, getSettings());
+  // Embed for semantic re-surfacing (best-effort; null if no embed key). A
+  // parked draft has no statement to embed, and re-surfacing is about opinions
+  // you've committed to — so skip the call rather than spend it on a topic line.
+  const embedding = t.statement.trim()
+    ? await embedText(`${t.statement}\n${t.topic}`, getSettings())
+    : null;
   await createClient()
     .from("theses")
     .insert({
@@ -128,6 +136,7 @@ export async function addThesis(t: Thesis): Promise<void> {
       source_url: t.source?.url ?? null,
       status: t.status,
       created_at: t.createdAt,
+      synthesis: t.synthesis ?? null,
     });
 }
 

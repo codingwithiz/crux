@@ -23,6 +23,17 @@ export interface SourceRef {
   url?: string;
 }
 
+/**
+ * A quote the synthesis leaned on, with the receipt attached. `verified` is a
+ * deterministic substring check against the source text — not the model's word.
+ */
+export interface Citation {
+  quote: string;
+  url?: string;
+  sourceTitle?: string;
+  verified: boolean;
+}
+
 /** Output of the Synthesizer (grounded, citation-aware). */
 export interface Synthesis {
   /** A 2-3 sentence plain-English ELI5 of the item — the lead "explain it simply" card. */
@@ -33,10 +44,16 @@ export interface Synthesis {
   skepticCase: string;
   implications: string[];
   questions: string[];
-  /** Short verbatim quotes from the source the synthesis relied on ("receipts"). */
-  citations?: string[];
-  /** True when synthesis was grounded in fetched source text, not just the model's memory. */
+  /**
+   * Short verbatim quotes from the source the synthesis relied on ("receipts").
+   * Strings are the legacy shape, still readable from theses committed before
+   * citations carried verification.
+   */
+  citations?: (Citation | string)[];
+  /** True when synthesis was grounded in real source text, not just the model's memory. */
   grounded?: boolean;
+  /** What was synthesized, so a carousel built later can cite the same source. */
+  source?: SourceRef;
 }
 
 export type Confidence = "low" | "med" | "high";
@@ -58,7 +75,13 @@ export interface Thesis {
   createdAt: string; // ISO
   updatedAt?: string; // ISO, set when revised
   source?: SourceRef;
-  status: "active" | "updated" | "abandoned";
+  /**
+   * "draft" is a parked synthesis — understanding saved without an opinion, so
+   * reading something worth thinking about doesn't force a take on the spot.
+   * Drafts carry an empty `statement` and are excluded from the ledger's
+   * calibration surfaces.
+   */
+  status: "active" | "updated" | "abandoned" | "draft";
   /** Resolved outcome — how the call turned out (drives calibration scoring). */
   outcome?: Outcome;
   resolvedAt?: string; // ISO, set when an outcome is recorded

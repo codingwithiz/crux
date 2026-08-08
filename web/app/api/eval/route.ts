@@ -2,6 +2,7 @@ import { z } from "zod";
 import { generateStructured } from "@/lib/ai/generate";
 import { modelReady } from "@/lib/ai/model";
 import { requireUser } from "@/lib/api-guard";
+import { asCitations, citationFaithfulness as faithfulness } from "@/lib/citations";
 import type { Provider, Synthesis, Thesis } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -48,17 +49,6 @@ function judgeMs() {
   };
 }
 
-// Normalize for verbatim matching: drop quote/dash/ellipsis punctuation the model
-// often adds around quotes (so a genuine verbatim quote still matches the source).
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[‘’“”'"]/g, "")
-    .replace(/[–—]/g, "-")
-    .replace(/…/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return Response.json({ error: "eval is dev-only" }, { status: 403 });
   const caller = await requireUser();
@@ -85,13 +75,9 @@ export async function POST(req: Request) {
       });
       const synthesis = (await synRes.json()) as Synthesis;
 
-      // Deterministic citation faithfulness: are the quotes actually in the source?
-      let citationFaithfulness: number | null = null;
-      if (isNews && Array.isArray(synthesis.citations) && synthesis.citations.length) {
-        const src = norm(g.input);
-        const hits = synthesis.citations.filter((c) => src.includes(norm(c))).length;
-        citationFaithfulness = +(hits / synthesis.citations.length).toFixed(2);
-      }
+      // Verification now runs in the synthesize route itself, so the harness
+      // reports the same number users see rather than recomputing its own.
+      const citationFaithfulness = isNews ? faithfulness(asCitations(synthesis.citations)) : null;
 
       const statement = isNews ? `${g.topic}: this is a real, useful advance worth understanding.` : g.input;
       const thesis: Thesis = { id: crypto.randomUUID(), topic: g.topic, statement, confidence: "med", synthesis, createdAt: new Date().toISOString(), status: "active" };

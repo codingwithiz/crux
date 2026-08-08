@@ -37,8 +37,9 @@ mode, but cloud features and server keys need them.
 
 Model keys are server-side only — users never supply their own.
 
-Run the SQL migrations in `web/supabase/migrations/0001…0009` once in the Supabase
-SQL editor (see [`web/SUPABASE.md`](./web/SUPABASE.md)).
+Run the SQL migrations in `web/supabase/migrations/0001…0010` once in the Supabase
+SQL editor (see [`web/SUPABASE.md`](./web/SUPABASE.md)). Apply 0010 **before**
+deploying the code that writes `theses.synthesis`, or committing a thesis fails.
 
 ## Cron
 
