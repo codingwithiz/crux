@@ -9,6 +9,16 @@ import { z } from "zod";
  */
 const clean = (v: string | undefined) => (v ?? "").replace(/[^\x20-\x7E]/g, "").trim();
 
+/**
+ * Same treatment for any server-side secret. A credential goes into an HTTP
+ * header, and headers are ByteStrings — one invisible character (a BOM from a
+ * UTF-8 file, a zero-width space from a docs page) makes the whole request
+ * throw "Cannot convert argument to a ByteString" from deep inside a provider
+ * SDK, which reads as a model outage rather than a typo in a dashboard field.
+ * Returns undefined for absent/empty so `??` fallbacks still behave.
+ */
+export const cleanSecret = (v: string | undefined): string | undefined => clean(v) || undefined;
+
 export const SUPABASE_URL = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 export const SUPABASE_ANON_KEY = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 

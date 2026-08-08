@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, supabaseConfigured } from "../env";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, supabaseConfigured, cleanSecret } from "../env";
 
 /** Server Supabase client (route handlers / server components). Reads the
  *  signed-in user's session from cookies so RLS scopes queries to them. */
@@ -35,9 +35,7 @@ export function supabaseConfiguredServer(): boolean {
  *  ONLY for server contexts with no user session. Returns null when the
  *  service key isn't configured, so callers degrade gracefully. */
 export function createServiceSupabase() {
-  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "")
-    .replace(/[^\x20-\x7E]/g, "")
-    .trim();
+  const serviceKey = cleanSecret(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!SUPABASE_URL || !serviceKey) return null;
   return createClient(SUPABASE_URL, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },

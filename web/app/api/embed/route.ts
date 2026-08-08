@@ -1,6 +1,7 @@
 import { embed } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { guard } from "@/lib/api-guard";
+import { cleanSecret } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
 
   // Embeddings standardize on OpenAI text-embedding-3-small (1536 dims) to
   // match the vector column, regardless of the chat provider in use.
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = cleanSecret(process.env.OPENAI_API_KEY);
   if (!apiKey) return Response.json({ error: "no_embed_key" }, { status: 400 });
 
   try {

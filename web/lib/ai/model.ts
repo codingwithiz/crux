@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 import type { Provider } from "../types";
+import { cleanSecret } from "../env";
 
 export interface ModelSettings {
   provider?: Provider;
@@ -20,24 +21,24 @@ export function getModel(s: ModelSettings = {}): LanguageModel {
   switch (s.provider ?? "openai") {
     case "anthropic":
       return createAnthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
+        apiKey: cleanSecret(process.env.ANTHROPIC_API_KEY),
       })(s.model ?? "claude-opus-4-8");
 
     case "openai":
       return createOpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+        apiKey: cleanSecret(process.env.OPENAI_API_KEY),
       })(s.model ?? "gpt-5.5");
 
     case "ollama":
       return createOpenAICompatible({
         name: "ollama",
-        baseURL: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1",
+        baseURL: cleanSecret(process.env.OLLAMA_BASE_URL) ?? "http://localhost:11434/v1",
       })(s.model ?? "llama3.1");
 
     case "google":
     default:
       return createGoogleGenerativeAI({
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        apiKey: cleanSecret(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
       })(s.model ?? "gemini-flash-latest");
   }
 }
@@ -53,11 +54,16 @@ export const RELAXED_SCHEMA: { openai: { strictJsonSchema: boolean } } = {
   openai: { strictJsonSchema: false },
 };
 
-/** True when the request can actually reach a model (server key present or local). */
+/**
+ * True when the request can actually reach a model (server key present or
+ * local). Checks the sanitized value, so a variable holding nothing but
+ * invisible characters reports "not configured" instead of passing the gate and
+ * failing later inside the provider SDK.
+ */
 export function modelReady(s: ModelSettings = {}): boolean {
   const provider = s.provider ?? "openai";
   if (provider === "ollama") return true;
-  if (provider === "anthropic") return Boolean(process.env.ANTHROPIC_API_KEY);
-  if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
-  return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  if (provider === "anthropic") return Boolean(cleanSecret(process.env.ANTHROPIC_API_KEY));
+  if (provider === "openai") return Boolean(cleanSecret(process.env.OPENAI_API_KEY));
+  return Boolean(cleanSecret(process.env.GOOGLE_GENERATIVE_AI_API_KEY));
 }
