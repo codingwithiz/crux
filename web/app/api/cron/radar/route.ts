@@ -13,16 +13,21 @@ export const maxDuration = 60;
  * scan is global, so it runs once for everyone, not once per user.
  *
  * Auth: Vercel sends `Authorization: Bearer ${CRON_SECRET}` automatically when
- * CRON_SECRET is set. We require it when present; if it isn't configured (local
- * dev), the route is open so it stays testable.
+ * CRON_SECRET is set. An unset secret fails the route closed rather than opening
+ * it — a missing env var in production would otherwise leave this world-callable,
+ * and the failure mode of "cron is broken" is much cheaper than "cron is open".
+ * Set CRON_SECRET locally to exercise it.
  */
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 export async function GET(req: Request) {
+  if (!process.env.CRON_SECRET) {
+    return Response.json({ error: "cron_secret_unset" }, { status: 500 });
+  }
   if (!authorized(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   let items;

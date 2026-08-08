@@ -25,30 +25,17 @@ export function stepModelSettings(s: Settings | undefined, step: Step): ModelSet
   if (!s) return {};
 
   if (step === "adversary") {
+    // Explicit override. getModel supplies the provider's server key.
     if (s.adversaryProvider) {
-      // Explicit override. modelReady/getModel handle the key (UI key, or the
-      // server env fallback like OPENAI_API_KEY).
-      return {
-        provider: s.adversaryProvider,
-        apiKey: s.adversaryApiKey,
-        model: s.adversaryModel,
-        ollamaBaseURL: s.ollamaBaseURL,
-      };
+      return { provider: s.adversaryProvider, model: s.adversaryModel };
     }
-    // No override: inherit the default provider/key but prefer a faster model
-    // for this chat step (e.g. gpt-5-mini instead of gpt-5.5).
+    // No override: inherit the default provider but prefer a faster model for
+    // this chat step (e.g. gpt-5-mini instead of gpt-5.5).
     return {
       provider: s.provider,
-      apiKey: s.apiKey,
       model: FAST_ADVERSARY_MODEL[s.provider] ?? s.model,
-      ollamaBaseURL: s.ollamaBaseURL,
     };
   }
 
-  return {
-    provider: s.provider,
-    apiKey: s.apiKey,
-    model: s.model,
-    ollamaBaseURL: s.ollamaBaseURL,
-  };
+  return { provider: s.provider, model: s.model };
 }

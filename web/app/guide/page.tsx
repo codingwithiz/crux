@@ -21,7 +21,7 @@ const STEPS: [string, string][] = [
 ];
 
 const FAQ: [string, string][] = [
-  ["Can I run it for free?", "Yes. The default runs on OpenAI via the configured server key, but you can switch to Google Gemini's free tier (no card) in the Model menu, or bring your own OpenAI/Anthropic key (BYOK)."],
+  ["Do I need my own API key?", "No. Every step runs on the server's key — there is nothing to paste and nothing to pay for. The Model menu only picks which model runs."],
   ["Why won't the AI just write my opinion?", "That's the whole point. A tool that hands you a finished take produces laundered slop. This one makes you think, then renders the view you committed to."],
   ["What is the Ledger?", "Your compounding track record — every committed thesis, with confidence, evidence, revisions, and (once you resolve them) a calibration score: were you right when you were confident?"],
   ["What is Voice?", "Paste a few of your real posts on the Voice page; the Expressor then writes every carousel in your style. A strong default ships out of the box."],
@@ -81,11 +81,11 @@ export default function GuidePage() {
         </ul>
       </Section>
 
-      <Section title="Set up a model key (free)">
+      <Section title="Choosing a model">
         <p>
-          Click <span className="text-fg">Model</span> (top-right) → paste a free Google AI Studio key
-          (aistudio.google.com/app/apikey — 1,500 requests/day, no card). The dot turns green and
-          you&rsquo;re ready. Sign in to sync your ledger, voice, and keys across devices.
+          Click <span className="text-fg">Model</span> (top-right) to pick which model runs your
+          steps. A green dot means the server has a key for that provider — there is nothing for
+          you to paste. Sign in to sync your ledger, voice, and carousels across devices.
         </p>
       </Section>
 

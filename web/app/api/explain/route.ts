@@ -7,6 +7,7 @@ import { CarouselSchema, normalizeSlide } from "@/lib/carousel/llm";
 import { DESIGNS } from "@/lib/carousel/design";
 import { formatCatalog, FORMAT_IDS } from "@/lib/carousel/formats";
 import type { Settings, Synthesis } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,6 +22,9 @@ interface Body {
 // The "Explain it" mode: a NEUTRAL educational carousel built from a synthesis —
 // no opinion, no commit. Same engine + design system as the Expressor.
 export async function POST(req: Request) {
+  const caller = await guard("explain");
+  if (caller instanceof Response) return caller;
+
   const { synthesis, sourceTitle, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   if (!synthesis?.happened) return Response.json({ error: "no_synthesis" }, { status: 400 });
 

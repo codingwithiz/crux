@@ -8,6 +8,7 @@ import { CarouselSchema, normalizeSlide } from "@/lib/carousel/llm";
 import { DESIGNS } from "@/lib/carousel/design";
 import { formatCatalog, FORMAT_IDS } from "@/lib/carousel/formats";
 import type { Settings, Synthesis, Thesis, VoiceProfile } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,6 +21,9 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  const caller = await guard("express");
+  if (caller instanceof Response) return caller;
+
   const { thesis, synthesis: rawSynthesis, settings: rawSettings, voice } = (await req.json()) as Body;
   if (!thesis?.statement) return Response.json({ error: "no_thesis" }, { status: 400 });
   const settings = await resolveServerSettings(rawSettings);

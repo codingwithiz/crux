@@ -5,6 +5,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { HINTS_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -20,6 +21,9 @@ interface Body {
 // Suggests angles to help the user answer the Adversary's hard question.
 // Scaffolds THEIR articulation — never a conclusion (anti-slop).
 export async function POST(req: Request) {
+  const caller = await guard("hints");
+  if (caller instanceof Response) return caller;
+
   const { question, take, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   if (!question?.trim()) return Response.json({ error: "no_question" }, { status: 400 });
 

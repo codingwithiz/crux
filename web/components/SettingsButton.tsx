@@ -21,22 +21,16 @@ type CloudKey = "google" | "openai" | "anthropic";
 type ServerKeys = Record<CloudKey, boolean>;
 
 interface ServerStatus {
-  configured?: boolean;
-  signedIn?: boolean;
-  google?: boolean;
-  openai?: boolean;
-  anthropic?: boolean;
-  /** Which providers have a shared key on the server (so the key field is optional). */
+  /** Which providers have a key configured on the server. */
   serverKeys?: ServerKeys;
 }
 
 const isCloudKey = (p?: Provider): p is CloudKey =>
   p === "google" || p === "openai" || p === "anthropic";
 
-/** Can this provider actually run? Ollama always; otherwise a user key OR a server key. */
+/** Can this provider actually run? Ollama always; otherwise the server needs a key. */
 function providerReady(s: Settings, srv: ServerStatus | null): boolean {
   if (s.provider === "ollama") return true;
-  if (s.apiKey && s.apiKey.trim()) return true;
   if (isCloudKey(s.provider)) return Boolean(srv?.serverKeys?.[s.provider]);
   return false;
 }
@@ -63,10 +57,9 @@ export function SettingsButton() {
     setAdvOpen(Boolean(cur.adversaryProvider));
   }, []);
 
-  // Fetch server status on mount and whenever the dialog opens (refresh after a
-  // key save). Tells us which providers have a shared server key.
+  // Which providers this deployment can reach. Refreshed when the dialog opens.
   useEffect(() => {
-    fetch("/api/secrets")
+    fetch("/api/providers")
       .then((r) => r.json())
       .then((j: ServerStatus) => setServer(j))
       .catch(() => setServer(null));
@@ -75,27 +68,24 @@ export function SettingsButton() {
   function update(patch: Partial<Settings>) {
     setS((prev) => {
       const next = { ...prev, ...patch };
-      // Switching the default provider: default its model and clear the key
-      // field (the previous provider's key won't authenticate the new one).
+      // Switching a provider: move its model to that provider's default, since
+      // model ids don't carry across providers.
       if (patch.provider && patch.provider !== prev.provider) {
         if (patch.model === undefined) next.model = DEFAULT_MODELS[patch.provider];
-        if (patch.apiKey === undefined) next.apiKey = undefined;
       }
-      // Same for the Adversary override.
       if (patch.adversaryProvider !== undefined && patch.adversaryProvider !== prev.adversaryProvider) {
         if (patch.adversaryModel === undefined) {
           next.adversaryModel = patch.adversaryProvider
             ? DEFAULT_MODELS[patch.adversaryProvider]
             : undefined;
         }
-        if (patch.adversaryApiKey === undefined) next.adversaryApiKey = undefined;
       }
       return next;
     });
   }
 
   function save() {
-    const next = advOpen ? s : { ...s, adversaryProvider: undefined, adversaryModel: undefined, adversaryApiKey: undefined };
+    const next = advOpen ? s : { ...s, adversaryProvider: undefined, adversaryModel: undefined };
     saveSettings(next);
     setOpen(false);
   }
@@ -130,11 +120,9 @@ export function SettingsButton() {
               <ModelChooser
                 provider={s.provider}
                 model={s.model}
-                ollamaBaseURL={s.ollamaBaseURL}
                 serverKeys={server?.serverKeys}
                 onProvider={(p) => update({ provider: p })}
                 onModel={(m) => update({ model: m })}
-                onOllama={(u) => update({ ollamaBaseURL: u })}
               />
 
               {/* Adversary upgrade */}
@@ -152,11 +140,9 @@ export function SettingsButton() {
                       compact
                       provider={s.adversaryProvider ?? "anthropic"}
                       model={s.adversaryModel}
-                      ollamaBaseURL={s.ollamaBaseURL}
                       serverKeys={server?.serverKeys}
                       onProvider={(p) => update({ adversaryProvider: p })}
                       onModel={(m) => update({ adversaryModel: m })}
-                      onOllama={(u) => update({ ollamaBaseURL: u })}
                     />
                   </div>
                 )}
@@ -196,20 +182,16 @@ export function SettingsButton() {
 function ModelChooser({
   provider,
   model,
-  ollamaBaseURL,
   serverKeys,
   onProvider,
   onModel,
-  onOllama,
   compact,
 }: {
   provider: Provider;
   model?: string;
-  ollamaBaseURL?: string;
   serverKeys?: ServerKeys;
   onProvider: (p: Provider) => void;
   onModel: (m: string) => void;
-  onOllama: (u: string) => void;
   compact?: boolean;
 }) {
   const options = MODEL_CATALOG[provider] ?? [];
@@ -265,22 +247,13 @@ function ModelChooser({
         />
       </details>
 
-      {provider === "ollama" ? (
-        <>
-          <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-muted">Ollama base URL</label>
-          <input
-            value={ollamaBaseURL ?? "http://localhost:11434/v1"}
-            onChange={(e) => onOllama(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm"
-          />
-        </>
-      ) : (
-        <p className="mt-3 text-xs text-muted">
-          {hasServerKey
+      <p className="mt-3 text-xs text-muted">
+        {provider === "ollama"
+          ? "Runs against the server's local Ollama (set OLLAMA_BASE_URL to change it)."
+          : hasServerKey
             ? "Runs on the shared server key — nothing to set up."
             : `No server key configured for ${PROVIDER_SHORT[provider]} — the admin needs to add one.`}
-        </p>
-      )}
+      </p>
     </div>
   );
 }

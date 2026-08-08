@@ -2,14 +2,17 @@ import type { CarouselSlide } from "./carousel/design";
 
 export type Provider = "google" | "anthropic" | "openai" | "ollama";
 
+/**
+ * Per-request model preferences. Chosen in the browser and sent with each call,
+ * so this carries preferences ONLY — never credentials or endpoints. Keys come
+ * from server env, and the Ollama base URL from OLLAMA_BASE_URL: both would be
+ * server-side request forgery if the client could set them.
+ */
 export interface Settings {
   provider: Provider;
-  apiKey?: string;
   model?: string;
-  ollamaBaseURL?: string;
   // Optional premium override for the Adversary (the reasoning-critical step).
   adversaryProvider?: Provider;
-  adversaryApiKey?: string;
   adversaryModel?: string;
   /** When set, pins this carousel design for all carousels (brand-lock). */
   brandLockDesignId?: string;

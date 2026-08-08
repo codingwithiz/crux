@@ -6,6 +6,7 @@ import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { REPURPOSE_SYSTEM } from "@/lib/ai/prompts";
 import { voiceBlock } from "@/lib/ai/voice-prompt";
 import type { Settings, Synthesis, Thesis, VoiceProfile } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,6 +25,9 @@ interface Body {
 // Re-expresses the user's OWN committed thesis in other post formats. Anti-slop:
 // same opinion, their voice, grounded only in the thesis — never a new claim.
 export async function POST(req: Request) {
+  const caller = await guard("repurpose");
+  if (caller instanceof Response) return caller;
+
   const { thesis, settings: rawSettings, voice } = (await req.json().catch(() => ({}))) as Body;
   if (!thesis?.statement) return Response.json({ error: "no_thesis" }, { status: 400 });
 

@@ -6,6 +6,7 @@ import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { SYNTHESIZER_SYSTEM, GROUNDED_SYNTHESIZER_SYSTEM } from "@/lib/ai/prompts";
 import { fetchReadable } from "@/lib/extract";
 import type { Settings } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -32,6 +33,9 @@ interface Body {
 const ASK = `Return the synthesis: FIRST "plainEnglish" — a 2-3 sentence explanation a smart non-expert could follow, no jargon (or define any term you must use), as if explaining to a friend. Then: what happened, what is genuinely new vs. repackaged, the single biggest debate or uncertainty, the skeptic's strongest case, 1-3 concrete second-order implications, and exactly 3 questions I must answer before I have a publishable opinion.`;
 
 export async function POST(req: Request) {
+  const caller = await guard("synthesize");
+  if (caller instanceof Response) return caller;
+
   const { input, kind, sourceTitle, sourceUrl, settings: rawSettings } = (await req
     .json()
     .catch(() => ({}))) as Body;

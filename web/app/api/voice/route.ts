@@ -4,6 +4,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { VOICE_DISTILL_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,6 +16,9 @@ interface Body {
 
 // Distills a person's writing samples into a compact, reusable style guide.
 export async function POST(req: Request) {
+  const caller = await guard("voice");
+  if (caller instanceof Response) return caller;
+
   const { samples, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   const clean = (samples ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
   if (clean.length === 0) return Response.json({ error: "no_samples" }, { status: 400 });

@@ -5,6 +5,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { TAKE_DRAFTS_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -20,6 +21,9 @@ interface Body {
 // they're stuck forming an opinion. They still must defend the one they pick
 // against the Adversary — so this scaffolds a start, never a conclusion.
 export async function POST(req: Request) {
+  const caller = await guard("take-drafts");
+  if (caller instanceof Response) return caller;
+
   const { synthesis, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   if (!synthesis) return Response.json({ error: "no_synthesis" }, { status: 400 });
 

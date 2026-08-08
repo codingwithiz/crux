@@ -123,10 +123,11 @@ The app lives in [`web/`](web) (Next.js 16 App Router). It's **login‑only** �
 ### Environment (`web/.env.local`)
 
 ```bash
-# AI providers (any one works; OpenAI is the default server key)
+# AI providers (any one works; OpenAI is the default). Server-side only —
+# users never bring their own keys.
 OPENAI_API_KEY=...
 GOOGLE_GENERATIVE_AI_API_KEY=...
-# ANTHROPIC_API_KEY=...        # optional (BYOK)
+# ANTHROPIC_API_KEY=...        # optional (Claude Adversary upgrade)
 
 # Cloud sync + auth (optional — app works locally without these)
 NEXT_PUBLIC_SUPABASE_URL=...

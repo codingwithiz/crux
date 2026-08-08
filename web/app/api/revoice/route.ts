@@ -7,6 +7,7 @@ import { REVOICE_SYSTEM } from "@/lib/ai/prompts";
 import { voiceBlock } from "@/lib/ai/voice-prompt";
 import type { CarouselSlide } from "@/lib/carousel/design";
 import type { Settings, VoiceProfile } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,6 +28,9 @@ interface Body {
 // Rewrites carousel copy (headline/body/kicker) in the user's voice, preserving
 // order, count, and each slide's visual module + data.
 export async function POST(req: Request) {
+  const caller = await guard("revoice");
+  if (caller instanceof Response) return caller;
+
   const { slides, settings: rawSettings, voice } = (await req.json().catch(() => ({}))) as Body;
   if (!Array.isArray(slides) || slides.length === 0) return Response.json({ error: "no_slides" }, { status: 400 });
 

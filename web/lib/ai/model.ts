@@ -7,39 +7,37 @@ import type { Provider } from "../types";
 
 export interface ModelSettings {
   provider?: Provider;
-  apiKey?: string;
   model?: string;
-  ollamaBaseURL?: string;
 }
 
 /**
- * Model switch. Default = OpenAI (server OPENAI_API_KEY); Google Gemini free
- * tier and Ollama (fully-local) remain available; Anthropic when the user
- * brings their own key. A per-request apiKey (from the browser) overrides the
- * server env var.
+ * Model switch. Every provider authenticates with a server env key; the browser
+ * chooses which model to use, never how to reach it. The Ollama endpoint is
+ * likewise server-configured — taking it from the request body would let any
+ * caller point this server at an arbitrary internal URL.
  */
 export function getModel(s: ModelSettings = {}): LanguageModel {
   switch (s.provider ?? "openai") {
     case "anthropic":
       return createAnthropic({
-        apiKey: s.apiKey || process.env.ANTHROPIC_API_KEY,
+        apiKey: process.env.ANTHROPIC_API_KEY,
       })(s.model ?? "claude-opus-4-8");
 
     case "openai":
       return createOpenAI({
-        apiKey: s.apiKey || process.env.OPENAI_API_KEY,
+        apiKey: process.env.OPENAI_API_KEY,
       })(s.model ?? "gpt-5.5");
 
     case "ollama":
       return createOpenAICompatible({
         name: "ollama",
-        baseURL: s.ollamaBaseURL ?? "http://localhost:11434/v1",
+        baseURL: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1",
       })(s.model ?? "llama3.1");
 
     case "google":
     default:
       return createGoogleGenerativeAI({
-        apiKey: s.apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
       })(s.model ?? "gemini-flash-latest");
   }
 }
@@ -55,11 +53,10 @@ export const RELAXED_SCHEMA: { openai: { strictJsonSchema: boolean } } = {
   openai: { strictJsonSchema: false },
 };
 
-/** True when the request can actually reach a model (key present or local). */
+/** True when the request can actually reach a model (server key present or local). */
 export function modelReady(s: ModelSettings = {}): boolean {
   const provider = s.provider ?? "openai";
   if (provider === "ollama") return true;
-  if (s.apiKey) return true;
   if (provider === "anthropic") return Boolean(process.env.ANTHROPIC_API_KEY);
   if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
   return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);

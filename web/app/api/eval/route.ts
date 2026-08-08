@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { generateStructured } from "@/lib/ai/generate";
 import { modelReady } from "@/lib/ai/model";
+import { requireUser } from "@/lib/api-guard";
 import type { Provider, Synthesis, Thesis } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -60,7 +61,16 @@ const norm = (s: string) =>
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return Response.json({ error: "eval is dev-only" }, { status: 403 });
+  const caller = await requireUser();
+  if (caller instanceof Response) return caller;
+
   const origin = new URL(req.url).origin;
+  // The harness deliberately drives the real HTTP routes, and those are now
+  // gated — so it forwards the caller's session cookie. Run it with a signed-in
+  // browser's cookie (curl -b) rather than a bare request.
+  const cookie = req.headers.get("cookie") ?? "";
+  const headers = { "content-type": "application/json", cookie };
+
   const jms = judgeMs();
   if (!modelReady(jms)) return Response.json({ error: "no judge model key" }, { status: 400 });
 
@@ -70,7 +80,7 @@ export async function POST(req: Request) {
       const isNews = g.kind === "news";
       const synRes = await fetch(`${origin}/api/synthesize`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify(isNews ? { input: g.input, kind: "news", sourceTitle: g.sourceTitle, settings: {} } : { input: g.input, kind: "thought", settings: {} }),
       });
       const synthesis = (await synRes.json()) as Synthesis;
@@ -87,7 +97,7 @@ export async function POST(req: Request) {
       const thesis: Thesis = { id: crypto.randomUUID(), topic: g.topic, statement, confidence: "med", synthesis, createdAt: new Date().toISOString(), status: "active" };
       const expRes = await fetch(`${origin}/api/express`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify({ thesis, synthesis, settings: {} }),
       });
       const exp = (await expRes.json()) as { slides?: { headline?: string; body?: string; module?: { type?: string }; brand?: { slug?: string } }[] };

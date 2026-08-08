@@ -49,10 +49,10 @@ export const TIER_LABEL: Record<ModelTier, string> = {
 };
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
-  google: "Google Gemini (free tier)",
-  ollama: "Ollama (local, free)",
-  anthropic: "Anthropic Claude (BYOK)",
-  openai: "OpenAI (BYOK)",
+  google: "Google Gemini",
+  ollama: "Ollama (local)",
+  anthropic: "Anthropic Claude",
+  openai: "OpenAI",
 };
 
 export const PROVIDER_SHORT: Record<Provider, string> = {
@@ -62,20 +62,12 @@ export const PROVIDER_SHORT: Record<Provider, string> = {
   openai: "OpenAI",
 };
 
-/** Known model presets per provider (for the settings <datalist>; free-text still allowed). */
-export const MODEL_PRESETS: Record<Provider, string[]> = {
-  google: ["gemini-flash-latest", "gemini-2.5-pro", "gemini-2.5-flash"],
-  anthropic: ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5"],
-  openai: ["gpt-5.5", "gpt-5-mini"],
-  ollama: ["llama3.1", "qwen2.5", "mistral"],
-};
-
 /** Fired on the window whenever settings are saved, so open views can re-read them. */
 export const SETTINGS_EVENT = "ce:settings";
 
 const DEFAULTS: Settings = { provider: "openai", model: DEFAULT_MODELS.openai };
 
-/** Client-only. Reads the user's free/BYOK model settings from localStorage. */
+/** Client-only. Reads the user's model preferences from localStorage. */
 export function getSettings(): Settings {
   if (typeof window === "undefined") return DEFAULTS;
   try {
@@ -95,10 +87,4 @@ export function saveSettings(s: Settings): void {
   } catch {
     /* SSR / no window */
   }
-}
-
-/** Does the chosen provider have what it needs to run from the browser? */
-export function settingsReady(s: Settings): boolean {
-  if (s.provider === "ollama") return true;
-  return Boolean(s.apiKey && s.apiKey.trim());
 }
