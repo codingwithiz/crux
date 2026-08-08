@@ -139,7 +139,7 @@ Migrations: `0001_theses` · `0002_carousels` · `0003_embeddings` (pgvector + `
 
 ## 8. Model layer — providers + per-step routing
 
-`lib/ai/model.ts` is a provider switch (Vercel AI SDK v6): **Google Gemini (free)** default → **Ollama** (local) → **Anthropic / OpenAI** (BYOK). A per-request `apiKey` from the browser overrides the server env var.
+`lib/ai/model.ts` is a provider switch (Vercel AI SDK v6): **OpenAI** default → **Google Gemini** → **Anthropic** → **Ollama** (local). Every provider authenticates with a server env key; the browser chooses *which model* to run, never how to reach it. Credentials and the Ollama endpoint are deliberately not accepted from the request body — either would be server-side request forgery.
 
 `lib/ai/routing.ts`'s `stepModelSettings(settings, step)` routes **per pipeline step**: synthesis + express stay on the free default; the **Adversary** can use **Claude Opus 4.8** when configured. This keeps the platform free-forever while Claude is an opt-in quality upgrade on the one reasoning-critical step.
 

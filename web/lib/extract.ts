@@ -1,4 +1,65 @@
-const UA = { "user-agent": "conviction-engine/0.1 (personal project)" };
+const UA = { "user-agent": "crux/0.1 (personal project)" };
+
+/** Hostnames that never belong to a public article. */
+const PRIVATE_HOST = /^(localhost|.*\.local|.*\.internal|\[?::1\]?|0\.0\.0\.0)$/i;
+
+/** Loopback, private, and link-local IPv4 (169.254.169.254 is cloud metadata). */
+function isPrivateIPv4(host: string): boolean {
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254)
+  );
+}
+
+/**
+ * `sourceUrl` reaches this module straight from the browser, and this code runs
+ * inside a cloud network next to a metadata endpoint and whatever else is
+ * reachable privately — so an unchecked fetch is server-side request forgery.
+ *
+ * ponytail: literal host/IP blocklist plus a default-port rule. A hostname that
+ * *resolves* to a private address still passes (DNS rebinding is out of scope
+ * here); closing that needs resolve-then-connect-to-pinned-IP, which Node's
+ * fetch does not expose.
+ */
+export function isPublicHttpUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  const httpAllowed = u.protocol === "http:" && process.env.NODE_ENV !== "production";
+  if (u.protocol !== "https:" && !httpAllowed) return false;
+  // Anything but the standard web ports is an internal service, not an article.
+  if (u.port && u.port !== "80" && u.port !== "443") return false;
+  const host = u.hostname;
+  return !PRIVATE_HOST.test(host) && !isPrivateIPv4(host);
+}
+
+/**
+ * Fetch following redirects by hand so every hop is re-validated — a public URL
+ * that 302s to 169.254.169.254 would otherwise walk straight through the check
+ * above.
+ */
+async function fetchChecked(url: string, signal: AbortSignal, maxHops = 3): Promise<Response | null> {
+  let current = url;
+  for (let hop = 0; hop <= maxHops; hop++) {
+    if (!isPublicHttpUrl(current)) return null;
+    const res = await fetch(current, { headers: UA, signal, redirect: "manual" });
+    if (res.status < 300 || res.status >= 400) return res;
+    const location = res.headers.get("location");
+    if (!location) return null;
+    current = new URL(location, current).toString();
+  }
+  return null;
+}
 
 /**
  * Fetch a URL and return the readable MAIN content as plain text — a
@@ -9,12 +70,12 @@ const UA = { "user-agent": "conviction-engine/0.1 (personal project)" };
  * whatever summary it has. This is the "retrieval" half of grounded synthesis.
  */
 export async function fetchReadable(url: string, maxChars = 7000): Promise<string | null> {
-  if (!url || !/^https?:\/\//i.test(url)) return null;
+  if (!url || !isPublicHttpUrl(url)) return null;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const res = await fetch(url, { headers: UA, signal: ctrl.signal, redirect: "follow" });
-    if (!res.ok) return null;
+    const res = await fetchChecked(url, ctrl.signal);
+    if (!res || !res.ok) return null;
     const type = res.headers.get("content-type") ?? "";
     if (!/text\/html|text\/plain|application\/xhtml/i.test(type)) return null;
     const html = await res.text();

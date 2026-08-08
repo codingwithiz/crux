@@ -6,6 +6,7 @@ import { MODULE_FILL_SYSTEM } from "@/lib/ai/prompts";
 import { ModuleSchema, normalizeModule } from "@/lib/carousel/llm";
 import { MODULE_TYPES, type ModuleType } from "@/lib/carousel/design";
 import type { Settings } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -22,6 +23,9 @@ interface Body {
 // switches a slide's module in the Studio — so the data is relevant, not a
 // generic placeholder).
 export async function POST(req: Request) {
+  const caller = await guard("module");
+  if (caller instanceof Response) return caller;
+
   const { headline, body, kicker, type, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   if (!type || !MODULE_TYPES.includes(type as ModuleType)) return Response.json({ error: "bad_type" }, { status: 400 });
 

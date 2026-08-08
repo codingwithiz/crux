@@ -1,49 +1,31 @@
-import type { Settings } from "../types";
-import { createServerSupabase, supabaseConfiguredServer } from "../supabase/server";
+import type { Provider, Settings } from "../types";
 
-interface SecretsRow {
-  google_key: string | null;
-  openai_key: string | null;
-  anthropic_key: string | null;
-}
+const PROVIDERS: Provider[] = ["google", "anthropic", "openai", "ollama"];
+
+const asProvider = (v: unknown): Provider | undefined =>
+  PROVIDERS.includes(v as Provider) ? (v as Provider) : undefined;
+
+// A model id goes into a provider URL path, so keep it to the shape real ids
+// take rather than passing arbitrary strings through.
+const asModel = (v: unknown): string | undefined =>
+  typeof v === "string" && /^[\w.:-]{1,64}$/.test(v) ? v : undefined;
 
 /**
- * Merge the signed-in user's server-stored keys into request settings.
- * Precedence per provider: request-body key (if any) > user_secrets (DB) > env
- * (handled later in getModel). So signed-in users need not send keys in the body.
+ * Narrow client-supplied settings to the fields the server will honor.
+ *
+ * The request body is untrusted input: it may carry extra fields (older clients
+ * still send `apiKey` and `ollamaBaseURL`, which used to be respected) and the
+ * only safe handling is to drop everything not listed here. Credentials and
+ * endpoints come from server env — see getModel.
  */
-export async function resolveServerSettings(s: Settings | undefined): Promise<Settings> {
-  const base: Settings = s ?? { provider: "openai" };
-  if (!supabaseConfiguredServer()) return base;
-  try {
-    const supabase = await createServerSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return base;
-
-    const { data } = await supabase
-      .from("user_secrets")
-      .select("google_key,openai_key,anthropic_key")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const row = data as SecretsRow | null;
-    if (!row) return base;
-
-    const keyFor = (p?: string): string | undefined => {
-      if (p === "openai") return row.openai_key ?? undefined;
-      if (p === "anthropic") return row.anthropic_key ?? undefined;
-      if (p === "google") return row.google_key ?? undefined;
-      return undefined;
-    };
-
-    const merged: Settings = { ...base };
-    if (!merged.apiKey) merged.apiKey = keyFor(merged.provider);
-    if (merged.adversaryProvider && !merged.adversaryApiKey) {
-      merged.adversaryApiKey = keyFor(merged.adversaryProvider);
-    }
-    return merged;
-  } catch {
-    return base;
-  }
+export function resolveServerSettings(s: Settings | undefined): Settings {
+  const raw = (s ?? {}) as Partial<Settings>;
+  return {
+    provider: asProvider(raw.provider) ?? "openai",
+    model: asModel(raw.model),
+    adversaryProvider: asProvider(raw.adversaryProvider),
+    adversaryModel: asModel(raw.adversaryModel),
+    brandLockDesignId:
+      typeof raw.brandLockDesignId === "string" ? raw.brandLockDesignId : undefined,
+  };
 }

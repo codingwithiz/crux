@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -213,6 +213,15 @@ export function ConvictionFlow({
     setStep("adversary");
   }
 
+  // Every turn goes through here so it carries the full body — `mode` in
+  // particular. The route picks Coach vs Spar per request and falls back to
+  // Coach, so a turn that omits it silently downgrades Spar mid-conversation.
+  const sendTurn = useCallback(
+    (text: string) =>
+      sendMessage({ text }, { body: { synthesis, take, settings, mode: adversaryMode } }),
+    [sendMessage, synthesis, take, settings, adversaryMode],
+  );
+
   // Single source of truth for seeding the Adversary's opening message: once
   // we're on its step with a take but no conversation yet, send the seed. This
   // covers both a fresh "Pressure-test" click and resuming directly into this
@@ -227,8 +236,8 @@ export function ConvictionFlow({
     // Wait for the take and settings so the request routes to gpt-5-mini.
     if (!take.trim() || !settings) return;
     seeded.current = true;
-    sendMessage({ text: `My take: ${take}` }, { body: { synthesis, take, settings, mode: adversaryMode } });
-  }, [step, take, settings, synthesis, messages.length, sendMessage, adversaryMode]);
+    sendTurn(`My take: ${take}`);
+  }, [step, take, settings, messages.length, sendTurn]);
 
   // --- Commit ---
   const [statement, setStatement] = useState("");
@@ -784,7 +793,7 @@ export function ConvictionFlow({
             onSubmit={(e) => {
               e.preventDefault();
               if (chatInput.trim()) {
-                sendMessage({ text: chatInput }, { body: { synthesis, take, settings } });
+                sendTurn(chatInput);
                 setChatInput("");
                 setHints([]);
               }

@@ -5,6 +5,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { COMMIT_SUGGEST_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,6 +30,9 @@ interface Body {
 // the Adversary discussion. Anti-slop: it never introduces a new opinion — the
 // human still edits and owns the commit.
 export async function POST(req: Request) {
+  const caller = await guard("commit-suggest");
+  if (caller instanceof Response) return caller;
+
   const { synthesis, take, messages, settings: rawSettings } = (await req
     .json()
     .catch(() => ({}))) as Body;

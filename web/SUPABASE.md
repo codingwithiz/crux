@@ -34,17 +34,15 @@ and run it. This creates the `theses` table and the row-level-security policies
 the same way to enable **saved carousels** (the Gallery). Finally run
 [`supabase/migrations/0003_embeddings.sql`](./supabase/migrations/0003_embeddings.sql)
 to enable **semantic re-surfacing** (pgvector). Re-surfacing needs an OpenAI key
-for embeddings — set `OPENAI_API_KEY` in `.env.local`, or an OpenAI key in the
-Model menu. Theses committed *before* this migration won't have embeddings until
-re-committed. Lastly, run
-[`supabase/migrations/0004_user_secrets.sql`](./supabase/migrations/0004_user_secrets.sql)
-to enable **per-user model keys saved to your account** (synced across devices).
-With this in place, a signed-in user can save their BYOK key once in the Model
-menu and never re-paste it on another device — the server reads it back per
-request (precedence: a key sent in the request > the saved account key > the
-server's own env key). Keys are protected by row-level security: each user can
-read/write only their own row, and the API never returns key *values* to the
-browser — only booleans for which providers are set.
+for embeddings — set `OPENAI_API_KEY` in `.env.local`. Theses committed *before*
+this migration won't have embeddings until re-committed.
+
+Skip `0004_user_secrets.sql`: users no longer bring their own model keys, and
+[`0009_drop_secrets_add_ai_calls.sql`](./supabase/migrations/0009_drop_secrets_add_ai_calls.sql)
+drops that table. Run 0009 last — it also creates `ai_calls`, which meters model
+usage and backs the per-user hourly rate limit. Until it is applied the limit
+does not bite (the count query finds no table), so apply it before exposing the
+app to anyone else.
 
 Then run
 [`supabase/migrations/0005_carousel_storage.sql`](./supabase/migrations/0005_carousel_storage.sql)

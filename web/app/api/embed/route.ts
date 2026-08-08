@@ -1,30 +1,24 @@
 import { embed } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { resolveServerSettings } from "@/lib/ai/server-settings";
-import type { Settings } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 interface Body {
   text?: string;
-  settings?: Settings;
-}
-
-// Embeddings standardize on OpenAI text-embedding-3-small (1536 dims) to match
-// the vector column. Prefer a user-supplied OpenAI key, else the server env.
-function openaiKey(s?: Settings): string | undefined {
-  if (s?.provider === "openai" && s.apiKey) return s.apiKey;
-  if (s?.adversaryProvider === "openai" && s.adversaryApiKey) return s.adversaryApiKey;
-  return process.env.OPENAI_API_KEY;
 }
 
 export async function POST(req: Request) {
-  const { text, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
+  const caller = await guard("embed");
+  if (caller instanceof Response) return caller;
+
+  const { text } = (await req.json().catch(() => ({}))) as Body;
   if (!text || !text.trim()) return Response.json({ error: "empty" }, { status: 400 });
 
-  const settings = await resolveServerSettings(rawSettings);
-  const apiKey = openaiKey(settings);
+  // Embeddings standardize on OpenAI text-embedding-3-small (1536 dims) to
+  // match the vector column, regardless of the chat provider in use.
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return Response.json({ error: "no_embed_key" }, { status: 400 });
 
   try {

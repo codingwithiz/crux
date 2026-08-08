@@ -4,6 +4,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { ADVERSARY_SYSTEM, COACH_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,6 +29,9 @@ function fastReasoningEffort(model?: string): "none" | "minimal" | "low" {
 }
 
 export async function POST(req: Request) {
+  const caller = await guard("adversary");
+  if (caller instanceof Response) return caller;
+
   const { messages, synthesis, take, settings: rawSettings, mode } = (await req.json()) as Body;
   const settings = await resolveServerSettings(rawSettings);
   const baseSystem = mode === "spar" ? ADVERSARY_SYSTEM : COACH_SYSTEM;

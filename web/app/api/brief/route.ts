@@ -6,6 +6,7 @@ import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { CURATOR_SYSTEM } from "@/lib/ai/prompts";
 import { getNews } from "@/lib/sources";
 import type { BriefPick, Settings } from "@/lib/types";
+import { guard } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,6 +30,9 @@ interface Body {
 }
 
 export async function POST(req: Request) {
+  const caller = await guard("brief");
+  if (caller instanceof Response) return caller;
+
   const { theses, settings: rawSettings } = (await req.json().catch(() => ({}))) as Body;
   const settings = await resolveServerSettings(rawSettings);
   const ms = stepModelSettings(settings, "synthesize");

@@ -28,13 +28,16 @@ mode, but cloud features and server keys need them.
 | Var | Enables |
 |---|---|
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Free default model (server-side) |
-| `OPENAI_API_KEY` | OpenAI BYOK + embeddings (re-surfacing) |
+| `OPENAI_API_KEY` | Default model + embeddings (re-surfacing) |
 | `ANTHROPIC_API_KEY` | Claude Adversary upgrade |
+| `OLLAMA_BASE_URL` | Local-model endpoint (server-side only) |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Accounts, cloud ledger, gallery, voice |
 | `SUPABASE_SERVICE_ROLE_KEY` | Daily-radar Cron writes (server only) |
-| `CRON_SECRET` | Gates `/api/cron/radar` (Vercel sends it as a bearer token) |
+| `CRON_SECRET` | **Required.** Gates `/api/cron/radar`, which refuses to run when it is unset |
 
-Run the SQL migrations in `web/supabase/migrations/0001…0007` once in the Supabase
+Model keys are server-side only — users never supply their own.
+
+Run the SQL migrations in `web/supabase/migrations/0001…0009` once in the Supabase
 SQL editor (see [`web/SUPABASE.md`](./web/SUPABASE.md)).
 
 ## Cron

@@ -1,18 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, supabaseConfigured } from "../env";
 
 /** Server Supabase client (route handlers / server components). Reads the
  *  signed-in user's session from cookies so RLS scopes queries to them. */
-function cleanEnv(v: string) {
-  return v.replace(/[^\x20-\x7E]/g, "").trim();
-}
-
 export async function createServerSupabase() {
   const cookieStore = await cookies();
   return createServerClient(
-    cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL!),
-    cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -31,19 +28,18 @@ export async function createServerSupabase() {
 }
 
 export function supabaseConfiguredServer(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+  return supabaseConfigured;
 }
 
 /** Service-role client for trusted server jobs (Cron). Bypasses RLS, so it is
  *  ONLY for server contexts with no user session. Returns null when the
  *  service key isn't configured, so callers degrade gracefully. */
 export function createServiceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) return null;
-  return createClient(url, serviceKey, {
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim();
+  if (!SUPABASE_URL || !serviceKey) return null;
+  return createClient(SUPABASE_URL, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
