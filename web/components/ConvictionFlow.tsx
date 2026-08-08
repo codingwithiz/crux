@@ -6,12 +6,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { getSettings, SETTINGS_EVENT, PROVIDER_SHORT, DEFAULT_MODELS } from "@/lib/settings";
 import { stepModelSettings, type Step as ModelStep } from "@/lib/ai/routing";
-import { addThesis } from "@/lib/ledger";
+import { addThesis, removeThesis } from "@/lib/ledger";
 import { expressSlides, explainerFromSynthesis } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
 import { getBrandKit } from "@/lib/brand-kit";
 import { INSPIRATION } from "@/lib/inspiration";
 import { findRelated, type RelatedThesis } from "@/lib/related";
+import { asCitations } from "@/lib/citations";
+import { parseInput } from "@/lib/parse-input";
 import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
 import { Markdown } from "./Markdown";
 import { ProgressSteps } from "./ProgressSteps";
@@ -72,10 +74,16 @@ export function ConvictionFlow({
   const [input, setInput] = useState(initialInput);
   const [take, setTake] = useState("");
   const [synthesis, setSynthesis] = useState<Synthesis | null>(null);
+  // Tolerates the legacy bare-string shape from theses committed before quotes
+  // carried a verification result.
+  const citations = useMemo(() => asCitations(synthesis?.citations), [synthesis]);
   const [related, setRelated] = useState<RelatedThesis[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
   const [explaining, setExplaining] = useState(false);
+  const [parking, setParking] = useState(false);
+  /** Set when this flow was resumed from a parked draft (see parkSynthesis). */
+  const [draftId, setDraftId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const autosynth = useRef(false);
 
@@ -105,14 +113,23 @@ export function ConvictionFlow({
     setSettings(s);
     setLoading(true);
     try {
+      // A pasted link is a source, not a thought: route it through retrieval so
+      // the synthesis is grounded in the actual page rather than in whatever the
+      // model remembers about that URL. Anything typed alongside it stays as the
+      // user's own framing.
+      const parsed = mode === "news" ? { url: undefined, text } : parseInput(text);
+      const url = sourceUrl ?? parsed.url;
       const res = await fetch("/api/synthesize", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          input: text,
-          kind: mode === "news" ? "news" : "thought",
-          sourceTitle,
-          sourceUrl,
+          // The route rejects an empty input, so a bare link falls back to the
+          // URL itself as the placeholder summary; fetchReadable supplies the
+          // real material.
+          input: parsed.text || url || text,
+          kind: url ? "news" : "thought",
+          sourceTitle: sourceTitle ?? parsed.url,
+          sourceUrl: url,
           settings: s,
         }),
       });
@@ -267,6 +284,7 @@ export function ConvictionFlow({
       setSteelman(saved.commit.steelman);
       setChangeMyMind(saved.commit.changeMyMind);
       setTopic(saved.commit.topic);
+      setDraftId(saved.draftId);
       // Only mark as seeded when there's an actual conversation to restore;
       // otherwise the seeding effect above will start the Adversary so a
       // resumed-but-unstarted flow doesn't hang.
@@ -293,13 +311,14 @@ export function ConvictionFlow({
       step,
       input,
       take,
+      draftId,
       synthesis,
       messages,
       commit: { statement, confidence, evidenceFor, steelman, changeMyMind, topic },
       savedAt: new Date().toISOString(),
     });
   }, [
-    mode, sourceTitle, step, input, take, synthesis, messages,
+    mode, sourceTitle, step, input, take, draftId, synthesis, messages,
     statement, confidence, evidenceFor, steelman, changeMyMind, topic,
   ]);
 
@@ -390,6 +409,34 @@ export function ConvictionFlow({
     }
   }
 
+  // Park the understanding without forming an opinion. Some things are worth
+  // reading and thinking about before you have a take — and forcing one on the
+  // spot is how you end up publishing a view you don't hold.
+  async function parkSynthesis() {
+    if (!synthesis) return;
+    setParking(true);
+    setError(null);
+    try {
+      const source = synthesis.source ?? (sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined);
+      await addThesis({
+        id: draftId ?? crypto.randomUUID(),
+        topic: topic.trim() || sourceTitle || input.trim().slice(0, 80) || "Parked",
+        statement: "",
+        confidence,
+        synthesis,
+        createdAt: new Date().toISOString(),
+        source,
+        status: "draft",
+      });
+      clearFlow();
+      toast.success("Saved for later — pick it up from Today");
+      router.push("/today");
+    } catch (e) {
+      setError((e as Error).message);
+      setParking(false);
+    }
+  }
+
   async function commit() {
     setLoading(true);
     setError(null);
@@ -409,6 +456,9 @@ export function ConvictionFlow({
       status: "active",
     };
     await addThesis(thesis);
+    // This flow started life as a parked draft; the committed thesis replaces
+    // it, so retire the placeholder rather than leaving both in the ledger.
+    if (draftId) await removeThesis(draftId).catch(() => {});
 
     const handle = getBrandKit().handle;
     const { slides, designId } = await expressSlides(thesis, handle);
@@ -470,12 +520,16 @@ export function ConvictionFlow({
 
       {step === "input" && (
         <div className="ce-fade-up">
-          <label className="block text-sm font-medium">Your raw thought</label>
+          <label className="block text-sm font-medium">A thought, a link, or both</label>
+          <p className="mt-1 text-xs text-muted">
+            Paste a link and we read the actual page before synthesizing. Add your own take alongside it
+            and we keep them apart.
+          </p>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             rows={4}
-            placeholder="e.g. AI agents will make most SaaS dashboards obsolete within two years."
+            placeholder="e.g. AI agents will make most SaaS dashboards obsolete within two years.&#10;or: https://example.com/article — I think the author is too optimistic."
             className="mt-2 w-full resize-none rounded-xl border border-line bg-surface/40 px-4 py-3 text-base outline-none focus:border-accent"
           />
           <div className="mt-2">
@@ -513,29 +567,30 @@ export function ConvictionFlow({
             <ProgressSteps steps={mode === "news" ? SYNTH_STEPS_NEWS : SYNTH_STEPS_THOUGHT} />
           ) : synthesis ? (
             <>
-              {mode === "news" && (
-                <div className="mb-3 flex items-center gap-2 text-xs">
-                  {synthesis.grounded ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
-                      <Check className="h-3 w-3" /> Grounded in the source
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
-                      <AlertTriangle className="h-3 w-3" /> From the model&rsquo;s knowledge — verify before you commit
-                    </span>
-                  )}
-                  {sourceUrl && (
-                    <a
-                      href={sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-muted underline-offset-4 hover:text-fg hover:underline"
-                    >
-                      open source <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-              )}
+              {/* Shown on every path, not just the news feed. Gating this on
+                  mode === "news" was what let a pasted link produce a confident
+                  summary of a page nobody fetched, with no warning at all. */}
+              <div className="mb-3 flex items-center gap-2 text-xs">
+                {synthesis.grounded ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
+                    <Check className="h-3 w-3" /> Grounded in the source
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
+                    <AlertTriangle className="h-3 w-3" /> From the model&rsquo;s knowledge — verify before you commit
+                  </span>
+                )}
+                {(synthesis.source?.url ?? sourceUrl) && (
+                  <a
+                    href={synthesis.source?.url ?? sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-muted underline-offset-4 hover:text-fg hover:underline"
+                  >
+                    open source <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
               <div className="space-y-3">
                 {synthesis.plainEnglish && (
                   <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
@@ -563,15 +618,30 @@ export function ConvictionFlow({
                     </ul>
                   </div>
                 )}
-                {synthesis.citations && synthesis.citations.length > 0 && (
+                {citations.length > 0 && (
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
                     <p className="font-mono text-xs uppercase tracking-wide text-emerald-300">
                       Receipts — quotes from the source
                     </p>
                     <ul className="mt-2 space-y-2">
-                      {synthesis.citations.map((c, i) => (
+                      {citations.map((c, i) => (
                         <li key={i} className="border-l-2 border-emerald-500/40 pl-3 text-sm italic text-muted">
-                          &ldquo;{c}&rdquo;
+                          &ldquo;{c.quote}&rdquo;
+                          {c.verified ? (
+                            <span
+                              title="Found word-for-word in the source"
+                              className="ml-2 not-italic text-xs text-emerald-300"
+                            >
+                              <Check className="inline h-3 w-3" /> verified
+                            </span>
+                          ) : (
+                            <span
+                              title="We could not match this quote to the source text — treat it with suspicion"
+                              className="ml-2 not-italic text-xs text-amber-300"
+                            >
+                              <AlertTriangle className="inline h-3 w-3" /> unverified
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -610,6 +680,24 @@ export function ConvictionFlow({
                     className="ce-press inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-cool/15 px-4 py-2 text-sm font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
                   >
                     <BookOpen className="h-4 w-4" /> {explaining ? "Building…" : "Make explainer carousel →"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-line bg-surface/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">No opinion yet?</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Park it with the source and receipts intact. Pick it up from Today whenever the take arrives.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => void parkSynthesis()}
+                    disabled={parking}
+                    className="ce-press inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface hover:text-fg disabled:opacity-50"
+                  >
+                    <BookOpen className="h-4 w-4" /> {parking ? "Saving…" : "Save for later"}
                   </button>
                 </div>
               </div>

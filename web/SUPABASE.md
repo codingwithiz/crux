@@ -68,6 +68,14 @@ to enable **calibration scoring** — it adds `outcome`/`resolved_at` to `theses
 the Ledger can score how well your stated confidence matched reality. Works in
 localStorage mode without it; only cloud sync of outcomes needs the column.
 
+Then run
+[`supabase/migrations/0010_thesis_synthesis.sql`](./supabase/migrations/0010_thesis_synthesis.sql)
+to **persist the synthesis** each thesis was built on — its source and verified
+quotes. Without it, a carousel made from the Ledger later has no source context
+and is silently ungrounded. **Apply this one before deploying the code that
+writes the column**: `addThesis` inserts `synthesis`, and against a database
+without it Postgres rejects the whole insert, so committing a thesis fails.
+
 ## 4. Enable email auth
 In **Authentication → Providers**, ensure **Email** is enabled. For quick local
 testing you can turn **off** "Confirm email" (Authentication → Providers → Email)

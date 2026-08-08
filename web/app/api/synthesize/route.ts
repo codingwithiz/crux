@@ -5,6 +5,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { SYNTHESIZER_SYSTEM, GROUNDED_SYNTHESIZER_SYSTEM } from "@/lib/ai/prompts";
 import { fetchReadable } from "@/lib/extract";
+import { verifyCitations } from "@/lib/citations";
 import type { Settings } from "@/lib/types";
 import { guard } from "@/lib/api-guard";
 
@@ -52,9 +53,13 @@ export async function POST(req: Request) {
   let system = SYNTHESIZER_SYSTEM;
   let prompt: string;
 
+  // The material the model is allowed to draw on, and the exact text every
+  // quote is later checked against.
+  let material = "";
+
   if (kind === "news") {
     const fetched = sourceUrl ? await fetchReadable(sourceUrl) : null;
-    const material = [
+    material = [
       sourceTitle ? `Title: ${sourceTitle}` : "",
       input.trim() ? `Summary: ${input.trim()}` : "",
       fetched ? `Article text:\n${fetched}` : "",
@@ -68,6 +73,7 @@ export async function POST(req: Request) {
       system = GROUNDED_SYNTHESIZER_SYSTEM;
       prompt = `SOURCE MATERIAL (synthesize ONLY from this):\n"""\n${material}\n"""\n\n${ASK}\nThen fill "citations" with 2-4 short verbatim quotes from the SOURCE MATERIAL above.`;
     } else {
+      material = "";
       prompt = `A trending AI/tech item.\nTitle: ${sourceTitle ?? ""}\nDetails: ${input}\n\n${ASK}`;
     }
   } else {
@@ -76,7 +82,18 @@ export async function POST(req: Request) {
 
   try {
     const output = await generateStructured({ ms, schema: Schema, system, prompt, label: "synthesize" });
-    return Response.json({ ...output, grounded });
+    // Verify the receipts before they ever reach the user. The model is asked
+    // for verbatim quotes; this is what confirms it obliged.
+    //
+    // With no source material there are no receipts to give: asked anyway, the
+    // model happily produces citation-shaped text with invented URLs. Showing
+    // that under a "quotes from the source" heading would be a lie no per-quote
+    // badge can undo, so drop them entirely.
+    const citations = material
+      ? verifyCitations(output.citations ?? [], material, { url: sourceUrl, title: sourceTitle })
+      : [];
+    const source = sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined;
+    return Response.json({ ...output, citations, grounded, source });
   } catch (e) {
     return Response.json({ error: (e as Error).message ?? "synthesis_failed" }, { status: 500 });
   }

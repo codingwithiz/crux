@@ -6,8 +6,9 @@ export default function ThinkPage() {
       <p className="font-mono text-xs text-accent">IDEA 2 · THOUGHT → CONVICTION</p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight">From your thought</h1>
       <p className="mt-2 text-muted">
-        Drop a rough opinion. We map the landscape, the Adversary pressure-tests you, then you commit
-        a calibrated thesis and turn it into a carousel.
+        Drop a rough opinion — or paste a link and we read the actual page first. We map the
+        landscape, the Adversary pressure-tests you, then you commit a calibrated thesis and turn it
+        into a carousel. No take yet? Park it and come back.
       </p>
       <div className="mt-8">
         <ConvictionFlow mode="thought" />

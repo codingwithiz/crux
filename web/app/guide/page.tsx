@@ -25,7 +25,7 @@ const FAQ: [string, string][] = [
   ["Why won't the AI just write my opinion?", "That's the whole point. A tool that hands you a finished take produces laundered slop. This one makes you think, then renders the view you committed to."],
   ["What is the Ledger?", "Your compounding track record — every committed thesis, with confidence, evidence, revisions, and (once you resolve them) a calibration score: were you right when you were confident?"],
   ["What is Voice?", "Paste a few of your real posts on the Voice page; the Expressor then writes every carousel in your style. A strong default ships out of the box."],
-  ["How grounded is the synthesis?", "For news, we retrieve the actual article text (reader-mode) and synthesize only from it, with verbatim citations. A badge tells you when it's grounded vs. from the model's memory."],
+  ["How grounded is the synthesis?", "Paste a link — or pick a news item — and we fetch the real page text and synthesize only from it. Each quote in Receipts is then checked word-for-word against that text and marked verified or unverified, so you can see which claims actually trace back to the source. A badge tells you when a synthesis is grounded vs. drawn from the model's memory."],
   ["Which model runs which step?", "Synthesize · Curator · Carousel use your default (OpenAI); the Adversary can use a stronger model (e.g. Claude) if you set one. The flow shows the assignment; change it in the Model menu."],
 ];
 
