@@ -23,7 +23,7 @@ export interface CarouselDesign {
   /** Headline + body text. */
   fg: string;
   muted: string;
-  /** Brand-driven accent (overridable per carousel via withBrand). */
+  /** Brand-driven accent (resolved per carousel by applyBrand). */
   accent: string;
   accentFg: string;
   /** Card surface + hairline. */
@@ -169,13 +169,6 @@ export const DESIGNS: CarouselDesign[] = [
 
 export function getDesign(id: string): CarouselDesign {
   return DESIGNS.find((d) => d.id === id) ?? DESIGNS[0];
-}
-
-/** Tint a design's accent with a detected brand color (hex like "#DC382D"). */
-export function withBrand(design: CarouselDesign, brandHex?: string): CarouselDesign {
-  if (!brandHex) return design;
-  const hex = brandHex.startsWith("#") ? brandHex : `#${brandHex}`;
-  return { ...design, accent: hex };
 }
 
 // ─── Slide + visual-module model ───────────────────────────────────────────

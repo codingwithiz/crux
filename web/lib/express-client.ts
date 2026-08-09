@@ -43,7 +43,6 @@ export interface Repurposed {
 export async function explainerFromSynthesis(
   synthesis: Synthesis,
   sourceTitle?: string,
-  sourceUrl?: string,
   handle = "@you",
 ): Promise<{ slides: CarouselSlide[]; designId?: string }> {
   let slides = thesisToCarousel(
@@ -59,10 +58,10 @@ export async function explainerFromSynthesis(
   );
   let designId: string | undefined;
   try {
-    const eRes = await fetch("/api/explain", {
+    const eRes = await fetch("/api/express", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ synthesis, sourceTitle, sourceUrl, settings: getSettings() }),
+      body: JSON.stringify({ mode: "explain", synthesis, sourceTitle, settings: getSettings() }),
     });
     if (eRes.ok) {
       const j = (await eRes.json()) as { slides?: CarouselSlide[]; designId?: string };

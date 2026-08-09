@@ -87,35 +87,6 @@ export interface Thesis {
   resolvedAt?: string; // ISO, set when an outcome is recorded
 }
 
-export type SlideKind =
-  | "hook"
-  | "context"
-  | "conventional"
-  | "argument"
-  | "counter"
-  | "sowhat"
-  | "cta";
-
-/** Visual layout for a slide — the bold/punchy template gallery. */
-export type SlideLayout = "statement" | "stat" | "quote" | "list" | "split";
-
-export interface Slide {
-  kind: SlideKind;
-  kicker: string;
-  title: string;
-  body: string;
-  /** Chosen template layout; defaults from `kind` when absent (back-compat). */
-  layout?: SlideLayout;
-  /** For the "list" layout — short bullet points. */
-  bullets?: string[];
-  /** For the "stat" layout — a big number + its label. */
-  stat?: { value: string; label: string };
-  /** A topic icon: an emoji (hook/CTA) or a line-icon keyword (content slides). */
-  icon?: string;
-  /** Optional source credit shown on the slide (e.g. "arXiv · Attention…"). */
-  source?: string;
-}
-
 export type NewsSource = "hf" | "hn" | "github" | "reddit" | "lobsters" | "arxiv" | "news";
 
 export interface NewsItem {
@@ -155,19 +126,6 @@ export interface VoiceProfile {
    */
   interests: string[];
   updatedAt: string;
-}
-
-export interface CarouselTheme {
-  id: string;
-  name: string;
-  bg: string;
-  /** Gradient end colour for the slide background (falls back to `bg`). */
-  bg2?: string;
-  panel: string;
-  fg: string;
-  muted: string;
-  accent: string;
-  accentFg: string;
 }
 
 export interface Carousel {
