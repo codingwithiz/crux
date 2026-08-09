@@ -17,6 +17,9 @@ import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
 import { Markdown } from "./Markdown";
 import { ProgressSteps } from "./ProgressSteps";
 import { MicButton } from "./MicButton";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import { Callout } from "@/components/ui/Callout";
 import { Check, AlertTriangle, Lightbulb, Sparkles, Copy, ExternalLink, Square, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
@@ -161,6 +164,7 @@ export function ConvictionFlow({
   const [drafts, setDrafts] = useState<string[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(false);
   const seeded = useRef(false);
+  const transcript = useRef<HTMLDivElement>(null);
   const thinking = status === "submitted" || status === "streaming";
   const awaiting = status === "submitted"; // before the first token arrives
   const streaming = status === "streaming";
@@ -247,6 +251,13 @@ export function ConvictionFlow({
     seeded.current = true;
     sendTurn(`My take: ${take}`);
   }, [step, take, settings, messages.length, sendTurn]);
+
+  // Keep the newest reply in view. A bounded transcript that doesn't follow the
+  // stream is worse than an unbounded one — the answer arrives out of sight.
+  useEffect(() => {
+    const el = transcript.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, status]);
 
   // --- Commit ---
   const [statement, setStatement] = useState("");
@@ -516,26 +527,23 @@ export function ConvictionFlow({
         ))}
       </div>
 
-      <div className="mb-4 rounded-lg border border-line bg-surface/30 px-4 py-2.5">
-        <p className="text-sm font-medium text-fg">
-          Step {activeIdx + 1} of {STEPS.length} · {STEPS[activeIdx].label}
-        </p>
-        <p className="mt-0.5 text-xs text-muted">{STEP_WHY[step]}</p>
-      </div>
+      {/* The chips above already say which step this is; a second bordered
+          "Step 1 of 4" panel restated it and pushed the actual content down. */}
+      <p className="-mt-4 mb-5 text-xs text-muted">{STEP_WHY[step]}</p>
 
       {resumed && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-cool/40 bg-cool/10 px-4 py-2.5 text-sm text-cool">
-          <span>Resumed your in-progress conviction.</span>
-          <button onClick={startOver} className="rounded-md px-2 py-1 text-xs underline-offset-4 hover:underline">
+        <Callout tone="info" className="mb-4 flex items-center justify-between gap-3">
+          <span>Picked up where you left off.</span>
+          <button onClick={startOver} className="shrink-0 text-xs underline-offset-4 hover:underline">
             Start over
           </button>
-        </div>
+        </Callout>
       )}
 
       {error && (
-        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <Callout tone="warning" className="mb-4">
           {error}
-        </div>
+        </Callout>
       )}
 
       {step === "input" && (
@@ -617,9 +625,20 @@ export function ConvictionFlow({
                     <p className="font-mono text-xs uppercase tracking-wide text-accent">
                       In plain English
                     </p>
-                    <p className="mt-1 text-base leading-relaxed text-fg">{synthesis.plainEnglish}</p>
+                    <p className="mt-1 font-serif text-lg leading-relaxed text-fg">{synthesis.plainEnglish}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Everything below is the evidence behind that summary. Useful,
+                  but not required to form a gut reaction — and as a flat stack
+                  of same-weight cards it buried the one input that mattered. */}
+              <details className="group mt-4" open={!take.trim()}>
+                <summary className="cursor-pointer list-none text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
+                  <span className="group-open:hidden">Read the full breakdown</span>
+                  <span className="hidden group-open:inline">Hide the full breakdown</span>
+                </summary>
+                <div className="mt-3 space-y-3">
                 {SYNTH_ROWS.map((r) => (
                   <div key={r.key} className="rounded-xl border border-line bg-surface/40 p-4">
                     <p className="font-mono text-xs uppercase tracking-wide text-accent">{r.label}</p>
@@ -667,7 +686,8 @@ export function ConvictionFlow({
                     </ul>
                   </div>
                 )}
-              </div>
+                </div>
+              </details>
 
               {related.length > 0 && (
                 <div className="mt-4 rounded-xl border border-cool/40 bg-cool/5 p-4">
@@ -686,100 +706,87 @@ export function ConvictionFlow({
                 </div>
               )}
 
-              <div className="mt-6 rounded-xl border border-cool/40 bg-cool/5 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">Just want to explain it?</p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      Skip the opinion — make a neutral explainer carousel with the key takeaways for your audience.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => void makeExplainer()}
-                    disabled={explaining}
-                    className="ce-press inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-cool/15 px-4 py-2 text-sm font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
-                  >
-                    <BookOpen className="h-4 w-4" /> {explaining ? "Building…" : "Make explainer carousel →"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-xl border border-line bg-surface/40 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">No opinion yet?</p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      Park it with the source and receipts intact. Pick it up from Today whenever the take arrives.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => void parkSynthesis()}
-                    disabled={parking}
-                    className="ce-press inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface hover:text-fg disabled:opacity-50"
-                  >
-                    <BookOpen className="h-4 w-4" /> {parking ? "Saving…" : "Save for later"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-xl border border-accent/40 bg-accent/5 p-4">
-                <label className="block text-sm font-medium">
-                  Or — form <span className="text-accent">your</span> own take (one sentence)
+              {/* The take box used to be the tenth card on this screen, after
+                  ~1,200px of reading and two competing exits — the one field
+                  this whole step exists to fill. It now sits directly under the
+                  plain-English summary, with the detail available on demand. */}
+              <div className="mt-4 rounded-xl border border-accent/40 bg-accent/5 p-4">
+                <label htmlFor="gut-take" className="block text-sm font-medium">
+                  What&rsquo;s <span className="text-accent">your</span> take? One sentence.
                 </label>
-                <input
+                <Input
+                  id="gut-take"
                   value={take}
                   onChange={(e) => setTake(e.target.value)}
-                  placeholder="Write your gut take. The Adversary will pressure-test it."
-                  className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+                  placeholder="Your gut reaction — you'll get to defend it next."
+                  className="mt-2"
                 />
-                <div className="mt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <MicButton onText={(t) => setTake((p) => (p ? `${p} ${t}` : t))} />
-                </div>
-
-                <div className="mt-2">
-                  <button
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => void getDrafts()}
-                    disabled={draftsLoading}
-                    className="rounded-lg border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
+                    loading={draftsLoading}
+                    loadingLabel="Thinking…"
                     title="See 2-3 divergent draft takes to react to and edit"
                   >
-                    {draftsLoading ? "Thinking…" : "Not sure? See draft takes"}
-                  </button>
-                  {drafts.length > 0 && (
-                    <div className="mt-2 space-y-1.5">
-                      <p className="text-[11px] text-muted">
-                        Starting points, not the answer — pick one, make it yours, then defend it.
-                      </p>
-                      {drafts.map((d, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setTake(d)}
-                          className="block w-full rounded-lg border border-line bg-ink/60 px-3 py-2 text-left text-sm text-fg transition hover:border-cool/50 hover:bg-surface"
-                          title="Use as a starting point — then edit it into your own words"
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    Not sure? See draft takes
+                  </Button>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={startAdversary}
-                    disabled={!take.trim()}
-                    className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
-                  >
+                {drafts.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-xs text-muted">
+                      Starting points, not the answer — pick one, make it yours, then defend it.
+                    </p>
+                    {drafts.map((d, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setTake(d)}
+                        className="block w-full rounded-lg border border-line bg-ink/60 px-3 py-2 text-left text-sm text-fg transition hover:border-cool/50 hover:bg-surface"
+                        title="Use as a starting point — then edit it into your own words"
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Button onClick={startAdversary} variant="primary" disabled={!take.trim()}>
                     Talk it through →
-                  </button>
+                  </Button>
                   <button
                     onClick={goCommit}
                     disabled={!take.trim()}
-                    className="rounded-lg border border-line px-4 py-2.5 text-sm text-muted transition hover:bg-surface hover:text-fg disabled:opacity-50"
+                    className="text-sm text-muted underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-40 disabled:hover:no-underline"
                   >
-                    Skip — make my take →
+                    Skip and commit
                   </button>
                 </div>
+              </div>
+
+              {/* Secondary exits: real choices, but not the reason you're here.
+                  They used to get a full card each — more space than the primary
+                  path — in three different visual treatments. */}
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
+                <span>No take yet?</span>
+                <button
+                  onClick={() => void makeExplainer()}
+                  disabled={explaining}
+                  className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-50"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  {explaining ? "Building…" : "Just explain it"}
+                </button>
+                <button
+                  onClick={() => void parkSynthesis()}
+                  disabled={parking}
+                  className="underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-50"
+                >
+                  {parking ? "Saving…" : "Save for later"}
+                </button>
               </div>
             </>
           ) : null}
@@ -802,7 +809,7 @@ export function ConvictionFlow({
             ))}
             <span className="text-muted">{adversaryMode === "coach" ? "· gentle, helps you find it" : "· tough, stress-tests it"}</span>
           </div>
-          <div className="flex min-h-[320px] flex-col gap-3 rounded-xl border border-line bg-surface/40 p-4">
+          <div ref={transcript} className="flex max-h-[55vh] min-h-[320px] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface/40 p-4">
             {messages.length === 0 && (
               <p className="flex items-center gap-2 text-sm text-muted">
                 <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent" />

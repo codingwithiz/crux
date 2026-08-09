@@ -266,7 +266,13 @@ export function LedgerView() {
                   <div className="flex items-start justify-between gap-3">
                     {/* A parked draft has no statement yet — that's the point of
                         parking — so lead with the topic instead of a blank line. */}
-                    <p className={`text-fg ${t.status === "abandoned" ? "line-through" : ""}`}>
+                    {/* The committed opinion is the artefact this whole page
+                        exists for — it should not read like table data. */}
+                    <p
+                      className={`font-serif text-[1.0625rem] leading-snug text-fg ${
+                        t.status === "abandoned" ? "line-through" : ""
+                      }`}
+                    >
                       {t.status === "draft" ? t.topic : t.statement}
                     </p>
                     <span className="flex shrink-0 items-center gap-2">

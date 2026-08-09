@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from "react";
 
+/** After this long, stop implying progress and say the honest thing. */
+const SLOW_AFTER_MS = 12_000;
+
 /**
- * A cycling, labeled progress indicator. AI calls can take a few seconds; this
- * advances through descriptive steps so the user never thinks it's frozen.
+ * A cycling, labelled activity indicator for calls that take a few seconds.
+ *
+ * Deliberately no "step 2 of 4": the steps advance on a timer, not on actual
+ * work, so a counter claimed a precision the component does not have — and it
+ * parked at n/n forever when a call ran long, which is exactly when the user
+ * most needs to know something is still happening. Labels rotate; past the last
+ * one it admits the call is slow rather than looking frozen.
  */
 export function ProgressSteps({ steps, intervalMs = 1600 }: { steps: string[]; intervalMs?: number }) {
   const [i, setI] = useState(0);
+  const [slow, setSlow] = useState(false);
 
   // Reset when the set of steps actually changes. Done during render (React's
   // supported "adjust state on prop change" pattern, keyed on content not array
@@ -17,6 +26,7 @@ export function ProgressSteps({ steps, intervalMs = 1600 }: { steps: string[]; i
   if (key !== prevKey) {
     setPrevKey(key);
     setI(0);
+    setSlow(false);
   }
 
   useEffect(() => {
@@ -25,13 +35,15 @@ export function ProgressSteps({ steps, intervalMs = 1600 }: { steps: string[]; i
     return () => clearTimeout(t);
   }, [i, steps.length, intervalMs]);
 
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [prevKey]);
+
   return (
-    <div className="flex items-center gap-3 text-sm text-muted">
+    <div role="status" aria-live="polite" className="flex items-center gap-3 text-sm">
       <span className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line border-t-accent" />
-      <span className="text-fg">{steps[i]}…</span>
-      <span className="font-mono text-xs text-muted/60">
-        {i + 1}/{steps.length}
-      </span>
+      <span className="text-fg">{slow ? "Still working — this one's taking a while" : `${steps[i]}…`}</span>
     </div>
   );
 }

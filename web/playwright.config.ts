@@ -21,6 +21,11 @@ export default defineConfig({
   workers: CI ? 2 : 4,
   retries: CI ? 2 : 1,
   reporter: CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  // A cold run compiles both the specs and each Next route on first visit, so
+  // the 5s default fails on work that is merely slow rather than broken — and CI
+  // is always cold. Generous ceilings; nothing here should approach them warm.
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
