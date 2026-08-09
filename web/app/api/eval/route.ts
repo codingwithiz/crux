@@ -20,11 +20,30 @@ export const maxDuration = 300;
 const GROUNDED_SOURCE =
   "Researchers introduced a router for mixture-of-experts models that selects two of sixty-four experts per token using a learned gating network. They report a 41% reduction in inference FLOPs at matched perplexity on their internal benchmark, and note the gains shrink to 12% on long-context inputs above 32k tokens. The router adds 3% training overhead and requires an auxiliary load-balancing loss to avoid expert collapse.";
 
+/** A source whose numbers are stated loosely, to see whether a quote gets
+ *  "tightened" into something the text never said. */
+const HEDGED_SOURCE =
+  "The team reports that throughput roughly doubled on their hardware, though they caution the measurement was taken on a single node and may not generalize. Latency was broadly unchanged. They describe the approach as promising but say a fair comparison against tuned baselines is still outstanding, and decline to give a figure for memory overhead.";
+
+/** Marketing copy: heavy on adjectives, thin on facts. Grounded synthesis should
+ *  stay thin too rather than inventing substance to fill the shape. */
+const HYPE_SOURCE =
+  "Today we are thrilled to unveil a revolutionary leap forward that fundamentally reimagines how teams work with data. Our groundbreaking platform delivers unprecedented performance and transformative insights, empowering everyone to unlock the full potential of their workflows. This is a paradigm shift for the entire industry.";
+
 const GOLDEN: { id: string; topic: string; input: string; kind?: "news"; sourceTitle?: string }[] = [
+  // Thought path: no retrieval, so these measure reasoning and register.
   { id: "redis-mem", topic: "Redis performance", input: "Redis is fast mainly because it keeps data in memory instead of on disk." },
   { id: "o1-process", topic: "OpenAI o1 reasoning", input: "o1's reasoning gains come from training process (RL on verifiable rewards), not just bigger scale." },
   { id: "agents-saas", topic: "AI agents vs SaaS", input: "AI agents will make most SaaS dashboards obsolete within two years." },
+  { id: "rag-dead", topic: "RAG vs long context", input: "Long context windows make RAG unnecessary for most products." },
+  { id: "evals-moat", topic: "Evaluation", input: "Evals are a bigger moat than model choice for AI products." },
+  { id: "oss-gap", topic: "Open-weight models", input: "Open-weight models have closed the gap for everyday coding work." },
+  { id: "agent-frameworks", topic: "Agent frameworks", input: "Most agent frameworks add indirection without adding capability." },
+
+  // News path: retrieval + verbatim citation checking.
   { id: "moe-grounded", topic: "Mixture-of-experts routing", kind: "news", sourceTitle: "A cheaper MoE router", input: GROUNDED_SOURCE },
+  { id: "hedged-grounded", topic: "Throughput claims", kind: "news", sourceTitle: "Throughput roughly doubled", input: HEDGED_SOURCE },
+  { id: "hype-grounded", topic: "Launch announcement", kind: "news", sourceTitle: "A revolutionary leap forward", input: HYPE_SOURCE },
 ];
 
 const SynScore = z.object({ grounding: z.number(), clarity: z.number(), neutrality: z.number(), notes: z.string() });
@@ -54,6 +73,14 @@ export async function POST(req: Request) {
   const caller = await requireUser();
   if (caller instanceof Response) return caller;
 
+  // Each item costs four model calls, so the full set will outlast a serverless
+  // budget as it grows. `ids` runs a subset — a smoke set on demand, everything
+  // when you actually want the number.
+  const body = (await req.json().catch(() => ({}))) as { ids?: string[] };
+  const golden = body.ids?.length ? GOLDEN.filter((g) => body.ids!.includes(g.id)) : GOLDEN;
+  if (!golden.length) return Response.json({ error: "no matching ids" }, { status: 400 });
+
+  const startedAt = Date.now();
   const origin = new URL(req.url).origin;
   // The harness deliberately drives the real HTTP routes, and those are now
   // gated — so it forwards the caller's session cookie. Run it with a signed-in
@@ -65,7 +92,7 @@ export async function POST(req: Request) {
   if (!modelReady(jms)) return Response.json({ error: "no judge model key" }, { status: 400 });
 
   const results: (ResultOk | ResultErr)[] = [];
-  for (const g of GOLDEN) {
+  for (const g of golden) {
     try {
       const isNews = g.kind === "news";
       const synRes = await fetch(`${origin}/api/synthesize`, {
@@ -119,5 +146,19 @@ export async function POST(req: Request) {
     carousel: { faithful: avg((r) => r.carousel.faithful), sharp: avg((r) => r.carousel.sharp), noFabrication: avg((r) => r.carousel.noFabrication), quality: avg((r) => r.carousel.quality) },
     citationFaithfulness: cited.length ? +(cited.reduce((a, r) => a + (r.citationFaithfulness ?? 0), 0) / cited.length).toFixed(2) : null,
   };
-  return Response.json({ judge: jms, count: ok.length, averages, results });
+  // A run where most items crashed used to look identical to a clean one:
+  // failures were dropped from `count` and `averages` and never reported. A
+  // history entry also needs to say when it ran and against what, or comparing
+  // two of them means nothing.
+  return Response.json({
+    ranAt: new Date().toISOString(),
+    commit: process.env.GITHUB_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+    durationMs: Date.now() - startedAt,
+    judge: jms,
+    attempted: golden.length,
+    count: ok.length,
+    failed: results.length - ok.length,
+    averages,
+    results,
+  });
 }

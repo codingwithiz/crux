@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test:e2e": "playwright test",
-    "test:install": "playwright install chromium"
+    "test:install": "playwright install chromium",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test --project=unit"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.84",

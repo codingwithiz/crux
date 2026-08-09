@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isPublicPath } from "./lib/auth-paths";
 
 // Refreshes the Supabase auth session on navigation (Next 16 "proxy" =
 // the old "middleware"). No-ops when Supabase isn't configured, so the app
@@ -31,9 +32,7 @@ export async function proxy(request: NextRequest) {
 
   // Login-only: redirect unauthenticated visitors to /login. The landing page
   // and the auth routes stay public.
-  const path = request.nextUrl.pathname;
-  const isPublic = path === "/" || path === "/login" || path.startsWith("/auth");
-  if (!user && !isPublic) {
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);

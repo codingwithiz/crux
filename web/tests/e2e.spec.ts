@@ -1,93 +1,124 @@
 import { test, expect } from "@playwright/test";
 
-// Smoke E2E for the surface that needs no auth or model keys.
-// The auth / AI / re-surfacing flows require your keys + migrations — see
-// the manual cases in ../../TEST_CASES.md.
+/**
+ * Smoke coverage for the shipped product.
+ *
+ * The server these run against is pinned in playwright.config: no Supabase (so
+ * pages aren't gated and API routes answer with their own validation errors
+ * rather than 401) and MOCK_LLM=1 (so model calls are instant and free). The
+ * login gate gets its own spec, which boots a configured server on purpose.
+ */
 
-test("landing shows the value chain and both entry cards", async ({ page }) => {
+test("landing states the value chain and both ways in", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /worth reading/i })).toBeVisible();
   await expect(page.getByText("Information", { exact: true })).toBeVisible();
   await expect(page.getByText("Opinion", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: /From the news/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /From your thought/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Start from the news/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Start from your own idea/i })).toBeVisible();
 });
 
-test("all nav routes resolve (grouped nav)", async ({ page }) => {
-  // Direct top-level links.
-  for (const [label, urlRe] of [
-    ["Today", /\/today/],
-    ["Voice", /\/voice/],
-  ] as [string, RegExp][]) {
-    await page.goto("/");
-    await page.getByRole("link", { name: label, exact: true }).first().click();
-    await expect(page).toHaveURL(urlRe);
-  }
-  // Grouped links: open the menu button, then click the item.
-  const grouped: [string, string, RegExp][] = [
-    ["Create", "From the news", /\/news/],
-    ["Create", "From a thought", /\/think/],
-    ["Library", "Ledger", /\/ledger/],
-    ["Library", "Carousels", /\/gallery/],
-    ["Library", "Studio", /\/studio/],
-  ];
-  for (const [group, item, urlRe] of grouped) {
-    await page.goto("/");
-    await page.getByRole("button", { name: new RegExp(group) }).click();
-    await page.getByRole("link", { name: item, exact: true }).click();
-    await expect(page).toHaveURL(urlRe);
+test("every nav surface resolves", async ({ page }) => {
+  // Five intent surfaces plus You — flat, no dropdowns.
+  const surfaces = [
+    ["Today", "/today", /conviction/i],
+    ["Explore", "/explore", /Explore/i],
+    ["Think", "/think", /Think/i],
+    ["Studio", "/studio", /Studio/i],
+    ["Ledger", "/ledger", /Ledger/i],
+    ["You", "/voice", /You/i],
+  ] as const;
+
+  for (const [label, href, heading] of surfaces) {
+    await page.goto("/today");
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
   }
 });
 
-test("saving a carousel makes it appear in the Library", async ({ page }) => {
-  // Regression for the bug where a "saved" carousel never showed up.
-  // Runs in localStorage mode (no auth) and persists across navigation.
-  await page.goto("/studio");
-  await expect(page.getByRole("img", { name: "Slide 1" })).toBeVisible({ timeout: 20000 });
-  const title = `E2E ${Date.now()}`;
-  await page.getByPlaceholder("Carousel title").fill(title);
-  await page.getByRole("button", { name: /^(Save|Update)$/ }).click();
-  await expect(page.getByText(/^Saved/)).toBeVisible({ timeout: 20000 });
-  await page.goto("/gallery");
-  await expect(page.getByText(title)).toBeVisible();
+test("renamed and retired routes still land somewhere sensible", async ({ page }) => {
+  await page.goto("/news");
+  await expect(page).toHaveURL(/\/explore$/);
+
+  await page.goto("/brief");
+  await expect(page).toHaveURL(/\/explore$/);
+
+  // Queue was removed along with the scheduling that never did anything.
+  const gone = await page.request.get("/queue");
+  expect(gone.status()).toBe(404);
 });
 
-test("hints API rejects an empty question", async ({ page }) => {
-  const res = await page.request.post("/api/hints", { data: {} });
-  expect(res.status()).toBe(400);
-  const j = (await res.json()) as { error?: string };
-  expect(j.error).toBe("no_question");
+test("explore lists items and offers curation", async ({ page }) => {
+  await page.goto("/explore");
+  await expect(page.getByText("Curated for you")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Curate top picks/i })).toBeVisible();
+  await expect(page.getByText("All signal, ranked")).toBeVisible();
 });
 
-test("guide page renders the user manual", async ({ page }) => {
-  await page.goto("/guide");
-  await expect(page.getByRole("heading", { name: /How to use Conviction Engine/i })).toBeVisible();
-  await expect(page.getByText(/your first conviction/i)).toBeVisible();
-});
+test("opening a feed item costs nothing until you ask", async ({ page }) => {
+  // Served from a fixture rather than the live aggregator: this asserts a UI
+  // contract, and shouldn't fail because Hacker News was slow.
+  await page.route("**/api/news", (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: "fixture-1",
+            source: "hn",
+            title: "A cheaper mixture-of-experts router",
+            url: "https://example.com/moe",
+            meta: "412 points · HN",
+            detail: "Selects two of sixty-four experts per token.",
+            score: 412,
+          },
+        ],
+      },
+    }),
+  );
 
-test("commit-suggest guards without a model key", async ({ page }) => {
-  // Force a provider with no key/env (anthropic isn't set in CI) → 400 no_model.
-  const res = await page.request.post("/api/commit-suggest", {
-    data: { take: "test", settings: { provider: "anthropic", apiKey: "" } },
+  // A synthesis is the expensive step; expanding must not trigger one.
+  let synthesized = false;
+  page.on("request", (r) => {
+    if (r.url().includes("/api/synthesize")) synthesized = true;
   });
-  expect(res.status()).toBe(400);
+
+  await page.goto("/explore");
+  const item = page.getByRole("button", { name: /cheaper mixture-of-experts router/i });
+  await expect(item).toBeVisible();
+  await expect(item).toHaveAttribute("aria-expanded", "false");
+
+  await item.click();
+  await expect(item).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: /Synthesize/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Read source/i })).toBeVisible();
+  expect(synthesized).toBe(false);
 });
 
-test("studio renders", async ({ page }) => {
-  await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: /Carousel Studio/i })).toBeVisible();
-  await expect(page.getByPlaceholder("Carousel title")).toBeVisible();
+test("today shows a pick with a way to read it first", async ({ page }) => {
+  await page.goto("/today");
+  await expect(page.getByText(/Today.s conviction/)).toBeVisible();
+  await expect(page.getByText("day streak")).toBeVisible();
 });
 
-test("studio auto-generates the carousel images on load", async ({ page }) => {
+test("studio without a draft says so instead of showing a stranger's deck", async ({ page }) => {
   await page.goto("/studio");
-  // Waits for the auto-render to finish.
-  await expect(page.getByText("Generated carousel")).toBeVisible();
-  const firstImg = page.getByRole("img", { name: "Slide 1" });
-  await expect(firstImg).toBeVisible({ timeout: 20000 });
-  // The img src must be an object URL backed by the rendered PNG blob.
-  await expect(firstImg).toHaveAttribute("src", /^blob:/);
-  await expect(page.getByRole("button", { name: /Download all/i })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: /Studio/i }).first()).toBeVisible();
+  await expect(page.getByText(/Nothing to edit yet/i)).toBeVisible();
+});
+
+test("you page loads the voice and interests editors", async ({ page }) => {
+  await page.goto("/voice");
+  await expect(page.getByRole("heading", { name: "You", exact: true })).toBeVisible();
+  await expect(page.getByText(/built-in default voice/i)).toBeVisible();
+  await expect(page.getByLabel("Add an interest")).toBeVisible();
+  await expect(page.getByPlaceholder(/Paste one of your posts/i).first()).toBeVisible();
+});
+
+test("guide explains the current screens", async ({ page }) => {
+  await page.goto("/guide");
+  await expect(page.getByRole("heading", { name: /How Crux works/i })).toBeVisible();
+  await expect(page.getByText(/your first conviction/i)).toBeVisible();
 });
 
 test("login page renders", async ({ page }) => {
@@ -95,82 +126,49 @@ test("login page renders", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Sign in|Create account/i })).toBeVisible();
 });
 
-test("news API returns live items", async ({ page }) => {
-  const res = await page.request.get("/api/news");
-  expect(res.status()).toBe(200);
-  const json = (await res.json()) as { items?: unknown[] };
-  expect(Array.isArray(json.items)).toBeTruthy();
+// ── API surface ────────────────────────────────────────────────────────────
+// Without Supabase configured the guard allows through, so these exercise each
+// route's own validation rather than the auth layer.
+
+test("news API returns live items", async ({ request }) => {
+  const res = await request.get("/api/news");
+  expect(res.ok()).toBeTruthy();
+  const body = (await res.json()) as { items?: unknown[] };
+  expect(Array.isArray(body.items)).toBe(true);
 });
 
-test("news page offers AI curation + a ranked list, and /brief redirects to it", async ({ page }) => {
-  await page.goto("/news");
-  await expect(page.getByText("Curated for you")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Curate top picks/i })).toBeVisible();
-  await expect(page.getByText("All signal, ranked")).toBeVisible();
-  // Old Brief path is consolidated into News.
-  await page.goto("/brief");
-  await expect(page).toHaveURL(/\/news/);
+test("radar read endpoint returns a snapshot shape", async ({ request }) => {
+  const res = await request.get("/api/radar");
+  expect(res.ok()).toBeTruthy();
+  expect(await res.json()).toHaveProperty("snapshot");
 });
 
-test("today ritual hub renders the daily prompt + streak", async ({ page }) => {
-  await page.goto("/today");
-  await expect(page.getByRole("heading", { name: /conviction/i })).toBeVisible();
-  await expect(page.getByText(/day streak/i)).toBeVisible();
-  await expect(page.getByText("Today's conviction")).toBeVisible();
+test("routes reject empty input rather than calling a model", async ({ request }) => {
+  const cases: [string, Record<string, unknown>, string][] = [
+    ["/api/synthesize", {}, "empty"],
+    ["/api/hints", {}, "no_question"],
+    ["/api/voice", { samples: [] }, "no_samples"],
+    ["/api/revoice", { slides: [] }, "no_slides"],
+    ["/api/express", {}, "no_thesis"],
+    ["/api/express", { mode: "explain" }, "no_synthesis"],
+  ];
+  for (const [url, body, error] of cases) {
+    const res = await request.post(url, { data: body });
+    expect(res.status(), url).toBe(400);
+    expect((await res.json()).error, url).toBe(error);
+  }
 });
 
-test("voice page loads the editor with the built-in default", async ({ page }) => {
-  await page.goto("/voice");
-  await expect(page.getByRole("heading", { name: /Your voice/i })).toBeVisible();
-  await expect(page.getByText(/built-in default voice/i)).toBeVisible();
-  await expect(page.getByPlaceholder(/Paste one of your posts/i).first()).toBeVisible();
-  // The default voice guide should have populated the guide textarea.
-  await expect(page.getByPlaceholder(/Distill from your samples/i)).not.toBeEmpty();
-});
-
-test("voice distill API rejects empty input", async ({ page }) => {
-  const res = await page.request.post("/api/voice", { data: { samples: [] } });
-  expect(res.status()).toBe(400);
-  const j = (await res.json()) as { error?: string };
-  expect(j.error).toBe("no_samples");
-});
-
-test("revoice API rejects empty slides", async ({ page }) => {
-  const res = await page.request.post("/api/revoice", { data: { slides: [] } });
-  expect(res.status()).toBe(400);
-  const j = (await res.json()) as { error?: string };
-  expect(j.error).toBe("no_slides");
-});
-
-test("studio shows the rewrite-in-my-voice and copy-caption actions", async ({ page }) => {
-  await page.goto("/studio");
-  await expect(page.getByRole("button", { name: /Rewrite in my voice/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Copy caption/i })).toBeVisible();
-});
-
-test("radar read endpoint returns a snapshot shape", async ({ page }) => {
-  // null without Supabase / before the 0006 migration; an object once a scan ran.
-  const res = await page.request.get("/api/radar");
-  expect(res.status()).toBe(200);
-  const json = (await res.json()) as Record<string, unknown>;
-  expect("snapshot" in json).toBeTruthy();
-});
-
-test("radar cron scans sources and reports a digest", async ({ page }) => {
-  const res = await page.request.get("/api/cron/radar", { timeout: 30000 });
-  expect(res.status()).toBe(200);
-  const json = (await res.json()) as { ok?: boolean; count?: number; persisted?: boolean };
-  expect(json.ok).toBeTruthy();
-  expect(typeof json.count).toBe("number");
-  // persisted only when SUPABASE_SERVICE_ROLE_KEY is set; assert it's a boolean.
-  expect(typeof json.persisted).toBe("boolean");
-});
-
-test("AI routes guard correctly without a model key", async ({ page }) => {
-  // Force a provider with no key/env (anthropic isn't set in CI) so the guard
-  // returns deterministically without making a live model call.
-  const res = await page.request.post("/api/synthesize", {
-    data: { input: "test", kind: "thought", settings: { provider: "anthropic", apiKey: "" } },
+test("express handles malformed JSON as a bad request, not a crash", async ({ request }) => {
+  const res = await request.post("/api/express", {
+    headers: { "content-type": "application/json" },
+    data: "{not json",
   });
   expect(res.status()).toBe(400);
+});
+
+test("cron refuses to run without its secret", async ({ request }) => {
+  const res = await request.get("/api/cron/radar");
+  expect(res.status()).toBe(500);
+  expect((await res.json()).error).toBe("cron_secret_unset");
 });
