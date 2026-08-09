@@ -47,6 +47,10 @@ export function rankItems(items: NewsItem[], theses: RankInput[]): NewsItem[] {
 
   const userTerms = new Set<string>();
   for (const t of theses) {
+    // Parked drafts have a topic but deliberately no statement — they are the
+    // things you declined to have an opinion about, so they must not steer the
+    // feed the way a committed conviction does.
+    if (!t.statement.trim()) continue;
     for (const w of tokenize(`${t.topic} ${t.statement}`)) userTerms.add(w);
   }
   const hasTheses = userTerms.size > 0;

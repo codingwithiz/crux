@@ -3,14 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import JSZip from "jszip";
-import { Images } from "lucide-react";
+import { Images, Send } from "lucide-react";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { SlideCanvas } from "@/components/carousel/SlideCanvas";
 import { getDesign } from "@/lib/carousel/design";
 import { applyBrand } from "@/lib/carousel/brand";
 import { slideToBlob, downloadBlob } from "@/lib/carousel/export";
+import { buildCaption } from "@/lib/carousel/caption";
 import { listCarousels, removeCarousel } from "@/lib/carousels";
+import { manualPublisher, PLATFORMS, type Platform } from "@/lib/publish";
 import type { Carousel } from "@/lib/types";
 
 export function GalleryView() {
@@ -36,6 +39,14 @@ export function GalleryView() {
   async function del(id: string) {
     await removeCarousel(id);
     load();
+  }
+
+  function publish(c: Carousel, platform: Platform) {
+    // The real caption builder, not the deck title — the Queue used to hand the
+    // composer a bare title while the Studio copied a full caption.
+    const r = manualPublisher.publish({ platform, caption: buildCaption(c.slides, c.handle) });
+    if (r.ok) toast.success(r.message);
+    else toast.error(r.message);
   }
 
   async function downloadZip(c: Carousel) {
@@ -64,7 +75,7 @@ export function GalleryView() {
       downloadBlob(await zip.generateAsync({ type: "blob" }), (c.title || "carousel") + ".zip");
     } catch (e) {
       setExporting(null);
-      alert("Export failed: " + (e as Error).message);
+      toast.error("Export failed: " + (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -81,9 +92,8 @@ export function GalleryView() {
   if (err)
     return (
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
-        {err} — if you&rsquo;re signed in, make sure migration{" "}
-        <code className="font-mono">0002_carousels.sql</code> (and{" "}
-        <code className="font-mono">0005_carousel_storage.sql</code>) have been run.
+        Couldn&rsquo;t load your carousels. Anything saved on this device is still safe — try
+        reloading, or sign in again if the problem sticks.
       </div>
     );
   if (!items.length)
@@ -140,6 +150,23 @@ export function GalleryView() {
                   <Link href={`/studio?c=${c.id}`} className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110">Open</Link>
                   <button onClick={() => downloadZip(c)} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50">.zip</button>
                   <button onClick={() => del(c.id)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg">Delete</button>
+                </div>
+                {/* Opens the platform's composer with the caption ready. Moved
+                    here from the Queue, whose scheduling stored a date nothing
+                    ever read. */}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                    <Send className="h-3 w-3" /> Post to
+                  </span>
+                  {PLATFORMS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => publish(c, p.id)}
+                      className="rounded-full border border-line px-2.5 py-0.5 text-[11px] text-muted transition hover:bg-surface hover:text-fg"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
