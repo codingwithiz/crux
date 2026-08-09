@@ -1,0 +1,84 @@
+name: Eval
+
+# Manual only. This one spends real tokens against real providers — it is the
+# measurement, not the guard. Run it when a prompt, model, or pipeline step
+# changed and you want to know whether output quality moved.
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: "Comma-separated golden-set ids (blank = all)"
+        required: false
+        default: ""
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+
+      # Supabase stays unset so the harness needs no session: the guard allows
+      # through in single-user mode. NODE_ENV must not be production — the route
+      # refuses there, which is also why Vercel cron can't host this.
+      - name: Start app
+        run: npm run dev &
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          JUDGE_PROVIDER: ${{ vars.JUDGE_PROVIDER || 'openai' }}
+          JUDGE_MODEL: ${{ vars.JUDGE_MODEL || 'gpt-5.5' }}
+
+      - name: Wait for app
+        run: npx wait-on http://localhost:3000/api/news --timeout 180000
+
+      - name: Run eval
+        run: |
+          IDS='${{ github.event.inputs.ids }}'
+          BODY='{}'
+          if [ -n "$IDS" ]; then
+            BODY=$(node -e "console.log(JSON.stringify({ids: process.argv[1].split(',').map(s=>s.trim()).filter(Boolean)}))" "$IDS")
+          fi
+          curl -sS -X POST http://localhost:3000/api/eval \
+            -H 'content-type: application/json' \
+            -d "$BODY" --max-time 1800 -o result.json
+          node -e "
+            const r = require('./result.json');
+            if (r.error) { console.error('eval failed:', r.error); process.exit(1); }
+            console.log(JSON.stringify(r.averages, null, 2));
+            console.log('scored', r.count, 'of', r.attempted, '| failed', r.failed);
+          "
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+
+      # One line per run, so quality is a trend rather than a vibe.
+      - name: Append to history
+        run: |
+          node -e "
+            const fs = require('fs');
+            const r = require('./result.json');
+            const path = 'eval-history.json';
+            const hist = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : [];
+            hist.push({
+              ranAt: r.ranAt, commit: r.commit, judge: r.judge,
+              attempted: r.attempted, count: r.count, failed: r.failed,
+              durationMs: r.durationMs, averages: r.averages,
+            });
+            fs.writeFileSync(path, JSON.stringify(hist, null, 2) + '\n');
+          "
+          rm -f result.json
+
+      - name: Commit history
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add eval-history.json
+          git diff --staged --quiet || git commit -m "chore(eval): record run ${{ github.sha }}"
+          git push

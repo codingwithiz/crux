@@ -5,6 +5,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 import type { Provider } from "../types";
 import { cleanSecret } from "../env";
+import { mockModel, usingMockModel } from "./mock-model";
 
 export interface ModelSettings {
   provider?: Provider;
@@ -18,6 +19,11 @@ export interface ModelSettings {
  * caller point this server at an arbitrary internal URL.
  */
 export function getModel(s: ModelSettings = {}): LanguageModel {
+  // The seam sits here rather than in generateStructured because this is the
+  // one point both generateText and streamText pass through — so the streaming
+  // adversary is covered by the same switch as every structured call.
+  if (usingMockModel()) return mockModel();
+
   switch (s.provider ?? "openai") {
     case "anthropic":
       return createAnthropic({
@@ -61,6 +67,10 @@ export const RELAXED_SCHEMA: { openai: { strictJsonSchema: boolean } } = {
  * failing later inside the provider SDK.
  */
 export function modelReady(s: ModelSettings = {}): boolean {
+  // Without this, every route would 400 with no_model before reaching getModel
+  // and the mock would never be consulted.
+  if (usingMockModel()) return true;
+
   const provider = s.provider ?? "openai";
   if (provider === "ollama") return true;
   if (provider === "anthropic") return Boolean(cleanSecret(process.env.ANTHROPIC_API_KEY));

@@ -84,7 +84,7 @@ A 6‑agent, human‑in‑the‑loop flow where **you** own the opinion:
 - Every committed opinion is saved, searchable, and revisable. **Calibration scoring** keeps score: were you right *when you were confident?* And **re‑surfacing** nudges you to score older convictions ("Time to score these"), closing the loop so you actually learn.
 
 ### ⚙️ Built like a product, not a demo
-- **Durable AI workflow** — a `generateStructured` wrapper adds retries, **schema‑repair** (re‑asks the model when its JSON fails validation), provider fallback, and latency logging across every structured call.
+- **Durable AI workflow** — a `generateStructured` wrapper adds retries, **schema‑repair** (re‑asks the model when its JSON fails validation), and latency logging across every structured call.
 - **An eval / benchmark harness** (`POST /api/eval`, dev‑only) — runs a golden set through the *real* pipeline and scores it with an LLM‑as‑judge on grounding, sharpness, no‑fabrication, and quality, plus a **deterministic citation‑faithfulness** check. Quality is a tracked number, not a vibe.
 - **Mobile‑first** responsive UI with **email + Google sign‑in** (Supabase, per‑user RLS). The app is **login‑only** — your convictions and carousels save to your account.
 
@@ -129,7 +129,8 @@ OPENAI_API_KEY=...
 GOOGLE_GENERATIVE_AI_API_KEY=...
 # ANTHROPIC_API_KEY=...        # optional (Claude Adversary upgrade)
 
-# Cloud sync + auth (optional — app works locally without these)
+# Accounts + cloud sync. Without these the app runs single-user in this
+# browser and the login gate is inactive.
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...  # for the daily radar cron only

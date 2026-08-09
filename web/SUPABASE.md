@@ -114,5 +114,8 @@ applied in the browser); if no snapshot exists it falls back to a live scan.
   the Vercel project's Environment Variables. The Cron in `vercel.json` runs
   automatically once deployed.
 - Migration order recap: `0001` theses → `0002` carousels → `0003` embeddings →
-  `0004` user secrets → `0005` carousel storage → `0006` radar → `0007` voice →
-  `0008` thesis outcomes (calibration).
+  `0004` user secrets (dropped again by `0009`) → `0005` carousel storage →
+  `0006` radar → `0007` voice → `0008` thesis outcomes (calibration) →
+  `0009` drop secrets + add `ai_calls` → `0010` thesis synthesis →
+  `0011` interests. Apply `0010` and `0011` before deploying the code that
+  writes them, or committing a thesis and saving your voice will fail.
