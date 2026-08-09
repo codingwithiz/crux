@@ -11,7 +11,6 @@ import {
   PenLine,
   Images,
   BookMarked,
-  CalendarClock,
   Home,
   Mic,
   HelpCircle,
@@ -74,31 +73,27 @@ export function CommandPalette() {
           <Command.Empty className="px-3 py-6 text-center text-sm text-muted">
             No matching commands.
           </Command.Empty>
-          <Command.Group heading="Create">
-            <Item icon={Sparkles} onSelect={() => go("/think")}>
-              New opinion — from a thought
-            </Item>
-            <Item icon={Newspaper} onSelect={() => go("/news")}>
-              From the news
-            </Item>
-          </Command.Group>
-          <Command.Group heading="Library">
-            <Item icon={PenLine} onSelect={() => go("/studio")}>
-              Carousel Studio
-            </Item>
-            <Item icon={Images} onSelect={() => go("/gallery")}>
-              Carousels
-            </Item>
-            <Item icon={BookMarked} onSelect={() => go("/ledger")}>
-              Thesis Ledger
-            </Item>
-            <Item icon={CalendarClock} onSelect={() => go("/queue")}>
-              Queue
-            </Item>
-          </Command.Group>
+          {/* Labels mirror the nav exactly. cmdk matches on the visible text,
+              so a label that drifts from the nav is a destination the user can
+              see but cannot search for. */}
           <Command.Group heading="Go to">
             <Item icon={Home} onSelect={() => go("/today")}>
               Today
+            </Item>
+            <Item icon={Newspaper} onSelect={() => go("/explore")}>
+              Explore
+            </Item>
+            <Item icon={Sparkles} onSelect={() => go("/think")}>
+              Think
+            </Item>
+            <Item icon={PenLine} onSelect={() => go("/studio")}>
+              Studio
+            </Item>
+            <Item icon={BookMarked} onSelect={() => go("/ledger")}>
+              Ledger
+            </Item>
+            <Item icon={Images} onSelect={() => go("/gallery")}>
+              Library
             </Item>
             <Item icon={Mic} onSelect={() => go("/voice")}>
               Voice

@@ -34,6 +34,91 @@ interface RadarSnapshot {
 }
 
 /**
+ * `score` means different things per source (see lib/sources.ts): popularity for
+ * most, but epoch minutes for the two feed-parsed ones. So age is only genuinely
+ * recoverable for those — the rest get nothing rather than a guess.
+ */
+const TIMESTAMPED: NewsItem["source"][] = ["news", "arxiv"];
+
+function itemAge(it: NewsItem): string | null {
+  if (!TIMESTAMPED.includes(it.source) || !it.score) return null;
+  const hours = (Date.now() - it.score * 60_000) / 3_600_000;
+  if (hours < 0 || hours > 24 * 60) return null;
+  if (hours < 1) return "just now";
+  if (hours < 24) return `${Math.round(hours)}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+/**
+ * A feed item you can open before you spend anything on it.
+ *
+ * Clicking a card used to fire a 5-15s model call immediately, which made every
+ * moment of curiosity cost real money and time — you couldn't even read the
+ * source first. Expanding is free; only "Synthesize" spends.
+ */
+function FeedItem({
+  item,
+  expanded,
+  onToggle,
+  onSynthesize,
+  children,
+}: {
+  item: NewsItem;
+  expanded: boolean;
+  onToggle: () => void;
+  onSynthesize: () => void;
+  children?: React.ReactNode;
+}) {
+  const age = itemAge(item);
+  return (
+    <div
+      className={`rounded-lg border bg-surface/40 transition ${
+        expanded ? "border-accent" : "border-line hover:border-accent/60 hover:bg-surface"
+      }`}
+    >
+      <button onClick={onToggle} aria-expanded={expanded} className="block w-full p-3 text-left">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-xs text-accent">
+            {SOURCE_ICON[item.source]} {SOURCE_LABELS[item.source]}
+          </span>
+          <span className="shrink-0 text-xs text-muted">
+            {[item.meta, age].filter(Boolean).join(" · ")}
+          </span>
+        </div>
+        <p className="mt-1 text-sm font-medium">{item.title}</p>
+        {item.detail && !expanded && (
+          <p className="mt-1 line-clamp-2 text-xs text-muted">{item.detail}</p>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-line px-3 py-3">
+          {item.detail && <p className="text-sm text-muted">{item.detail}</p>}
+          {children}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              onClick={onSynthesize}
+              className="ce-press rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+            >
+              Synthesize →
+            </button>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm text-fg hover:bg-surface"
+            >
+              Read source ↗
+            </a>
+            <span className="text-xs text-muted">Reading is free — only Synthesize uses a model.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * One "explore the firehose" surface. Shows the full ranked list immediately
  * (free), with optional AI curation (the old Daily Brief — 3-5 picks + why it
  * matters) layered on top on demand. Both feed the same conviction pipeline.
@@ -41,6 +126,7 @@ interface RadarSnapshot {
 export function BrowseView() {
   const [items, setItems] = useState<NewsItem[] | null>(null);
   const [picked, setPicked] = useState<NewsItem | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [scannedAt, setScannedAt] = useState<string | null>(null);
 
@@ -163,25 +249,19 @@ export function BrowseView() {
 
         {picks && picks.length > 0 && (
           <div className="mt-4 space-y-3">
-            {picks.map((p, i) => (
-              <button
+            {picks.map((p) => (
+              <FeedItem
                 key={p.id}
-                onClick={() => setPicked(p)}
-                className="block w-full rounded-xl border border-line bg-surface/40 p-4 text-left transition hover:border-accent hover:bg-surface"
+                item={p}
+                expanded={expandedId === p.id}
+                onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                onSynthesize={() => setPicked(p)}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-accent">
-                    {String(i + 1).padStart(2, "0")} · {SOURCE_ICON[p.source]} {SOURCE_LABELS[p.source]}
-                  </span>
-                  <span className="text-xs text-muted">{p.meta}</span>
-                </div>
-                <p className="mt-2 font-medium">{p.title}</p>
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-2 text-sm text-muted">
                   <span className="text-fg">Why it matters:</span> {p.whyItMatters}
                 </p>
                 {p.relevance && <p className="mt-1 text-sm text-cool">For you: {p.relevance}</p>}
-                <span className="mt-3 inline-block text-sm text-fg">Form a conviction →</span>
-              </button>
+              </FeedItem>
             ))}
           </div>
         )}
@@ -191,7 +271,8 @@ export function BrowseView() {
       <section>
         <p className="font-mono text-xs uppercase tracking-wide text-accent">All signal, ranked</p>
         <p className="mb-3 text-sm text-muted">
-          Normalized popularity blended with relevance to your ledger.
+          Ranked by how much attention an item is getting, blended with how close it sits to what
+          you&rsquo;ve already written about.
           {scannedAt ? (
             <span className="text-cool"> Auto-scanned daily · last update {new Date(scannedAt).toLocaleString()}</span>
           ) : (
@@ -206,20 +287,13 @@ export function BrowseView() {
         {items && items.length > 0 && (
           <div className="space-y-2">
             {items.map((it) => (
-              <button
+              <FeedItem
                 key={it.id}
-                onClick={() => setPicked(it)}
-                className="block w-full rounded-lg border border-line bg-surface/40 p-3 text-left transition hover:border-accent hover:bg-surface"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-accent">
-                    {SOURCE_ICON[it.source]} {SOURCE_LABELS[it.source]}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted">{it.meta}</span>
-                </div>
-                <p className="mt-1 text-sm font-medium">{it.title}</p>
-                {it.detail && <p className="mt-1 line-clamp-2 text-xs text-muted">{it.detail}</p>}
-              </button>
+                item={it}
+                expanded={expandedId === it.id}
+                onToggle={() => setExpandedId(expandedId === it.id ? null : it.id)}
+                onSynthesize={() => setPicked(it)}
+              />
             ))}
           </div>
         )}

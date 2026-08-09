@@ -15,13 +15,17 @@ import {
   type SlideModule,
 } from "@/lib/carousel/design";
 import { applyBrand } from "@/lib/carousel/brand";
-import { slideToBlob, downloadBlob } from "@/lib/carousel/export";
+import { slideToBlob, downloadBlob, blobsToPdf } from "@/lib/carousel/export";
+import { toast } from "sonner";
 import { buildCaption } from "@/lib/carousel/caption";
 import { loadDraft } from "@/lib/draft";
 import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { getVoice, effectiveVoice } from "@/lib/voice";
 import { fillModule } from "@/lib/express-client";
+import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
+import { PenLine } from "lucide-react";
 
 const LAYOUTS: SlideLayout[] = ["hero", "explainer", "statement", "cta"];
 
@@ -61,15 +65,19 @@ function defaultModule(type: ModuleType, slide: CarouselSlide): SlideModule {
 }
 
 export function CarouselStudio({
-  initialSlides,
+  initialSlides = [],
   initialHandle = "@you",
   loadId,
 }: {
-  initialSlides: CarouselSlide[];
+  initialSlides?: CarouselSlide[];
   initialHandle?: string;
   loadId?: string;
 }) {
   const [slides, setSlides] = useState<CarouselSlide[]>(initialSlides);
+  // The load below is async, so "no slides" is also true on first paint for
+  // someone who does have a draft. Gate the empty state on this so it can't
+  // flash. (`loaded` is a ref and wouldn't re-render.)
+  const [hydrated, setHydrated] = useState(false);
   const [handle, setHandle] = useState(initialHandle);
   const [designId, setDesignId] = useState(DESIGNS[0].id);
   const [sel, setSel] = useState(0);
@@ -95,29 +103,33 @@ export function CarouselStudio({
     if (loaded.current) return;
     loaded.current = true;
     void (async () => {
-      const lock = getSettings().brandLockDesignId;
-      setBrandLock(!!lock);
-      const lockValid = lock && DESIGNS.some((x) => x.id === lock) ? lock : null;
-      if (loadId) {
-        const c = await getCarousel(loadId);
-        if (c) {
-          setSlides(c.slides);
-          setDesignId(c.designId || DESIGNS[0].id);
-          setHandle(c.handle);
-          setTitle(c.title);
-          setCarouselId(c.id);
-          setCreatedAt(c.createdAt);
-          return;
+      try {
+        const lock = getSettings().brandLockDesignId;
+        setBrandLock(!!lock);
+        const lockValid = lock && DESIGNS.some((x) => x.id === lock) ? lock : null;
+        if (loadId) {
+          const c = await getCarousel(loadId);
+          if (c) {
+            setSlides(c.slides);
+            setDesignId(c.designId || DESIGNS[0].id);
+            setHandle(c.handle);
+            setTitle(c.title);
+            setCarouselId(c.id);
+            setCreatedAt(c.createdAt);
+            return;
+          }
         }
-      }
-      const d = loadDraft();
-      if (d?.slides?.length) {
-        setSlides(d.slides);
-        setHandle(d.handle || initialHandle);
-        // Brand-lock pins one style for new carousels; else use the LLM's per-topic pick.
-        setDesignId(lockValid ?? d.designId ?? DESIGNS[0].id);
-      } else if (lockValid) {
-        setDesignId(lockValid);
+        const d = loadDraft();
+        if (d?.slides?.length) {
+          setSlides(d.slides);
+          setHandle(d.handle || initialHandle);
+          // Brand-lock pins one style for new carousels; else use the LLM's per-topic pick.
+          setDesignId(lockValid ?? d.designId ?? DESIGNS[0].id);
+        } else if (lockValid) {
+          setDesignId(lockValid);
+        }
+      } finally {
+        setHydrated(true);
       }
     })();
   }, [loadId, initialHandle]);
@@ -230,7 +242,19 @@ export function CarouselStudio({
       blobs.forEach((b, i) => zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, b));
       downloadBlob(await zip.generateAsync({ type: "blob" }), (title || "carousel") + ".zip");
     } catch (e) {
-      alert("Export failed: " + (e as Error).message);
+      toast.error("Export failed: " + (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // LinkedIn carousels are PDFs, so PNGs meant a manual conversion every post.
+  async function downloadPdf() {
+    setBusy(true);
+    try {
+      downloadBlob(await blobsToPdf(await blobsForAll()), (title || "carousel") + ".pdf");
+    } catch (e) {
+      toast.error("PDF export failed: " + (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -242,7 +266,7 @@ export function CarouselStudio({
       if (!node) throw new Error("not rendered");
       downloadBlob(await slideToBlob(node), `slide-${String(i + 1).padStart(2, "0")}.png`);
     } catch (e) {
-      alert("Export failed: " + (e as Error).message);
+      toast.error("Export failed: " + (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -316,6 +340,37 @@ export function CarouselStudio({
   const big = Math.max(0.18, Math.min(previewW / 1080, 0.46));
   const thumb = 0.12;
 
+  // Must precede the editor: with no slides, `idx` is -1 and `current` is
+  // undefined, which the JSX below dereferences. The load is async, so this also
+  // covers the first paint — show a placeholder until we know whether there's a
+  // draft, rather than flashing "nothing here" at someone who has one.
+  if (total === 0) {
+    if (!hydrated) {
+      return (
+        <div className="mx-auto max-w-2xl px-5 py-10">
+          <Skeleton className="h-64" />
+        </div>
+      );
+    }
+    return (
+      <div className="mx-auto max-w-2xl px-5 py-10">
+        <EmptyState
+          icon={PenLine}
+          title="Nothing to edit yet"
+          description="The Studio opens whatever you last made. Commit a take and Crux will draft the carousel for you — then you tune it here."
+          cta={{ href: "/think", label: "Start thinking" }}
+        />
+        <p className="mt-4 text-center text-sm text-muted">
+          Already made one?{" "}
+          <Link href="/gallery" className="underline-offset-4 hover:text-fg hover:underline">
+            Open it from your Library
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_380px]">
       {/* Hidden full-size renders used for client-side PNG export. */}
@@ -341,6 +396,9 @@ export function CarouselStudio({
           </button>
           <button onClick={save} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50">
             {busy ? "…" : carouselId ? "Update" : "Save"}
+          </button>
+          <button onClick={downloadPdf} disabled={busy} title="One multi-page PDF — what LinkedIn document posts take" className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50">
+            {busy ? "…" : "PDF"}
           </button>
           <button onClick={downloadAll} disabled={busy} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50">
             {busy ? "Preparing…" : "Download all (.zip)"}

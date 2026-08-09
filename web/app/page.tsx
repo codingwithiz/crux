@@ -128,15 +128,15 @@ export default function Home() {
       {/* Two ways in */}
       <section className="grid gap-5 border-t border-line py-14 sm:grid-cols-2">
         <EntryCard
-          href="/news"
-          kicker="IDEA 1"
-          title="From the news"
+          href="/explore"
+          kicker="Explore"
+          title="Start from the news"
           desc="Pick a trending AI item. We synthesize it, then the Adversary makes you defend a take."
         />
         <EntryCard
           href="/think"
-          kicker="IDEA 2"
-          title="From your thought"
+          kicker="Think"
+          title="Start from your own idea"
           desc="Type a rough opinion. Gather evidence and the strongest counter, then commit a calibrated view."
         />
       </section>

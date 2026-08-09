@@ -437,9 +437,8 @@ export function ConvictionFlow({
     }
   }
 
-  async function commit() {
-    setLoading(true);
-    setError(null);
+  /** Bank the thesis. Shared by both commit paths; returns it for the caller. */
+  async function bankThesis(): Promise<Thesis> {
     const thesis: Thesis = {
       id: crypto.randomUUID(),
       topic: topic.trim() || (mode === "news" ? sourceTitle ?? "AI" : "My take"),
@@ -459,12 +458,46 @@ export function ConvictionFlow({
     // This flow started life as a parked draft; the committed thesis replaces
     // it, so retire the placeholder rather than leaving both in the ledger.
     if (draftId) await removeThesis(draftId).catch(() => {});
+    return thesis;
+  }
 
-    const handle = getBrandKit().handle;
-    const { slides, designId } = await expressSlides(thesis, handle);
-    saveDraft({ slides, handle, designId });
-    clearFlow();
-    router.push("/studio");
+  /**
+   * Commit the opinion and stop. Forming a defensible view is worth something on
+   * its own — the previous flow always generated a carousel and dropped you in
+   * the Studio, which assumed everyone came here to publish.
+   */
+  async function commitOnly() {
+    setLoading(true);
+    setError(null);
+    try {
+      await bankThesis();
+      clearFlow();
+      toast.success("Committed to your ledger");
+      router.push("/ledger");
+    } catch (e) {
+      setError((e as Error).message);
+      setLoading(false);
+    }
+  }
+
+  async function commit() {
+    setLoading(true);
+    setError(null);
+    try {
+      const thesis = await bankThesis();
+      const handle = getBrandKit().handle;
+      const { slides, designId } = await expressSlides(thesis, handle);
+      saveDraft({ slides, handle, designId });
+      clearFlow();
+      router.push("/studio");
+    } catch (e) {
+      // The thesis may already be saved at this point, so say so rather than
+      // leaving the button stuck on "Building carousel…" forever (it was).
+      setError(
+        `${(e as Error).message} — your thesis was saved; make the carousel from the Ledger.`,
+      );
+      setLoading(false);
+    }
   }
 
   const activeIdx = STEPS.findIndex((s) => s.id === step);
@@ -982,13 +1015,23 @@ export function ConvictionFlow({
             </button>
           )}
 
-          <button
-            onClick={commit}
-            disabled={loading || !statement.trim()}
-            className="block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
-          >
-            {loading ? "Building carousel…" : "Commit + make carousel →"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={commit}
+              disabled={loading || !statement.trim()}
+              className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+            >
+              {loading ? "Working…" : "Commit + make carousel →"}
+            </button>
+            <button
+              onClick={commitOnly}
+              disabled={loading || !statement.trim()}
+              className="ce-press rounded-lg border border-line px-4 py-2.5 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
+              title="Save the thesis to your ledger without generating a carousel"
+            >
+              Just commit
+            </button>
+          </div>
         </div>
       )}
     </div>

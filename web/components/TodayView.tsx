@@ -234,13 +234,25 @@ export function TodayView() {
               {pick.meta && <span className="text-xs text-muted">{pick.meta}</span>}
             </div>
             <p className="mt-1 text-lg font-semibold">{pick.title}</p>
-            {pick.detail && <p className="mt-1 line-clamp-2 text-sm text-muted">{pick.detail}</p>}
-            <button
-              onClick={() => setStarted(true)}
-              className="ce-press mt-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
-            >
-              {doneToday ? "Form another →" : "Form today's conviction →"}
-            </button>
+            {pick.detail && <p className="mt-1 text-sm text-muted">{pick.detail}</p>}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setStarted(true)}
+                className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
+              >
+                {doneToday ? "Form another →" : "Form today's conviction →"}
+              </button>
+              {/* The source was previously unreachable from here — you were asked
+                  to spend a synthesis on an item you couldn't read first. */}
+              <a
+                href={pick.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border border-line px-4 py-2.5 text-sm text-fg hover:bg-surface"
+              >
+                Read source ↗
+              </a>
+            </div>
           </>
         ) : (
           <p className="mt-2 text-sm text-muted">
@@ -270,7 +282,7 @@ export function TodayView() {
       {/* Quick links */}
       <div className="flex flex-wrap gap-2 text-sm">
         {[
-          ["/news", "Browse & curate the news"],
+          ["/explore", "Explore what’s happening"],
           ["/think", "Start from a thought"],
           ["/ledger", "Your Ledger"],
         ].map(([href, label]) => (
