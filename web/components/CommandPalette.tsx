@@ -2,7 +2,7 @@
 
 import { Command } from "cmdk";
 import { useEffect, useState, type ComponentType } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -25,12 +25,13 @@ export function CommandPalette() {
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
+    // Only the open/close shortcut lives here. Escape is handled by Dialog
+    // while it is open — this listener used to swallow Escape app-wide even
+    // when the palette was closed.
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen((o) => !o);
-      } else if (e.key === "Escape") {
-        setOpen(false);
       }
     }
     function onOpen() {
@@ -44,23 +45,23 @@ export function CommandPalette() {
     };
   }, []);
 
-  if (!mounted || !open) return null;
+  if (!mounted) return null;
 
   const go = (href: string) => {
     setOpen(false);
     router.push(href);
   };
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[120] flex items-start justify-center bg-black/60 p-4 pt-[12vh] backdrop-blur-sm"
-      onClick={() => setOpen(false)}
+  return (
+    <Dialog
+      open={open}
+      onClose={() => setOpen(false)}
+      title="Command menu"
+      align="top"
+      z={120}
+      className="max-w-lg overflow-hidden"
     >
-      <Command
-        label="Command menu"
-        className="ce-fade-up w-full max-w-lg overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <Command label="Command menu">
         <div className="flex items-center gap-2 border-b border-line px-3">
           <Search className="h-4 w-4 shrink-0 text-muted" />
           <Command.Input
@@ -96,7 +97,7 @@ export function CommandPalette() {
               Library
             </Item>
             <Item icon={Mic} onSelect={() => go("/voice")}>
-              Voice
+              You
             </Item>
             <Item icon={HelpCircle} onSelect={() => go("/guide")}>
               How it works
@@ -104,8 +105,7 @@ export function CommandPalette() {
           </Command.Group>
         </Command.List>
       </Command>
-    </div>,
-    document.body,
+    </Dialog>
   );
 }
 

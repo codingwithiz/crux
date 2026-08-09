@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookMarked, ExternalLink, Share2 } from "lucide-react";
+import { BookMarked, ChevronDown, ExternalLink, Share2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { RepurposeModal } from "@/components/RepurposeModal";
 import { Skeleton } from "@/components/Skeleton";
@@ -52,6 +52,7 @@ export function LedgerView() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [repTo, setRepTo] = useState<Thesis | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     getLedger().then(setItems);
@@ -95,7 +96,17 @@ export function LedgerView() {
       setBusyId(null);
     }
   }
+  /**
+   * Two-step delete. A committed thesis is the one thing here that can't be
+   * regenerated — it's your record of what you thought and when — so a stray
+   * click shouldn't be able to destroy it. First click arms, second confirms.
+   */
   async function del(id: string) {
+    if (confirmDelete !== id) {
+      setConfirmDelete(id);
+      return;
+    }
+    setConfirmDelete(null);
     await removeThesis(id);
     setItems(await getLedger());
   }
@@ -146,13 +157,21 @@ export function LedgerView() {
         <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
       </div>
 
-      {cal.resolved > 0 && (
+      {/* Shown from zero. This score is the thing that makes a ledger worth
+          keeping, and it used to be invisible until you'd already resolved
+          something — as did the only text explaining how to resolve anything. */}
+      {stats.total > 0 && (
         <div className="mb-5 rounded-xl border border-line bg-surface/40 p-4">
           <div className="flex items-center justify-between">
             <p className="font-mono text-xs uppercase tracking-wide text-accent">Calibration</p>
             <p className="text-xs text-muted">
-              {cal.resolved} resolved ·{" "}
-              <span className="text-fg">{cal.score}/100</span> calibrated
+              {cal.resolved > 0 ? (
+                <>
+                  {cal.resolved} resolved · <span className="text-fg">{cal.score}/100</span> calibrated
+                </>
+              ) : (
+                <>not scored yet</>
+              )}
             </p>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-3 text-center">
@@ -170,7 +189,9 @@ export function LedgerView() {
             ))}
           </div>
           <p className="mt-2 text-[11px] text-muted">
-            Were you right when you were confident? Resolve theses (expand a card) to keep score.
+            {cal.resolved > 0
+              ? "Were you right when you were confident?"
+              : "Once reality has weighed in, open a thesis and say whether it held up. Do that a few times and this becomes a real measure of whether your confidence is worth trusting."}
           </p>
         </div>
       )}
@@ -239,6 +260,7 @@ export function LedgerView() {
               >
                 <button
                   onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                  aria-expanded={expandedId === t.id}
                   className="block w-full text-left"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -247,11 +269,21 @@ export function LedgerView() {
                     <p className={`text-fg ${t.status === "abandoned" ? "line-through" : ""}`}>
                       {t.status === "draft" ? t.topic : t.statement}
                     </p>
-                    {t.status !== "draft" && (
-                      <span className={`shrink-0 font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
-                        {t.confidence}
-                      </span>
-                    )}
+                    <span className="flex shrink-0 items-center gap-2">
+                      {t.status !== "draft" && (
+                        <span className={`font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
+                          {t.confidence}
+                        </span>
+                      )}
+                      {/* Nothing used to signal these open — and the outcome
+                          buttons that drive calibration live inside. */}
+                      <ChevronDown
+                        aria-hidden
+                        className={`h-4 w-4 text-muted transition-transform ${
+                          expandedId === t.id ? "rotate-180" : ""
+                        }`}
+                      />
+                    </span>
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <span>
@@ -327,9 +359,14 @@ export function LedgerView() {
                       </button>
                       <button
                         onClick={() => del(t.id)}
-                        className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-red-400"
+                        onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs ${
+                          confirmDelete === t.id
+                            ? "border-red-400/60 text-red-300"
+                            : "border-line text-muted hover:text-red-400"
+                        }`}
                       >
-                        Discard
+                        {confirmDelete === t.id ? "Tap again to discard" : "Discard"}
                       </button>
                     </>
                   ) : (
@@ -370,9 +407,14 @@ export function LedgerView() {
                   )}
                   <button
                     onClick={() => del(t.id)}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-red-400"
+                    onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs ${
+                      confirmDelete === t.id
+                        ? "border-red-400/60 text-red-300"
+                        : "border-line text-muted hover:text-red-400"
+                    }`}
                   >
-                    Delete
+                    {confirmDelete === t.id ? "Click again to delete" : "Delete"}
                   </button>
                   </>
                   )}

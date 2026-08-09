@@ -148,6 +148,12 @@ export interface VoiceProfile {
   tone?: string;
   /** Whether the Expressor may use emojis (the user's posts use them tastefully). */
   emoji: boolean;
+  /**
+   * Topics you want surfaced, in your own words. Feed ranking blends popularity
+   * with overlap against your committed theses — on day one you have none, so
+   * these give that half of the signal something to work with.
+   */
+  interests: string[];
   updatedAt: string;
 }
 

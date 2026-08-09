@@ -10,6 +10,8 @@ export function VoiceEditor() {
   const [guide, setGuide] = useState("");
   const [tone, setTone] = useState("");
   const [emoji, setEmoji] = useState(true);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [interestDraft, setInterestDraft] = useState("");
   const [isDefault, setIsDefault] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -23,6 +25,7 @@ export function VoiceEditor() {
       setGuide(base.guide ?? "");
       setTone(base.tone ?? "");
       setEmoji(base.emoji);
+      setInterests(base.interests ?? []);
       setIsDefault(!v);
       setLoaded(true);
     })();
@@ -40,6 +43,16 @@ export function VoiceEditor() {
 
   function cleanSamples(): string[] {
     return samples.map((s) => s.trim()).filter(Boolean);
+  }
+
+  function addInterest() {
+    // Split on commas so pasting "agents, evals, robotics" does the obvious thing.
+    const next = interestDraft
+      .split(",")
+      .map((k) => k.trim().toLowerCase())
+      .filter((k) => k.length > 1 && !interests.includes(k));
+    if (next.length) setInterests((cur) => [...cur, ...next].slice(0, 24));
+    setInterestDraft("");
   }
 
   async function distill() {
@@ -82,10 +95,11 @@ export function VoiceEditor() {
         guide: guide.trim() || undefined,
         tone: tone.trim() || undefined,
         emoji,
+        interests,
         updatedAt: new Date().toISOString(),
       });
       setIsDefault(false);
-      setMsg("Saved — new carousels will sound like you.");
+      setMsg("Saved — carousels sound like you, and your feed follows your interests.");
     } catch (e) {
       setMsg("Save failed: " + (e as Error).message);
     } finally {
@@ -185,6 +199,50 @@ export function VoiceEditor() {
       </div>
 
       <div>
+        <label className="text-sm font-medium">Interests</label>
+        <p className="text-xs text-muted">
+          Topics you want surfaced. Until you&rsquo;ve committed a few opinions there&rsquo;s nothing
+          for the feed to learn from — these fill that gap, and keep steering it afterwards.
+        </p>
+        <div className="mt-2 flex gap-2">
+          <input
+            value={interestDraft}
+            onChange={(e) => setInterestDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === ",") {
+                e.preventDefault();
+                addInterest();
+              }
+            }}
+            placeholder="agents, evals, robotics…"
+            aria-label="Add an interest"
+            className="w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button
+            onClick={addInterest}
+            disabled={!interestDraft.trim()}
+            className="shrink-0 rounded-lg border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+          >
+            Add
+          </button>
+        </div>
+        {interests.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {interests.map((k) => (
+              <button
+                key={k}
+                onClick={() => setInterests((cur) => cur.filter((x) => x !== k))}
+                title={`Remove ${k}`}
+                className="rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-red-400/60 hover:text-red-300"
+              >
+                {k} <span aria-hidden>×</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
         <label className="text-sm font-medium">Voice guide</label>
         <p className="text-xs text-muted">
           The distilled style the Expressor follows. Edit freely — this is what actually steers the
@@ -221,7 +279,7 @@ export function VoiceEditor() {
           disabled={busy}
           className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save my voice"}
+          {busy ? "Saving…" : "Save"}
         </button>
         {msg && <span className="text-sm text-cool">{msg}</span>}
       </div>

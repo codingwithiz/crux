@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { getSettings, SETTINGS_EVENT, PROVIDER_SHORT, DEFAULT_MODELS } from "@/lib/settings";
-import { stepModelSettings, type Step as ModelStep } from "@/lib/ai/routing";
+import { getSettings, SETTINGS_EVENT } from "@/lib/settings";
 import { addThesis, removeThesis } from "@/lib/ledger";
 import { expressSlides, explainerFromSynthesis } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
@@ -99,13 +98,6 @@ export function ConvictionFlow({
       window.removeEventListener("storage", sync);
     };
   }, []);
-
-  // Human-readable "which model runs which step" summary.
-  function modelLabel(stepKind: ModelStep): string {
-    const ms = stepModelSettings(settings ?? undefined, stepKind);
-    const p = ms.provider ?? "openai";
-    return `${PROVIDER_SHORT[p]} · ${ms.model ?? DEFAULT_MODELS[p]}`;
-  }
 
   async function runSynthesis(text: string) {
     setError(null);
@@ -529,11 +521,6 @@ export function ConvictionFlow({
           Step {activeIdx + 1} of {STEPS.length} · {STEPS[activeIdx].label}
         </p>
         <p className="mt-0.5 text-xs text-muted">{STEP_WHY[step]}</p>
-        <p className="mt-1.5 text-[11px] text-muted">
-          Models — Synthesize · Carousel: <span className="text-fg/80">{modelLabel("synthesize")}</span>
-          {" · "}Adversary: <span className="text-fg/80">{modelLabel("adversary")}</span>
-          {" · "}change in the Model menu
-        </p>
       </div>
 
       {resumed && (

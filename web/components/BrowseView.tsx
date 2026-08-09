@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { ConvictionFlow } from "./ConvictionFlow";
 import { getSettings } from "@/lib/settings";
 import { getLedger } from "@/lib/ledger";
-import { rankItems } from "@/lib/rank";
+import { rankItems, interestsAsPriors, type RankedItem } from "@/lib/rank";
+import { getVoice } from "@/lib/voice";
+import { WhyThis } from "@/components/WhyThis";
 import type { BriefPick, NewsItem } from "@/lib/types";
 
 const SOURCE_LABELS: Record<NewsItem["source"], string> = {
@@ -63,7 +65,7 @@ function FeedItem({
   onSynthesize,
   children,
 }: {
-  item: NewsItem;
+  item: RankedItem;
   expanded: boolean;
   onToggle: () => void;
   onSynthesize: () => void;
@@ -89,6 +91,7 @@ function FeedItem({
         {item.detail && !expanded && (
           <p className="mt-1 line-clamp-2 text-xs text-muted">{item.detail}</p>
         )}
+        <WhyThis why={item.why} />
       </button>
 
       {expanded && (
@@ -156,8 +159,13 @@ export function BrowseView() {
         if (alreadyRanked) {
           setItems(raw);
         } else {
-          const theses = (await getLedger()).map((t) => ({ topic: t.topic, statement: t.statement }));
-          setItems(rankItems(raw, theses));
+          const [ledger, voice] = await Promise.all([getLedger(), getVoice()]);
+          setItems(
+            rankItems(raw, [
+              ...ledger.map((t) => ({ topic: t.topic, statement: t.statement })),
+              ...interestsAsPriors(voice?.interests ?? []),
+            ]),
+          );
         }
       } catch (e) {
         setErr(String(e));

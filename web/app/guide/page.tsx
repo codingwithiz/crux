@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Guide — Conviction Engine" };
+export const metadata = { title: "How it works — Crux" };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -12,7 +12,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const STEPS: [string, string][] = [
-  ["1 · Today", "Open Today for one curated item worth an opinion (or pick from News, or type your own in Think)."],
+  ["1 · Today", "Open Today for one item worth an opinion — or browse Explore, or type your own in Think."],
   ["2 · Synthesize", "We fetch the real source and break it down — plus an 'In plain English' summary and 'Receipts' (verbatim quotes) so you're grounded, not guessing."],
   ["3 · Your take", "Write one gut sentence. This is yours — the AI never writes it."],
   ["4 · Adversary", "Spar with a Socratic partner that steelmans the other side and asks the hard questions. It refuses to hand you a conclusion."],
@@ -33,7 +33,7 @@ export default function GuidePage() {
   return (
     <div className="mx-auto max-w-3xl px-5 py-12">
       <p className="font-mono text-xs text-accent">user manual</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight">How to use Conviction Engine</h1>
+      <h1 className="mt-2 text-3xl font-bold tracking-tight">How Crux works</h1>
       <p className="mt-3 text-muted">
         It doesn&rsquo;t write your posts — it makes you someone worth reading. It walks you from
         raw information to a defensible opinion you own, then renders it as a carousel.
@@ -72,12 +72,12 @@ export default function GuidePage() {
       <Section title="The screens">
         <ul className="space-y-2">
           <li><span className="text-fg">Today</span> — your daily ritual: streak, one pick, a revisit nudge.</li>
-          <li><span className="text-fg">News</span> — browse the ranked firehose, or let the Curator pick the few items worth an opinion.</li>
+          <li><span className="text-fg">Explore</span> — the ranked feed. Open anything to read it first; nothing is analysed until you ask.</li>
           <li><span className="text-fg">Think</span> — start from your own rough opinion.</li>
           <li><span className="text-fg">Studio</span> — the carousel editor: themes, per-slide layouts (statement / stat / quote / list / split), re-voice, regenerate a single slide, copy caption, export.</li>
-          <li><span className="text-fg">Carousels</span> — your saved decks.</li>
+          <li><span className="text-fg">Library</span> — your saved decks.</li>
           <li><span className="text-fg">Ledger</span> — committed theses, revise/abandon, outcomes + calibration, track record.</li>
-          <li><span className="text-fg">Voice</span> — teach it to write like you.</li>
+          <li><span className="text-fg">You</span> — the topics you follow, and the voice your carousels are written in.</li>
         </ul>
       </Section>
 

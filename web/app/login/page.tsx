@@ -60,9 +60,8 @@ export default function LoginPage() {
 
       {!configured ? (
         <div className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
-          Cloud sync isn&rsquo;t set up yet. Add your Supabase keys (see{" "}
-          <span className="font-mono">web/SUPABASE.md</span>) to enable accounts. The app works
-          locally without it.
+          Accounts aren&rsquo;t set up on this deployment yet, so your work stays in this browser.
+          Everything still works — it just won&rsquo;t follow you to another device.
         </div>
       ) : (
         <>
