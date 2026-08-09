@@ -1,9 +1,8 @@
 /**
- * Pluggable publishing. The default is a MANUAL HANDOFF — it opens the platform
- * composer and the user attaches their downloaded slides. True auto-publish to
- * X / LinkedIn / Instagram needs approved platform API access + a deployed
- * OAuth callback, so a live adapter is wired at deploy time behind this same
- * `Publisher` interface; nothing here assumes it exists.
+ * Publishing is a MANUAL HANDOFF: this opens the platform's composer and the
+ * user attaches their downloaded slides. Real auto-publish needs approved
+ * platform API access and a deployed OAuth callback — deliberately not built,
+ * since it would save one person a thirty-second upload.
  */
 export type Platform = "x" | "linkedin" | "instagram";
 
@@ -13,22 +12,11 @@ export const PLATFORMS: { id: Platform; label: string }[] = [
   { id: "instagram", label: "Instagram" },
 ];
 
-export interface PublishResult {
-  ok: boolean;
-  message: string;
-}
-
-export interface Publisher {
-  id: string;
-  label: string;
-  publish(input: { platform: Platform; caption: string }): PublishResult;
-}
-
 /** Opens the platform's web composer; the user pastes the caption + slides. */
-export const manualPublisher: Publisher = {
+export const manualPublisher = {
   id: "manual",
   label: "Manual handoff",
-  publish({ platform, caption }) {
+  publish({ platform, caption }: { platform: Platform; caption: string }): { ok: boolean; message: string } {
     if (typeof window === "undefined") return { ok: false, message: "No window." };
     if (platform === "x") {
       window.open(

@@ -391,7 +391,7 @@ export function ConvictionFlow({
     setError(null);
     try {
       const handle = getBrandKit().handle;
-      const { slides, designId } = await explainerFromSynthesis(synthesis, sourceTitle, sourceUrl, handle);
+      const { slides, designId } = await explainerFromSynthesis(synthesis, sourceTitle, handle);
       saveDraft({ slides, handle, designId });
       clearFlow();
       router.push("/studio");

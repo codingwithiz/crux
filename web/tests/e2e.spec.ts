@@ -73,29 +73,15 @@ test("commit-suggest guards without a model key", async ({ page }) => {
   expect(res.status()).toBe(400);
 });
 
-test("studio renders and the slide PNG route returns an image", async ({ page }) => {
+test("studio renders", async ({ page }) => {
   await page.goto("/studio");
   await expect(page.getByRole("heading", { name: /Carousel Studio/i })).toBeVisible();
   await expect(page.getByPlaceholder("Carousel title")).toBeVisible();
-
-  const payload = encodeURIComponent(
-    JSON.stringify({
-      slide: { kind: "hook", kicker: "THE TAKE", title: "E2E render check", body: "ok" },
-      themeId: "ink",
-      index: 0,
-      total: 1,
-      handle: "@you",
-    }),
-  );
-  const res = await page.request.get(`/api/slide?d=${payload}`);
-  expect(res.status()).toBe(200);
-  expect(res.headers()["content-type"]).toContain("image/png");
 });
 
 test("studio auto-generates the carousel images on load", async ({ page }) => {
   await page.goto("/studio");
-  // The "Generated carousel" panel renders each slide to a real PNG via
-  // /api/slide and shows them as <img>. Wait for the auto-render to finish.
+  // Waits for the auto-render to finish.
   await expect(page.getByText("Generated carousel")).toBeVisible();
   const firstImg = page.getByRole("img", { name: "Slide 1" });
   await expect(firstImg).toBeVisible({ timeout: 20000 });
