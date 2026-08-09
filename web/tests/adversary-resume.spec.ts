@@ -35,7 +35,7 @@ test("resuming into the Adversary with no messages auto-seeds (no hang)", async 
   await page.goto("/think");
 
   // Confirms we restored into the Adversary step.
-  await expect(page.getByText("Resumed your in-progress conviction.")).toBeVisible();
+  await expect(page.getByText("Picked up where you left off.")).toBeVisible();
 
   // The opening message must actually be sent (the bug left this unsent).
   await expect(page.getByText(`My take: ${TAKE}`)).toBeVisible({ timeout: 15000 });

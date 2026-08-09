@@ -33,7 +33,7 @@ export default function GuidePage() {
   return (
     <div className="mx-auto max-w-3xl px-5 py-12">
       <p className="font-mono text-xs text-accent">user manual</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight">How Crux works</h1>
+      <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">How Crux works</h1>
       <p className="mt-3 text-muted">
         It doesn&rsquo;t write your posts — it makes you someone worth reading. It walks you from
         raw information to a defensible opinion you own, then renders it as a carousel.

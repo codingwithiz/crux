@@ -13,7 +13,10 @@
 
   /* Elevated surface + focus ring */
   --color-surface-3: #242732;
-  --color-ring: #f4b740;
+  /* Cool, not amber. The ring used to be the accent, which is also the primary
+     button fill and the selected-chip tint — so on every selected control the
+     focus outline was invisible against the thing it was ringing. */
+  --color-ring: #8aa2ff;
 
   /* Functional / semantic colors (dark-tuned, AA on ink) */
   --color-success: #34d399;

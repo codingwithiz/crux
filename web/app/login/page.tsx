@@ -51,7 +51,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col px-5 py-16">
       <p className="font-mono text-xs text-accent">welcome to crux</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight">
+      <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">
         {mode === "signin" ? "Sign in" : "Create account"}
       </h1>
       <p className="mt-2 text-muted">

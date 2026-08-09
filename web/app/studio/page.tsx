@@ -11,7 +11,7 @@ export default async function StudioPage({
   return (
     <div>
       <div className="mx-auto max-w-6xl px-5 pt-8">
-        <h1 className="text-2xl font-semibold">Studio</h1>
+        <h1 className="font-serif text-3xl font-semibold tracking-tight">Studio</h1>
         <p className="mt-1 text-muted">
           Fine-tune the copy, layout, and style, then export as PNGs, a .zip, or a PDF for LinkedIn.
         </p>

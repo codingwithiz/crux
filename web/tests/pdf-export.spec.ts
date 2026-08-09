@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { jpegsToPdf } from "../lib/carousel/pdf";
 
+// Serial: jsPDF is dynamically imported, and four workers transpiling it at once
+// from a cold cache raced its module init. One worker pays the cost once.
+test.describe.configure({ mode: "serial" });
+
 // A 1x1 JPEG. Enough to prove a page carries an image and the container is
 // well-formed; rendering a real slide needs a browser and is covered by the
 // Studio's own export path.

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=unit && playwright test --project=browser",
     "test:install": "playwright install chromium",
     "typecheck": "tsc --noEmit",
     "test": "playwright test --project=unit"
@@ -26,7 +26,6 @@
     "jszip": "^3.10.1",
     "lucide-react": "^1.21.0",
     "modern-screenshot": "^4.7.0",
-    "motion": "^12.40.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
