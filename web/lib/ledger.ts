@@ -1,5 +1,6 @@
 import type { Synthesis, Thesis } from "./types";
-import { createClient, supabaseConfigured } from "./supabase/client";
+import { createClient } from "./supabase/client";
+import { currentUserId } from "./current-user";
 import { getSettings } from "./settings";
 import { embedText } from "./related";
 
@@ -84,16 +85,6 @@ function rowToThesis(r: Row): Thesis {
     // later as grounded as one made during the original flow.
     synthesis: r.synthesis ?? undefined,
   };
-}
-
-async function currentUserId(): Promise<string | null> {
-  if (!supabaseConfigured()) return null;
-  try {
-    const { data } = await createClient().auth.getUser();
-    return data.user?.id ?? null;
-  } catch {
-    return null;
-  }
 }
 
 /**

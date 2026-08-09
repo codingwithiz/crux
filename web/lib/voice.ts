@@ -1,5 +1,6 @@
 import type { VoiceProfile } from "./types";
-import { createClient, supabaseConfigured } from "./supabase/client";
+import { createClient } from "./supabase/client";
+import { currentUserId } from "./current-user";
 
 const KEY = "ce.voice";
 
@@ -115,16 +116,6 @@ function rowToVoice(r: Row): VoiceProfile {
     interests: r.interests ?? [],
     updatedAt: r.updated_at,
   };
-}
-
-async function currentUserId(): Promise<string | null> {
-  if (!supabaseConfigured()) return null;
-  try {
-    const { data } = await createClient().auth.getUser();
-    return data.user?.id ?? null;
-  } catch {
-    return null;
-  }
 }
 
 /** The user's saved voice, or null if they haven't set one (then use DEFAULT_VOICE). */

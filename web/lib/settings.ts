@@ -1,52 +1,21 @@
-import type { Provider, Settings } from "./types";
+import type { Provider, Settings, Tier } from "./types";
 
 const KEY = "ce.settings";
 
-export const DEFAULT_MODELS: Record<Provider, string> = {
-  // Fast, free default (speed was the top complaint).
-  google: "gemini-2.5-flash",
-  anthropic: "claude-opus-4-8",
-  openai: "gpt-5.5",
-  ollama: "llama3.1",
-};
-
-export type ModelTier = "fast" | "balanced" | "smart";
-
-export interface ModelOption {
-  id: string;
-  label: string;
-  tier: ModelTier;
-  note: string;
-}
-
-/** Curated, selectable models per provider (so users pick, not type). */
-export const MODEL_CATALOG: Record<Provider, ModelOption[]> = {
-  google: [
-    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", tier: "fast", note: "Fastest · free" },
-    { id: "gemini-flash-latest", label: "Gemini Flash (latest)", tier: "balanced", note: "Balanced · free" },
-    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", tier: "smart", note: "Smartest · free tier" },
-  ],
-  openai: [
-    { id: "gpt-5-mini", label: "GPT-5 mini", tier: "fast", note: "Fastest · cheap" },
-    { id: "gpt-5.5", label: "GPT-5.5", tier: "smart", note: "Smartest reasoning" },
-  ],
-  anthropic: [
-    { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", tier: "fast", note: "Fastest" },
-    { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", tier: "balanced", note: "Balanced" },
-    { id: "claude-opus-4-8", label: "Claude Opus 4.8", tier: "smart", note: "Smartest reasoning" },
-  ],
-  ollama: [
-    { id: "llama3.1", label: "Llama 3.1", tier: "balanced", note: "Local · free" },
-    { id: "qwen2.5", label: "Qwen 2.5", tier: "balanced", note: "Local · free" },
-    { id: "mistral", label: "Mistral", tier: "fast", note: "Local · free" },
-  ],
-};
-
-export const TIER_LABEL: Record<ModelTier, string> = {
-  fast: "Fastest",
-  balanced: "Balanced",
-  smart: "Smartest",
-};
+/**
+ * What you get, not which vendor.
+ *
+ * The old dialog asked users to pick a provider, then a model id, then whether
+ * to upgrade "the Adversary" — three questions that require knowing this
+ * codebase to answer. Worse, it offered providers with no key configured, so a
+ * legitimate-looking choice silently broke every generation. A tier says what
+ * changes for the user; Crux maps it onto whatever is actually available.
+ */
+export const TIERS: { id: Tier; label: string; blurb: string }[] = [
+  { id: "speed", label: "Speed", blurb: "Answers fastest. Good for browsing and quick takes." },
+  { id: "balanced", label: "Balanced", blurb: "The default. Quick enough, and thinks properly." },
+  { id: "deep", label: "Deep", blurb: "Slowest and most considered. Best when you want a real argument." },
+];
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
   google: "Google Gemini",
@@ -65,7 +34,13 @@ export const PROVIDER_SHORT: Record<Provider, string> = {
 /** Fired on the window whenever settings are saved, so open views can re-read them. */
 export const SETTINGS_EVENT = "ce:settings";
 
-const DEFAULTS: Settings = { provider: "openai", model: DEFAULT_MODELS.openai };
+/**
+ * No hardcoded provider. The previous default named OpenAI regardless of what
+ * was configured, so on a deployment without that key every new user started
+ * broken and only found out when a generation failed. Left unset, the server
+ * falls back to whatever it can actually reach.
+ */
+const DEFAULTS: Settings = { tier: "balanced" };
 
 /** Client-only. Reads the user's model preferences from localStorage. */
 export function getSettings(): Settings {
@@ -81,7 +56,7 @@ export function getSettings(): Settings {
 
 export function saveSettings(s: Settings): void {
   window.localStorage.setItem(KEY, JSON.stringify(s));
-  // Let any open view (e.g. a mid-flow Adversary chat) pick up the new model.
+  // Let any open view (e.g. a mid-flow chat) pick up the new choice.
   try {
     window.dispatchEvent(new CustomEvent(SETTINGS_EVENT));
   } catch {

@@ -15,7 +15,7 @@ import {
   type SlideModule,
 } from "@/lib/carousel/design";
 import { applyBrand } from "@/lib/carousel/brand";
-import { slideToBlob, downloadBlob, blobsToPdf } from "@/lib/carousel/export";
+import { slideToBlob, downloadBlob, nodesToPdf } from "@/lib/carousel/export";
 import { toast } from "sonner";
 import { buildCaption } from "@/lib/carousel/caption";
 import { loadDraft } from "@/lib/draft";
@@ -28,6 +28,9 @@ import { Skeleton } from "@/components/Skeleton";
 import { PenLine } from "lucide-react";
 
 const LAYOUTS: SlideLayout[] = ["hero", "explainer", "statement", "cta"];
+
+/** Which long-running action is in flight, so only its own button says so. */
+type Job = "save" | "pdf" | "zip" | "one" | null;
 
 // Content-aware: seed the module from THIS slide's headline/body so switching
 // type produces relevant data, not a generic placeholder.
@@ -84,7 +87,12 @@ export function CarouselStudio({
   const [title, setTitle] = useState("");
   const [carouselId, setCarouselId] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  // One flag per action, not one shared flag: with a single `busy`, clicking
+  // PDF put "Preparing…" on the .zip button next to it, so the app appeared to
+  // be doing something the user had not asked for.
+  const [job, setJob] = useState<Job>(null);
+  const [exporting, setExporting] = useState(false);
+  const busy = job !== null;
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [revoicing, setRevoicing] = useState(false);
   const [revoiceMsg, setRevoiceMsg] = useState<string | null>(null);
@@ -93,11 +101,14 @@ export function CarouselStudio({
   const loaded = useRef(false);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
   const previewWrap = useRef<HTMLDivElement>(null);
-  const [previewW, setPreviewW] = useState(900);
+  // Starts at 0: seeding a desktop width made the first frame render a preview
+  // wider than a phone's column, giving the page a horizontal scrollbar.
+  const [previewW, setPreviewW] = useState(0);
   const slidesRef = useRef(slides);
   const history = useRef<CarouselSlide[][]>([]);
   const [histLen, setHistLen] = useState(0);
   const [fillingModule, setFillingModule] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
 
   useEffect(() => {
     if (loaded.current) return;
@@ -225,52 +236,59 @@ export function CarouselStudio({
     setSel(j);
   }
 
-  async function blobsForAll(): Promise<Blob[]> {
-    const out: Blob[] = [];
-    for (let i = 0; i < total; i++) {
-      const node = exportRefs.current[i];
-      if (node) out.push(await slideToBlob(node));
+  /**
+   * Mount the hidden full-size render tree, hand its nodes to `run`, unmount.
+   *
+   * It used to stay mounted permanently: for a nine-slide deck that is nine
+   * extra 1080×1350 trees — each with SVG decoration, a grain overlay and
+   * possibly a CDN logo — laid out and composited at all times. That, more than
+   * button sizes, is what made the Studio crawl on a phone. Two frames of wait
+   * is enough for React to commit and the refs to exist.
+   */
+  async function withExportNodes<T>(run: (nodes: HTMLElement[]) => Promise<T>): Promise<T> {
+    setExporting(true);
+    try {
+      exportRefs.current = [];
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const nodes = exportRefs.current.slice(0, total).filter(Boolean) as HTMLElement[];
+      if (nodes.length < total) throw new Error("slides aren't ready yet — try again");
+      return await run(nodes);
+    } finally {
+      setExporting(false);
     }
-    return out;
   }
 
-  async function downloadAll() {
-    setBusy(true);
+  /** Run an export, owning the button state and surfacing failures. */
+  async function runExport(kind: Job, run: (nodes: HTMLElement[]) => Promise<void>) {
+    setJob(kind);
     try {
-      const blobs = await blobsForAll();
-      const zip = new JSZip();
-      blobs.forEach((b, i) => zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, b));
-      downloadBlob(await zip.generateAsync({ type: "blob" }), (title || "carousel") + ".zip");
+      await withExportNodes(run);
     } catch (e) {
       toast.error("Export failed: " + (e as Error).message);
     } finally {
-      setBusy(false);
+      setJob(null);
     }
   }
+
+  const downloadAll = () =>
+    runExport("zip", async (nodes) => {
+      const zip = new JSZip();
+      for (let i = 0; i < nodes.length; i++) {
+        zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, await slideToBlob(nodes[i]));
+      }
+      downloadBlob(await zip.generateAsync({ type: "blob" }), (title || "carousel") + ".zip");
+    });
 
   // LinkedIn carousels are PDFs, so PNGs meant a manual conversion every post.
-  async function downloadPdf() {
-    setBusy(true);
-    try {
-      downloadBlob(await blobsToPdf(await blobsForAll()), (title || "carousel") + ".pdf");
-    } catch (e) {
-      toast.error("PDF export failed: " + (e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function downloadOne(i: number) {
-    setBusy(true);
-    try {
-      const node = exportRefs.current[i];
-      if (!node) throw new Error("not rendered");
-      downloadBlob(await slideToBlob(node), `slide-${String(i + 1).padStart(2, "0")}.png`);
-    } catch (e) {
-      toast.error("Export failed: " + (e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const downloadPdf = () =>
+    runExport("pdf", async (nodes) => {
+      downloadBlob(await nodesToPdf(nodes), (title || "carousel") + ".pdf");
+    });
+
+  const downloadOne = (i: number) =>
+    runExport("one", async (nodes) => {
+      downloadBlob(await slideToBlob(nodes[i]), `slide-${String(i + 1).padStart(2, "0")}.png`);
+    });
 
   async function copyCaption() {
     try {
@@ -306,13 +324,18 @@ export function CarouselStudio({
   }
 
   async function save() {
-    setBusy(true);
+    setJob("save");
     setSaveMsg(null);
     try {
       const id = carouselId ?? crypto.randomUUID();
       let imageUrls: string[] | undefined;
       try {
-        const urls = await uploadCarouselImages(id, await blobsForAll());
+        const blobs = await withExportNodes(async (nodes) => {
+          const out: Blob[] = [];
+          for (const n of nodes) out.push(await slideToBlob(n));
+          return out;
+        });
+        const urls = await uploadCarouselImages(id, blobs);
         if (urls.length) imageUrls = urls;
       } catch {
         /* not signed in / storage off — keep editable data only */
@@ -333,7 +356,7 @@ export function CarouselStudio({
     } catch (e) {
       setSaveMsg("Save failed: " + (e as Error).message);
     } finally {
-      setBusy(false);
+      setJob(null);
     }
   }
 
@@ -373,12 +396,14 @@ export function CarouselStudio({
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-      {/* Hidden full-size renders used for client-side PNG export. */}
-      <div aria-hidden style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}>
-        {slides.map((s, i) => (
-          <SlideCanvas key={i} slide={s} design={designFor(s)} index={i} total={total} handle={handle} innerRef={(el) => { exportRefs.current[i] = el; }} />
-        ))}
-      </div>
+      {/* Full-size renders for export — mounted only while one is running. */}
+      {exporting && (
+        <div aria-hidden style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}>
+          {slides.map((s, i) => (
+            <SlideCanvas key={i} slide={s} design={designFor(s)} index={i} total={total} handle={handle} innerRef={(el) => { exportRefs.current[i] = el; }} />
+          ))}
+        </div>
+      )}
 
       <div>
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -386,7 +411,7 @@ export function CarouselStudio({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Carousel title"
-            className="min-w-0 flex-1 rounded-lg border border-line bg-surface/40 px-3 py-1.5 text-sm outline-none focus:border-accent"
+            className="w-full min-w-0 rounded-lg border border-line bg-surface/40 px-3 py-2 text-base outline-none focus:border-accent sm:w-auto sm:flex-1 sm:py-1.5 sm:text-sm"
           />
           <button onClick={undo} disabled={histLen === 0} title="Undo last change" className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-40">
             ↶ Undo
@@ -395,13 +420,13 @@ export function CarouselStudio({
             {copied ? "Copied ✓" : "Copy caption"}
           </button>
           <button onClick={save} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50">
-            {busy ? "…" : carouselId ? "Update" : "Save"}
+            {job === "save" ? "Saving…" : carouselId ? "Update" : "Save"}
           </button>
           <button onClick={downloadPdf} disabled={busy} title="One multi-page PDF — what LinkedIn document posts take" className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50">
-            {busy ? "…" : "PDF"}
+            {job === "pdf" ? "Building PDF…" : "PDF"}
           </button>
           <button onClick={downloadAll} disabled={busy} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50">
-            {busy ? "Preparing…" : "Download all (.zip)"}
+            {job === "zip" ? "Preparing…" : "Download all (.zip)"}
           </button>
         </div>
         {saveMsg && (
@@ -421,7 +446,7 @@ export function CarouselStudio({
               key={d.id}
               onClick={() => pickDesign(d.id)}
               title={d.name}
-              className={`h-7 w-7 rounded-full border-2 ${designId === d.id ? "border-fg" : "border-line"}`}
+              className={`h-9 w-9 rounded-full border-2 sm:h-7 sm:w-7 ${designId === d.id ? "border-fg" : "border-line"}`}
               style={{ background: d.bg }}
             >
               <span className="block h-full w-full rounded-full" style={{ boxShadow: `inset 0 0 0 3px ${d.accent}` }} />
@@ -467,10 +492,20 @@ export function CarouselStudio({
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Slide {idx + 1} / {total}</h2>
           <div className="flex gap-1">
-            <button onClick={() => move(idx, -1)} className="rounded px-2 py-1 text-xs text-muted hover:bg-surface" title="Move left">←</button>
-            <button onClick={() => move(idx, 1)} className="rounded px-2 py-1 text-xs text-muted hover:bg-surface" title="Move right">→</button>
-            <button onClick={() => void downloadOne(idx)} className="rounded px-2 py-1 text-xs text-muted hover:bg-surface" title="Download this slide PNG">↓</button>
-            <button onClick={() => remove(idx)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-surface" title="Delete">✕</button>
+            <button onClick={() => move(idx, -1)} aria-label="Move slide left" className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface" title="Move left">←</button>
+            <button onClick={() => move(idx, 1)} aria-label="Move slide right" className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface" title="Move right">→</button>
+            <button onClick={() => void downloadOne(idx)} disabled={busy} aria-label="Download this slide" className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface disabled:opacity-40" title="Download this slide PNG">↓</button>
+            {/* Separated and confirmed: at 24px beside the download arrow this
+                deleted a slide on a mis-tap, with nothing to undo it on mobile. */}
+            <button
+              onClick={() => (confirmRemove === idx ? remove(idx) : setConfirmRemove(idx))}
+              onBlur={() => confirmRemove === idx && setConfirmRemove(null)}
+              aria-label="Delete slide"
+              className={`ml-2 rounded-md px-3 py-2 text-sm hover:bg-surface ${confirmRemove === idx ? "bg-red-500/15 text-red-300" : "text-red-400"}`}
+              title="Delete slide"
+            >
+              {confirmRemove === idx ? "Delete?" : "✕"}
+            </button>
           </div>
         </div>
 
@@ -516,7 +551,7 @@ export function CarouselStudio({
         <select
           value={current.module?.type ?? "none"}
           onChange={(e) => void switchModule(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-base sm:text-sm"
         >
           <option value="none">None (text only)</option>
           {MODULE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -602,10 +637,10 @@ function Label({ children }: { children: React.ReactNode }) {
   return <label className="mt-4 block text-xs font-medium text-muted">{children}</label>;
 }
 function Input({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent" />;
+  return <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:text-sm" />;
 }
 function Area({ value, onChange, rows }: { value: string; onChange: (v: string) => void; rows: number }) {
-  return <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent" />;
+  return <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:text-sm" />;
 }
 function ModuleEdit({ children }: { children: React.ReactNode }) {
   return <div className="mt-2 rounded-lg border border-line bg-ink/40 p-3">{children}</div>;
