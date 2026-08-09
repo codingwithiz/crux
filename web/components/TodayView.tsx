@@ -8,7 +8,9 @@ import { ConvictionFlow } from "./ConvictionFlow";
 import { getLedger, removeThesis } from "@/lib/ledger";
 import { saveFlow, parkedToFlow } from "@/lib/flow-session";
 import { ledgerStats, dailyStreak } from "@/lib/ledger-stats";
-import { rankItems } from "@/lib/rank";
+import { rankItems, interestsAsPriors, type RankedItem } from "@/lib/rank";
+import { getVoice } from "@/lib/voice";
+import { WhyThis } from "@/components/WhyThis";
 import type { NewsItem, Thesis } from "@/lib/types";
 
 const SOURCE_LABELS: Record<NewsItem["source"], string> = {
@@ -26,12 +28,16 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 export function TodayView() {
   const router = useRouter();
   const [ledger, setLedger] = useState<Thesis[] | null>(null);
-  const [pick, setPick] = useState<NewsItem | null>(null);
+  // The whole shortlist, not just its head: one unexplained take-it-or-leave-it
+  // pick is a dead end when it misses. `cursor` walks it.
+  const [candidates, setCandidates] = useState<RankedItem[]>([]);
+  const [cursor, setCursor] = useState(0);
   const [started, setStarted] = useState(false);
+  const pick = candidates[cursor] ?? null;
 
   useEffect(() => {
     void (async () => {
-      const items = await getLedger();
+      const [items, voice] = await Promise.all([getLedger(), getVoice()]);
       setLedger(items);
       try {
         // Prefer the Cron-prepared radar snapshot; fall back to a live scan.
@@ -54,12 +60,16 @@ export function TodayView() {
         }
         const ordered = preRanked
           ? raw
-          : rankItems(raw, items.map((t) => ({ topic: t.topic, statement: t.statement })));
+          : rankItems(raw, [
+              ...items.map((t) => ({ topic: t.topic, statement: t.statement })),
+              ...interestsAsPriors(voice?.interests ?? []),
+            ]);
         // Skip items you've already formed a conviction on.
         const seen = new Set(
           items.map((t) => (t.source?.title ?? "").toLowerCase()).filter(Boolean),
         );
-        setPick(ordered.find((i) => !seen.has(i.title.toLowerCase())) ?? ordered[0] ?? null);
+        const fresh = ordered.filter((i) => !seen.has(i.title.toLowerCase()));
+        setCandidates(fresh.length ? fresh : ordered);
       } catch {
         /* no pick today — the prompt still works via the quick links */
       }
@@ -235,6 +245,7 @@ export function TodayView() {
             </div>
             <p className="mt-1 text-lg font-semibold">{pick.title}</p>
             {pick.detail && <p className="mt-1 text-sm text-muted">{pick.detail}</p>}
+            <WhyThis why={pick.why} />
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setStarted(true)}
@@ -252,6 +263,14 @@ export function TodayView() {
               >
                 Read source ↗
               </a>
+              {candidates.length > 1 && (
+                <button
+                  onClick={() => setCursor((c) => (c + 1) % candidates.length)}
+                  className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
+                >
+                  Show another
+                </button>
+              )}
             </div>
           </>
         ) : (

@@ -21,7 +21,7 @@ const LINKS = [
   { href: "/think", label: "Think" },
   { href: "/studio", label: "Studio" },
   { href: "/ledger", label: "Ledger" },
-  { href: "/voice", label: "Voice" },
+  { href: "/voice", label: "You" },
 ];
 
 const MOBILE_LINKS = [...LINKS, { href: "/gallery", label: "Library" }, { href: "/guide", label: "How it works" }];

@@ -1,5 +1,5 @@
 import { createServerSupabase, supabaseConfiguredServer } from "@/lib/supabase/server";
-import { rankItems } from "@/lib/rank";
+import { rankItems, interestsAsPriors, type RankInput } from "@/lib/rank";
 import type { NewsItem } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -33,17 +33,27 @@ export async function GET() {
     let items = row.items ?? [];
     let personalized = false;
 
-    // Server-side relevance: rank against the signed-in user's theses.
+    // Server-side relevance: rank against what the signed-in user has committed
+    // to, plus the topics they said they care about. Both queries are scoped by
+    // RLS, so neither needs an explicit user_id filter.
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
-      const { data: theses } = await supabase
-        .from("theses")
-        .select("topic,statement")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      const priors = (theses ?? []) as { topic: string; statement: string }[];
+      const [{ data: theses }, { data: voice }] = await Promise.all([
+        supabase
+          .from("theses")
+          .select("topic,statement")
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase.from("user_voice").select("interests").maybeSingle(),
+      ]);
+      const priors = [
+        ...((theses ?? []) as RankInput[]),
+        // Interests carry a new user until they have a ledger — which is the
+        // moment the feed most needs to look worth reading.
+        ...interestsAsPriors(((voice?.interests as string[] | null) ?? []).filter(Boolean)),
+      ];
       if (priors.length) {
         items = rankItems(items, priors);
         personalized = true;

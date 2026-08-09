@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "@/components/ui/Dialog";
 import {
   getSettings,
   saveSettings,
@@ -100,81 +100,70 @@ export function SettingsButton() {
         Model
       </button>
 
-      {open && createPortal(
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="ce-fade-up my-auto flex max-h-[88dvh] w-full max-w-md flex-col rounded-xl border border-line bg-surface shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-b border-line p-5">
-              <h2 className="text-lg font-semibold">Model</h2>
-              <p className="mt-1 text-sm text-muted">
-                Pick the model used for Synthesize · Coach/Spar · Carousel. Runs on the shared server key — no setup needed.
-              </p>
-            </div>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Model">
+        <div className="border-b border-line p-5">
+          <h2 className="text-lg font-semibold">Model</h2>
+          <p className="mt-1 text-sm text-muted">
+            Pick the model used for Synthesize · Coach/Spar · Carousel. Runs on the shared server key — no setup needed.
+          </p>
+        </div>
 
-            <div className="flex-1 overflow-y-auto p-5">
-              <ModelChooser
-                provider={s.provider}
-                model={s.model}
-                serverKeys={server?.serverKeys}
-                onProvider={(p) => update({ provider: p })}
-                onModel={(m) => update({ model: m })}
-              />
+        <div className="flex-1 overflow-y-auto p-5">
+          <ModelChooser
+            provider={s.provider}
+            model={s.model}
+            serverKeys={server?.serverKeys}
+            onProvider={(p) => update({ provider: p })}
+            onModel={(m) => update({ model: m })}
+          />
 
-              {/* Adversary upgrade */}
-              <div className="mt-5 border-t border-line pt-4">
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" checked={advOpen} onChange={(e) => setAdvOpen(e.target.checked)} />
-                  Use a stronger model for the Adversary
-                </label>
-                <p className="mt-1 text-xs text-muted">
-                  The reasoning-critical step. Synthesis and the carousel stay on your default.
-                </p>
-                {advOpen && (
-                  <div className="mt-3 rounded-lg border border-line bg-ink/40 p-3">
-                    <ModelChooser
-                      compact
-                      provider={s.adversaryProvider ?? "anthropic"}
-                      model={s.adversaryModel}
-                      serverKeys={server?.serverKeys}
-                      onProvider={(p) => update({ adversaryProvider: p })}
-                      onModel={(m) => update({ adversaryModel: m })}
-                    />
-                  </div>
-                )}
+          {/* Adversary upgrade */}
+          <div className="mt-5 border-t border-line pt-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={advOpen} onChange={(e) => setAdvOpen(e.target.checked)} />
+              Use a stronger model for the Adversary
+            </label>
+            <p className="mt-1 text-xs text-muted">
+              The reasoning-critical step. Synthesis and the carousel stay on your default.
+            </p>
+            {advOpen && (
+              <div className="mt-3 rounded-lg border border-line bg-ink/40 p-3">
+                <ModelChooser
+                  compact
+                  provider={s.adversaryProvider ?? "anthropic"}
+                  model={s.adversaryModel}
+                  serverKeys={server?.serverKeys}
+                  onProvider={(p) => update({ adversaryProvider: p })}
+                  onModel={(m) => update({ adversaryModel: m })}
+                />
               </div>
-
-              <p className="mt-4 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
-                This run → Default:{" "}
-                <span className="text-fg">{PROVIDER_SHORT[s.provider]} · {s.model || DEFAULT_MODELS[s.provider]}</span>
-                {" · "}Adversary:{" "}
-                <span className="text-fg">
-                  {advOpen && s.adversaryProvider
-                    ? `${PROVIDER_SHORT[s.adversaryProvider]} · ${s.adversaryModel || DEFAULT_MODELS[s.adversaryProvider]}`
-                    : "same as default"}
-                </span>
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-line p-4">
-              <button onClick={() => setOpen(false)} className="rounded-lg px-4 py-2 text-sm text-muted hover:text-fg">
-                Cancel
-              </button>
-              <button
-                onClick={save}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
-              >
-                Save
-              </button>
-            </div>
+            )}
           </div>
-        </div>,
-        document.body,
-      )}
+
+          <p className="mt-4 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
+            This run → Default:{" "}
+            <span className="text-fg">{PROVIDER_SHORT[s.provider]} · {s.model || DEFAULT_MODELS[s.provider]}</span>
+            {" · "}Adversary:{" "}
+            <span className="text-fg">
+              {advOpen && s.adversaryProvider
+                ? `${PROVIDER_SHORT[s.adversaryProvider]} · ${s.adversaryModel || DEFAULT_MODELS[s.adversaryProvider]}`
+                : "same as default"}
+            </span>
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-line p-4">
+          <button onClick={() => setOpen(false)} className="rounded-lg px-4 py-2 text-sm text-muted hover:text-fg">
+            Cancel
+          </button>
+          <button
+            onClick={save}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+          >
+            Save
+          </button>
+        </div>
+      </Dialog>
     </>
   );
 }

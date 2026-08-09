@@ -30,6 +30,7 @@ export const DEFAULT_VOICE: VoiceProfile = {
   guide: DEFAULT_VOICE_GUIDE,
   tone: "energetic, concrete, humble-confident, lightly playful",
   emoji: true,
+  interests: [],
   updatedAt: "default",
 };
 
@@ -102,6 +103,7 @@ interface Row {
   guide: string | null;
   tone: string | null;
   emoji: boolean | null;
+  interests: string[] | null;
   updated_at: string;
 }
 function rowToVoice(r: Row): VoiceProfile {
@@ -110,6 +112,7 @@ function rowToVoice(r: Row): VoiceProfile {
     guide: r.guide ?? undefined,
     tone: r.tone ?? undefined,
     emoji: r.emoji ?? true,
+    interests: r.interests ?? [],
     updatedAt: r.updated_at,
   };
 }
@@ -130,7 +133,7 @@ export async function getVoice(): Promise<VoiceProfile | null> {
   if (!uid) return localRead();
   const { data, error } = await createClient()
     .from("user_voice")
-    .select("samples,guide,tone,emoji,updated_at")
+    .select("samples,guide,tone,emoji,interests,updated_at")
     .eq("user_id", uid)
     .maybeSingle();
   if (error || !data) return null;
@@ -150,6 +153,7 @@ export async function saveVoice(v: VoiceProfile): Promise<void> {
         guide: next.guide ?? null,
         tone: next.tone ?? null,
         emoji: next.emoji,
+        interests: next.interests ?? [],
         updated_at: next.updatedAt,
       },
       { onConflict: "user_id" },

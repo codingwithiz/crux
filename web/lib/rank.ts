@@ -5,6 +5,21 @@ export interface RankInput {
   statement: string;
 }
 
+/**
+ * A ranked item, carrying the reason it placed where it did. The feed used to
+ * order itself by a number nobody could see, which reads as arbitrary — these
+ * are the user's own words that matched, so the UI can say why.
+ */
+export interface RankedItem extends NewsItem {
+  why?: string[];
+}
+
+/** Interests are keywords, not opinions, but they steer the feed the same way.
+ *  `rankItems` ignores priors with a blank statement (the parked-draft guard),
+ *  so a keyword has to occupy both fields to count. */
+export const interestsAsPriors = (interests: string[]): RankInput[] =>
+  interests.map((k) => ({ topic: k, statement: k }));
+
 const STOP = new Set([
   "this", "that", "with", "from", "will", "have", "they", "their", "about", "into",
   "than", "then", "what", "when", "which", "your", "there", "these", "those", "more",
@@ -15,7 +30,10 @@ const STOP = new Set([
 function tokenize(s: string): Set<string> {
   const out = new Set<string>();
   for (const w of s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/)) {
-    if (w.length > 3 && !STOP.has(w)) out.add(w);
+    // 3+ characters: the old 4+ floor silently dropped ai, llm, gpt, rag — the
+    // most explainable terms in this domain, and the ones a user is most likely
+    // to have typed as an interest.
+    if (w.length > 2 && !STOP.has(w)) out.add(w);
   }
   return out;
 }
@@ -30,7 +48,7 @@ function tokenize(s: string): Set<string> {
  *
  * With no theses yet, it falls back to pure normalized popularity.
  */
-export function rankItems(items: NewsItem[], theses: RankInput[]): NewsItem[] {
+export function rankItems(items: NewsItem[], theses: RankInput[]): RankedItem[] {
   if (items.length === 0) return items;
 
   const bounds = new Map<string, { min: number; max: number }>();
@@ -54,18 +72,25 @@ export function rankItems(items: NewsItem[], theses: RankInput[]): NewsItem[] {
     for (const w of tokenize(`${t.topic} ${t.statement}`)) userTerms.add(w);
   }
   const hasTheses = userTerms.size > 0;
-  const personal = (it: NewsItem): number => {
-    if (!hasTheses) return 0;
-    let hits = 0;
-    for (const w of tokenize(`${it.title} ${it.detail ?? ""}`)) if (userTerms.has(w)) hits++;
-    return Math.min(1, hits / 4); // saturate at 4 overlapping terms
+  // Keep the terms that matched, not just how many. They cost nothing extra to
+  // collect here and are the only honest way to explain the ordering.
+  const matched = (it: NewsItem): string[] => {
+    if (!hasTheses) return [];
+    const hits: string[] = [];
+    for (const w of tokenize(`${it.title} ${it.detail ?? ""}`)) if (userTerms.has(w)) hits.push(w);
+    return hits;
   };
 
   return [...items]
-    .map((it) => ({
-      it,
-      s: hasTheses ? 0.6 * popNorm(it) + 0.4 * personal(it) : popNorm(it),
-    }))
+    .map((it) => {
+      const why = matched(it);
+      // Saturate at 4 overlapping terms.
+      const personal = Math.min(1, why.length / 4);
+      return {
+        it: why.length ? { ...it, why } : it,
+        s: hasTheses ? 0.6 * popNorm(it) + 0.4 * personal : popNorm(it),
+      };
+    })
     .sort((a, b) => b.s - a.s)
     .map((x) => x.it);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "@/components/ui/Dialog";
 import { X, Copy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { repurpose, type Repurposed } from "@/lib/express-client";
@@ -28,15 +28,8 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
     toast.success(label);
   }
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-[8vh]"
-      onClick={onClose}
-    >
-      <div
-        className="ce-fade-up w-full max-w-lg rounded-xl border border-line bg-surface shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+  return (
+    <Dialog open onClose={onClose} title="Repurpose this conviction" align="top" z={110} className="max-w-lg">
         <div className="flex items-start justify-between gap-3 border-b border-line p-4">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold">Repurpose this conviction</h2>
@@ -120,8 +113,6 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
         <div className="border-t border-line px-4 py-2.5">
           <p className="text-[11px] text-muted">Same opinion, your voice — nothing invented. Edit before posting.</p>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </Dialog>
   );
 }
