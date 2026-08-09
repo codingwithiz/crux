@@ -1,6 +1,7 @@
 import type { Carousel } from "./types";
 import { coerceSlides } from "./carousel/convert";
-import { createClient, supabaseConfigured } from "./supabase/client";
+import { createClient } from "./supabase/client";
+import { currentUserId } from "./current-user";
 
 const KEY = "ce.carousels";
 
@@ -47,16 +48,6 @@ function rowToCarousel(r: Row): Carousel {
     createdAt: r.created_at,
     imageUrls: r.image_urls ?? undefined,
   };
-}
-
-async function currentUserId(): Promise<string | null> {
-  if (!supabaseConfigured()) return null;
-  try {
-    const { data } = await createClient().auth.getUser();
-    return data.user?.id ?? null;
-  } catch {
-    return null;
-  }
 }
 
 /** Saved carousels — cloud (Supabase, per-user) when signed in, localStorage otherwise. */

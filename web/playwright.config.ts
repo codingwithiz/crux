@@ -40,12 +40,12 @@ export default defineConfig({
     // Pure functions: no server, no browser, ~1s.
     {
       name: "unit",
-      testMatch: /(auth-gate|citations|env-secret|parse-input|pdf-export|rank|routing|ssrf)\.spec\.ts/,
+      testMatch: /(auth-gate|local-state|citations|env-secret|parse-input|pdf-export|rank|routing|ssrf)\.spec\.ts/,
       use: {},
     },
     {
       name: "browser",
-      testIgnore: /(auth-gate|citations|env-secret|parse-input|pdf-export|rank|routing|ssrf)\.spec\.ts/,
+      testIgnore: /(auth-gate|local-state|citations|env-secret|parse-input|pdf-export|rank|routing|ssrf)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

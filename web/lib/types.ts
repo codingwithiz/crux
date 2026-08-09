@@ -2,18 +2,21 @@ import type { CarouselSlide } from "./carousel/design";
 
 export type Provider = "google" | "anthropic" | "openai" | "ollama";
 
+/** How much thinking you want, in the user's terms. See lib/settings.ts. */
+export type Tier = "speed" | "balanced" | "deep";
+
 /**
- * Per-request model preferences. Chosen in the browser and sent with each call,
- * so this carries preferences ONLY — never credentials or endpoints. Keys come
- * from server env, and the Ollama base URL from OLLAMA_BASE_URL: both would be
- * server-side request forgery if the client could set them.
+ * Per-request preferences, chosen in the browser and sent with each call.
+ *
+ * Carries a tier and nothing else about models. The browser names no provider
+ * and no model id, because only the server knows which providers actually have
+ * a key — a client-chosen provider could always be one that cannot run, which
+ * is exactly what used to happen to every new user. Credentials and endpoints
+ * are server-side for the same reason: either would be request forgery if the
+ * client could set them.
  */
 export interface Settings {
-  provider: Provider;
-  model?: string;
-  // Optional premium override for the Adversary (the reasoning-critical step).
-  adversaryProvider?: Provider;
-  adversaryModel?: string;
+  tier?: Tier;
   /** When set, pins this carousel design for all carousels (brand-lock). */
   brandLockDesignId?: string;
 }

@@ -1,4 +1,5 @@
-import type { Provider, Settings } from "../types";
+import type { Provider } from "../types";
+import type { ResolvedSettings } from "./server-settings";
 import type { ModelSettings } from "./model";
 
 export type Step = "synthesize" | "adversary" | "express";
@@ -21,7 +22,7 @@ const FAST_ADVERSARY_MODEL: Partial<Record<Provider, string>> = {
  * Synthesis and Express stay on the user's default. Pure function — safe on
  * client + server.
  */
-export function stepModelSettings(s: Settings | undefined, step: Step): ModelSettings {
+export function stepModelSettings(s: ResolvedSettings | undefined, step: Step): ModelSettings {
   if (!s) return {};
 
   if (step === "adversary") {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { migrateLocalToCloud } from "@/lib/migrate";
+import { clearLocalState, syncLocalStateOwner } from "@/lib/local-state";
 
 export function AuthButton() {
   const router = useRouter();
@@ -15,17 +16,31 @@ export function AuthButton() {
   useEffect(() => {
     if (!supabaseConfigured()) return;
     const supabase = createClient();
+
+    // Whoever is signed in owns this browser's local data. When that changes —
+    // sign-in, sign-out, or a different account — the previous user's drafts,
+    // in-progress conviction and handle are cleared before anything renders
+    // them. Reload after a wipe so nothing already on screen is stale.
+    const reconcile = (userId: string | null) => {
+      if (syncLocalStateOwner(userId) && userId) router.refresh();
+    };
+
     supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null);
+      const user = data.user ?? null;
+      reconcile(user?.id ?? null);
+      setEmail(user?.email ?? null);
       setReady(true);
-      if (data.user) void migrateLocalToCloud();
+      if (user) void migrateLocalToCloud(user.id);
     });
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      setEmail(session?.user?.email ?? null);
-      if (event === "SIGNED_IN") void migrateLocalToCloud();
+      const user = session?.user ?? null;
+      reconcile(user?.id ?? null);
+      setEmail(user?.email ?? null);
+      if (event === "SIGNED_IN" && user) void migrateLocalToCloud(user.id);
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   // Cloud not configured → nothing to show (localStorage mode).
   if (!supabaseConfigured() || !ready) return null;
@@ -35,6 +50,9 @@ export function AuthButton() {
       <button
         onClick={async () => {
           await createClient().auth.signOut();
+          // Don't wait for the auth event: the next render must not be able to
+          // read this user's drafts or in-progress conviction.
+          clearLocalState();
           setEmail(null);
           router.refresh();
         }}
