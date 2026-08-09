@@ -12,21 +12,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const STEPS: [string, string][] = [
-  ["1 · Today", "Open Today for one item worth an opinion — or browse Explore, or type your own in Think."],
-  ["2 · Synthesize", "We fetch the real source and break it down — plus an 'In plain English' summary and 'Receipts' (verbatim quotes) so you're grounded, not guessing."],
+  ["1 · Pick something", "Open Today for one story worth an opinion — or browse Explore, or type your own thought in Think. Pasting a link works anywhere."],
+  ["2 · Break it down", "Crux fetches the real page and pulls out what's new, what's contested, and the skeptic's case — plus a plain-English summary and Receipts (word-for-word quotes) so you're grounded, not guessing."],
   ["3 · Your take", "Write one gut sentence. This is yours — the AI never writes it."],
-  ["4 · Adversary", "Spar with a Socratic partner that steelmans the other side and asks the hard questions. It refuses to hand you a conclusion."],
-  ["5 · Commit", "Save your sharpened thesis + confidence. Hit 'Draft from my discussion' to let AI organize what YOU argued into the optional fields."],
-  ["6 · Carousel", "A bold, multi-layout carousel auto-generates in your voice. Edit, re-voice, copy a caption, download the PNGs."],
+  ["4 · Talk it through", "Optional. Coach helps you find your take; Spar stress-tests it. Either way your sparring partner argues the other side and refuses to hand you a conclusion."],
+  ["5 · Save my take", "Sharpen the sentence, say how sure you are, and save. 'Draft from what I argued' lets AI organize the optional fields out of your own words — never new ones."],
+  ["6 · Carousel", "A bold, multi-layout carousel is written in your voice. Edit it, rewrite it in your voice, copy the caption, export PNGs or a LinkedIn-ready PDF."],
 ];
 
 const FAQ: [string, string][] = [
-  ["Do I need my own API key?", "No. Every step runs on the server's key — there is nothing to paste and nothing to pay for. The Model menu only picks which model runs."],
-  ["Why won't the AI just write my opinion?", "That's the whole point. A tool that hands you a finished take produces laundered slop. This one makes you think, then renders the view you committed to."],
-  ["What is the Ledger?", "Your compounding track record — every committed thesis, with confidence, evidence, revisions, and (once you resolve them) a calibration score: were you right when you were confident?"],
-  ["What is Voice?", "Paste a few of your real posts on the Voice page; the Expressor then writes every carousel in your style. A strong default ships out of the box."],
-  ["How grounded is the synthesis?", "Paste a link — or pick a news item — and we fetch the real page text and synthesize only from it. Each quote in Receipts is then checked word-for-word against that text and marked verified or unverified, so you can see which claims actually trace back to the source. A badge tells you when a synthesis is grounded vs. drawn from the model's memory."],
-  ["Which model runs which step?", "Synthesize · Curator · Carousel use your default (OpenAI); the Adversary can use a stronger model (e.g. Claude) if you set one. The flow shows the assignment; change it in the Model menu."],
+  ["Do I need my own API key?", "No. Every step runs on this deployment's own key — there is nothing to paste."],
+  ["Why won't the AI just write my opinion?", "That's the whole point. A tool that hands you a finished take produces laundered slop. This one makes you think, then renders the view you saved."],
+  ["What is my track record?", "Every take you save, with how sure you were, the source it came from, your revisions, and — once you score how it turned out — an accuracy number: were you right when you were confident?"],
+  ["What does the You page do?", "Paste a few of your real posts and Crux distills them into a style guide, so every carousel sounds like you. A strong default ships out of the box. The same page holds the topics you follow, which steer your feed."],
+  ["How grounded is a breakdown?", "Paste a link — or pick a story from the feed — and Crux fetches the real page text and works only from it. Each quote in Receipts is checked word-for-word against that text and marked verified or unverified, so you can see which claims actually trace back to the source. A badge tells you when a breakdown is grounded in a real page versus drawn from the model's memory."],
+  ["What does 'How much thinking?' change?", "It sets how much model effort every step gets — Speed, Balanced, or Deep. Deep is slower and argues harder. You never have to pick a vendor or a model name; Crux uses whichever provider this deployment has a key for."],
+  ["Can I redo a carousel I don't like?", "Yes. In the Studio you can rewrite the whole deck in your voice, regenerate a single slide, restyle it across 12 designs, edit any text directly, and reorder or delete slides."],
 ];
 
 export default function GuidePage() {
@@ -52,13 +53,13 @@ export default function GuidePage() {
 
       <Section title="The principle">
         <p>
-          <span className="text-fg">The AI is an adversary that makes you think — never an author
-          that writes your opinion.</span> You own two steps (forming the view and committing to it);
-          the AI does everything around them — synthesize, interrogate, render.
+          <span className="text-fg">The AI argues with you so you think harder — it never writes the
+          opinion.</span> You own two steps (forming the view and standing behind it); the AI does
+          everything around them — reading the source, pushing back, and designing the carousel.
         </p>
       </Section>
 
-      <Section title="Your first conviction (~10 minutes)">
+      <Section title="Your first take (~10 minutes)">
         <ol className="space-y-3">
           {STEPS.map(([h, d]) => (
             <li key={h} className="rounded-xl border border-line bg-surface/40 p-4">
@@ -71,21 +72,24 @@ export default function GuidePage() {
 
       <Section title="The screens">
         <ul className="space-y-2">
-          <li><span className="text-fg">Today</span> — your daily ritual: streak, one pick, a revisit nudge.</li>
+          <li><span className="text-fg">Today</span> — your daily ritual: one pick, your streak, and anything you saved for later.</li>
           <li><span className="text-fg">Explore</span> — the ranked feed. Open anything to read it first; nothing is analysed until you ask.</li>
-          <li><span className="text-fg">Think</span> — start from your own rough opinion.</li>
-          <li><span className="text-fg">Studio</span> — the carousel editor: themes, per-slide layouts (statement / stat / quote / list / split), re-voice, regenerate a single slide, copy caption, export.</li>
+          <li><span className="text-fg">Think</span> — start from your own rough opinion, or paste a link.</li>
+          <li><span className="text-fg">Studio</span> — the carousel editor: 12 designs, per-slide layouts (statement / stat / quote / list / split), rewrite in your voice, regenerate one slide, copy the caption, export PNGs, a ZIP, or a PDF.</li>
           <li><span className="text-fg">Library</span> — your saved decks.</li>
-          <li><span className="text-fg">Ledger</span> — committed theses, revise/abandon, outcomes + calibration, track record.</li>
+          <li><span className="text-fg">Track record</span> — every take you&rsquo;ve saved: revise, abandon, score how it turned out, and watch your accuracy build.</li>
           <li><span className="text-fg">You</span> — the topics you follow, and the voice your carousels are written in.</li>
         </ul>
       </Section>
 
-      <Section title="Choosing a model">
+      <Section title="How much thinking?">
         <p>
-          Click <span className="text-fg">Model</span> (top-right) to pick which model runs your
-          steps. A green dot means the server has a key for that provider — there is nothing for
-          you to paste. Sign in to sync your ledger, voice, and carousels across devices.
+          The button top-right sets how hard the models work:{" "}
+          <span className="text-fg">Speed</span> answers fastest,{" "}
+          <span className="text-fg">Balanced</span> is the default, and{" "}
+          <span className="text-fg">Deep</span> is slower but argues properly. There are no vendors
+          or model names to choose — Crux uses whatever key this deployment has. A green dot means
+          it&rsquo;s ready. Sign in to sync your track record, voice, and carousels across devices.
         </p>
       </Section>
 
@@ -105,7 +109,7 @@ export default function GuidePage() {
           href="/today"
           className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
         >
-          Start — form today&rsquo;s conviction →
+          Start — write today&rsquo;s take →
         </Link>
       </div>
     </div>

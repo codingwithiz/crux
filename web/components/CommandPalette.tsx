@@ -91,7 +91,7 @@ export function CommandPalette() {
               Studio
             </Item>
             <Item icon={BookMarked} onSelect={() => go("/ledger")}>
-              Ledger
+              Track record
             </Item>
             <Item icon={Images} onSelect={() => go("/gallery")}>
               Library

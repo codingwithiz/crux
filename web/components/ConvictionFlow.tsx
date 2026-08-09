@@ -27,24 +27,28 @@ import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
 type Step = "input" | "synth" | "adversary" | "commit";
 
 const STEPS: { id: Step; label: string }[] = [
-  { id: "input", label: "Input" },
-  { id: "synth", label: "Synthesize" },
-  { id: "adversary", label: "Discuss" },
-  { id: "commit", label: "Commit" },
+  { id: "input", label: "Start" },
+  { id: "synth", label: "Breakdown" },
+  { id: "adversary", label: "Talk it through" },
+  { id: "commit", label: "Save" },
 ];
 
 const STEP_WHY: Record<Step, string> = {
   input: "Start from your own rough opinion — one sentence is enough.",
   synth: "We read the real source and break it down. Then write your gut take.",
   adversary: "Optional: talk it through. Coach helps you find your take; Spar stress-tests it. It never writes it for you.",
-  commit: "Lock in your view — it becomes a carousel in your voice.",
+  commit: "Save your take — it becomes a carousel in your voice.",
 };
 
 // Stable arrays (module scope) so ProgressSteps doesn't get a new reference on
 // every parent render — important during the high-churn streaming step.
 const SYNTH_STEPS_NEWS = ["Fetching the source", "Reading the article", "Finding the key debate", "Writing your questions"];
 const SYNTH_STEPS_THOUGHT = ["Reading your thought", "Finding the key debate", "Writing your questions"];
-const ADVERSARY_THINKING_STEPS = ["Reading your point", "Steelmanning the other side", "Finding the hard question"];
+const ADVERSARY_THINKING_STEPS = ["Reading your point", "Building the other side's case", "Finding the hard question"];
+// The two longest calls in the product had the weakest feedback: a disabled
+// button with a changed label, for 10–20 seconds.
+const CAROUSEL_STEPS = ["Saving your take", "Drafting the slides", "Picking a layout", "Setting it in your voice"];
+const EXPLAINER_STEPS = ["Re-reading the breakdown", "Drafting the slides", "Picking a layout"];
 
 // Instant reply-starters (anti-slop: they prefill a stem the user finishes).
 const FOLLOWUPS = [
@@ -132,8 +136,8 @@ export function ConvictionFlow({
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(
           j.error === "no_model"
-            ? "No model key found — add one in the Model menu (top-right)."
-            : j.error || "Synthesis failed",
+            ? "No AI model is configured for this deployment — add a provider key and try again."
+            : j.error || "Couldn't break that down. Try again.",
         );
       }
       const data = (await res.json()) as Synthesis;
@@ -423,7 +427,7 @@ export function ConvictionFlow({
       const source = synthesis.source ?? (sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined);
       await addThesis({
         id: draftId ?? crypto.randomUUID(),
-        topic: topic.trim() || sourceTitle || input.trim().slice(0, 80) || "Parked",
+        topic: topic.trim() || sourceTitle || input.trim().slice(0, 80) || "Saved for later",
         statement: "",
         confidence,
         synthesis,
@@ -475,7 +479,7 @@ export function ConvictionFlow({
     try {
       await bankThesis();
       clearFlow();
-      toast.success("Committed to your ledger");
+      toast.success("Saved to your track record");
       router.push("/ledger");
     } catch (e) {
       setError((e as Error).message);
@@ -494,10 +498,10 @@ export function ConvictionFlow({
       clearFlow();
       router.push("/studio");
     } catch (e) {
-      // The thesis may already be saved at this point, so say so rather than
+      // The take may already be saved at this point, so say so rather than
       // leaving the button stuck on "Building carousel…" forever (it was).
       setError(
-        `${(e as Error).message} — your thesis was saved; make the carousel from the Ledger.`,
+        `${(e as Error).message} — your take was saved; make the carousel from your track record.`,
       );
       setLoading(false);
     }
@@ -550,8 +554,8 @@ export function ConvictionFlow({
         <div className="ce-fade-up">
           <label className="block text-sm font-medium">A thought, a link, or both</label>
           <p className="mt-1 text-xs text-muted">
-            Paste a link and we read the actual page before synthesizing. Add your own take alongside it
-            and we keep them apart.
+            Paste a link and we read the actual page before breaking it down. Add your own take alongside
+            it and we keep them apart.
           </p>
           <textarea
             value={input}
@@ -568,7 +572,7 @@ export function ConvictionFlow({
             disabled={loading || !input.trim()}
             className="mt-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
           >
-            {loading ? "Synthesizing…" : "Synthesize →"}
+            {loading ? "Breaking it down…" : "Break it down →"}
           </button>
 
           <div className="mt-5 border-t border-line pt-4">
@@ -605,7 +609,7 @@ export function ConvictionFlow({
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
-                    <AlertTriangle className="h-3 w-3" /> From the model&rsquo;s knowledge — verify before you commit
+                    <AlertTriangle className="h-3 w-3" /> From the model&rsquo;s knowledge — check it before you rely on it
                   </span>
                 )}
                 {(synthesis.source?.url ?? sourceUrl) && (
@@ -762,7 +766,7 @@ export function ConvictionFlow({
                     disabled={!take.trim()}
                     className="text-sm text-muted underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-40 disabled:hover:no-underline"
                   >
-                    Skip and commit
+                    Skip and save my take
                   </button>
                 </div>
               </div>
@@ -788,6 +792,11 @@ export function ConvictionFlow({
                   {parking ? "Saving…" : "Save for later"}
                 </button>
               </div>
+              {explaining && (
+                <div className="mt-3">
+                  <ProgressSteps steps={EXPLAINER_STEPS} />
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -844,8 +853,7 @@ export function ConvictionFlow({
             )}
             {chatError && (
               <div className="self-start rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
-                The Adversary hit an error: {chatError.message}. Check your model key in the Model
-                menu, then send again.
+Your sparring partner hit an error: {chatError.message}. Try sending again.
               </div>
             )}
           </div>
@@ -939,7 +947,7 @@ export function ConvictionFlow({
               disabled={suggesting}
               className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
             >
-              {suggesting ? "Compiling…" : "Compile my take →"}
+              {suggesting ? "Writing it up…" : "Write up my take →"}
             </button>
           </div>
         </div>
@@ -949,34 +957,42 @@ export function ConvictionFlow({
         <div className="ce-fade-up space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-cool/30 bg-cool/5 px-4 py-2.5">
             <p className="text-xs text-muted">
-              Only <span className="text-fg">your thesis</span> and{" "}
-              <span className="text-fg">confidence</span> are required. Let AI organize the rest from
-              what you argued?
+              Only <span className="text-fg">your take</span> and{" "}
+              <span className="text-fg">how sure you are</span> are required. Let AI organize the rest
+              from what you argued?
             </p>
             <button
               onClick={draftFromDiscussion}
               disabled={suggesting}
               className="shrink-0 rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
             >
-              {suggesting ? "Drafting…" : <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Draft from my discussion</span>}
+              {suggesting ? "Drafting…" : <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Draft from what I argued</span>}
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-medium">
-              Your committed thesis <span className="text-accent">*</span> (1-2 sentences)
+            <label htmlFor="final-take" className="block text-sm font-medium">
+              Your take, in one sentence <span className="text-accent">*</span>
             </label>
+            {/* This reads as a second, different question unless we say plainly
+                that it is the take they already wrote. It is prefilled from it
+                (goCommit/finishConversation) — the ask is to sharpen, not to
+                start over. */}
+            <p className="mt-1 text-xs text-muted">
+              Carried over from what you wrote — edit it until it says exactly what you believe.
+            </p>
             <textarea
+              id="final-take"
               value={statement}
               onChange={(e) => setStatement(e.target.value)}
               rows={2}
-              className="mt-1 w-full resize-none rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+              className="mt-1.5 w-full resize-none rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium">
-              Confidence <span className="text-accent">*</span>
+              How sure are you? <span className="text-accent">*</span>
             </label>
             <div className="mt-2 flex gap-2">
               {(["low", "med", "high"] as Confidence[]).map((c) => (
@@ -996,7 +1012,7 @@ export function ConvictionFlow({
           {showDepth ? (
             <div className="space-y-4 border-t border-line pt-4">
               <Field label="Key evidence for your view" value={evidenceFor} onChange={setEvidenceFor} />
-              <Field label="The strongest counter you accept (steelman)" value={steelman} onChange={setSteelman} />
+              <Field label="The other side's best case" value={steelman} onChange={setSteelman} />
               <Field label="What would change your mind" value={changeMyMind} onChange={setChangeMyMind} />
               <Field label="Topic / tag" value={topic} onChange={setTopic} single />
             </div>
@@ -1005,7 +1021,7 @@ export function ConvictionFlow({
               onClick={() => setShowDepth(true)}
               className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
             >
-              + Add depth (evidence, steelman, change-trigger) — optional
+              + Add detail (evidence, the other side, what would change your mind) — optional
             </button>
           )}
 
@@ -1015,17 +1031,19 @@ export function ConvictionFlow({
               disabled={loading || !statement.trim()}
               className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
             >
-              {loading ? "Working…" : "Commit + make carousel →"}
+              {loading ? "Working…" : "Save + make carousel →"}
             </button>
             <button
               onClick={commitOnly}
               disabled={loading || !statement.trim()}
               className="ce-press rounded-lg border border-line px-4 py-2.5 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
-              title="Save the thesis to your ledger without generating a carousel"
+              title="Save it to your track record without making a carousel"
             >
-              Just commit
+              Just save my take
             </button>
           </div>
+
+          {loading && <ProgressSteps steps={CAROUSEL_STEPS} />}
         </div>
       )}
     </div>

@@ -61,6 +61,38 @@ test("three-letter terms survive tokenization", () => {
   expect(ranked[0].why).toContain("rag");
 });
 
+test("two-letter domain terms survive tokenization", () => {
+  // The floor is three characters, so `ai` needs an explicit exception — the
+  // comment on the old floor claimed it survived, and it never did.
+  const items = [item("x", "AI agents ship to production", 10), item("y", "Unrelated", 10)];
+  const ranked = rankItems(items, interestsAsPriors(["ai"]));
+  expect(ranked[0].id).toBe("x");
+  expect(ranked[0].why).toContain("ai");
+});
+
+test("stopwords never appear as a reason", () => {
+  // The reported bug: "Because you follow the, for and and". Three-letter
+  // function words became unreachable when the STOP list was written against a
+  // 4+ character floor, then reachable again when the floor dropped.
+  const items = [item("x", "The case for and against small models", 10)];
+  const ranked = rankItems(items, [
+    { topic: "The case for models", statement: "The case for and against small models is not settled." },
+  ]);
+  for (const w of ["the", "for", "and", "not"]) expect(ranked[0].why).not.toContain(w);
+  expect(ranked[0].why).toContain("models");
+});
+
+test("the rarest matched terms are the ones offered as reasons", () => {
+  // WhyThis shows three. Taking them in title order surfaced whatever the
+  // headline opened with; a term matching every item explains nothing.
+  const common = Array.from({ length: 5 }, (_, i) => item(`c${i}`, "Models shipped", 10));
+  const items = [item("x", "Models shipped with tokenizer diffusion", 10), ...common];
+  const ranked = rankItems(items, interestsAsPriors(["models", "shipped", "tokenizer", "diffusion"]));
+  const target = ranked.find((i) => i.id === "x")!;
+  // "diffusion" and "tokenizer" match once each; "models"/"shipped" match six times.
+  expect(target.why!.slice(0, 2).sort()).toEqual(["diffusion", "tokenizer"]);
+});
+
 test("interests alone personalize the feed for a user with no ledger", () => {
   // The cold-start case: 40% of the ranking signal is dead on day one.
   const ranked = rankItems(ITEMS, interestsAsPriors(["robotics"]));

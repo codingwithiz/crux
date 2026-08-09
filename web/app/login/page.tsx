@@ -55,7 +55,7 @@ export default function LoginPage() {
         {mode === "signin" ? "Sign in" : "Create account"}
       </h1>
       <p className="mt-2 text-muted">
-        Crux saves your convictions and carousels to your account. Sign in or create one to start.
+        Crux saves your takes and carousels to your account. Sign in or create one to start.
       </p>
 
       {!configured ? (

@@ -131,9 +131,9 @@ export function VoiceEditor() {
           {isDefault ? "Using the built-in default voice" : "Using your saved voice"}
         </p>
         <p className="mt-1 text-muted">
-          Paste a few of your real posts, distill them into a style guide, and every carousel the
-          Expressor writes will match your voice — your hooks, rhythm, and tone. It only borrows
-          STYLE; your committed thesis stays the opinion.
+          Paste a few of your real posts, distill them into a style guide, and every carousel Crux
+          writes will sound like you — your hooks, rhythm, and tone. It only borrows STYLE; the
+          opinion is always the take you saved.
         </p>
       </div>
 

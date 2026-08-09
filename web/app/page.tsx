@@ -5,18 +5,18 @@ const CHAIN = ["Information", "Understanding", "Insight", "Opinion", "Content"];
 const STEPS = [
   {
     n: "01",
-    title: "Synthesize",
-    body: "Drop a news item or a raw thought. We read the real source and break it down — what's new, the key debate, the skeptic's case.",
+    title: "Break it down",
+    body: "Drop a story or a raw thought. Crux reads the real source and tells you what's new, what's contested, and where the skeptics are.",
   },
   {
     n: "02",
-    title: "Sharpen",
-    body: "Talk it through with Coach or Spar. It pressure-tests your view and never writes it for you — the opinion stays yours.",
+    title: "Talk it through",
+    body: "A sparring partner pushes back until your take holds up. It never writes the opinion for you — that's the whole point.",
   },
   {
     n: "03",
-    title: "Express",
-    body: "Commit your take. It becomes a studio-grade carousel in your voice — and an X thread or LinkedIn post in one click.",
+    title: "Save my take",
+    body: "Your take becomes a studio-grade carousel in your voice — and an X thread or LinkedIn post in one click.",
   },
 ];
 
@@ -27,15 +27,15 @@ const EDGES = [
   },
   {
     title: "World-class carousels",
-    body: "Real HTML/CSS, 12 editorial styles, brand-logo theming, exported as pixel-perfect 1080×1350 PNGs.",
+    body: "Real HTML/CSS, 12 editorial styles, brand-logo theming, exported as pixel-perfect 1080×1350 PNGs and LinkedIn-ready PDFs.",
   },
   {
-    title: "A calibration ledger",
-    body: "Every committed take is scored over time. Were you right when you were confident? Now you'll know.",
+    title: "A track record that scores itself",
+    body: "Every take you save gets scored as reality weighs in. Were you right when you were confident? Now you'll know.",
   },
   {
     title: "One take, every format",
-    body: "Repurpose a conviction into an X thread, a LinkedIn post, or a carousel — same voice, nothing invented.",
+    body: "Turn a take into an X thread, a LinkedIn post, or a carousel — same voice, nothing invented.",
   },
 ];
 
@@ -49,9 +49,9 @@ export default function Home() {
           It doesn’t write your posts. It makes you someone worth reading.
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-muted">
-          {"Most tools summarize the news or spit out posts. This one lives in the middle — it helps you turn the AI firehose into "}
+          {"Most tools summarize the news or spit out posts. This one lives in the middle — it helps you turn the day's noise into "}
           <span className="text-fg">your own defensible opinion</span>
-          {", then a carousel. Free forever."}
+          {", then a carousel."}
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-2 font-mono text-xs">
@@ -70,7 +70,7 @@ export default function Home() {
             href="/today"
             className="ce-press inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
           >
-            Form today’s conviction <span>→</span>
+            Write today’s take <span>→</span>
           </Link>
           <Link href="/guide" className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
             See how it works
@@ -82,7 +82,7 @@ export default function Home() {
       <section className="pb-6">
         <div className="rounded-2xl border border-line bg-surface/30 p-4">
           <p className="mb-3 text-center font-mono text-xs uppercase tracking-wide text-muted">
-            One conviction, restyled across the design system
+            One take, restyled across the design system
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/demo.gif" alt="A carousel restyled across the built-in design system" width={460} className="mx-auto rounded-lg" />
@@ -98,14 +98,14 @@ export default function Home() {
             <p className="font-mono text-xs uppercase tracking-wide text-accent">Form a take</p>
             <h3 className="mt-2 text-lg font-semibold">Your own defensible opinion</h3>
             <p className="mt-1 text-sm text-muted">
-              Synthesize → sharpen with Coach/Spar → commit your view → a carousel in your voice. The AI never writes the opinion.
+              Break it down → talk it through with Coach or Spar → save your take → a carousel in your voice. The AI never writes the opinion.
             </p>
           </div>
           <div className="rounded-2xl border border-line bg-surface/40 p-6">
             <p className="font-mono text-xs uppercase tracking-wide text-cool">Explain it</p>
             <h3 className="mt-2 text-lg font-semibold">Brief your audience, clearly</h3>
             <p className="mt-1 text-sm text-muted">
-              Synthesize → a neutral, easy-to-follow carousel with the key takeaways. No opinion required — just make the news land.
+              Break it down → a neutral, easy-to-follow carousel with the key takeaways. No opinion required — just make the story land.
             </p>
           </div>
         </div>
@@ -131,13 +131,13 @@ export default function Home() {
           href="/explore"
           kicker="Explore"
           title="Start from the news"
-          desc="Pick a trending AI item. We synthesize it, then the Adversary makes you defend a take."
+          desc="Pick a trending story. Crux breaks it down, then a sparring partner makes you defend a take."
         />
         <EntryCard
           href="/think"
           kicker="Think"
           title="Start from your own idea"
-          desc="Type a rough opinion. Gather evidence and the strongest counter, then commit a calibrated view."
+          desc="Type a rough opinion. Gather your evidence and the other side's best case, then save a take you can stand behind."
         />
       </section>
 
@@ -159,7 +159,7 @@ export default function Home() {
         <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
           Your opinion deserves better than a hot take.
         </h2>
-        <p className="mt-3 text-muted">Form one defensible conviction today — it takes about ten minutes.</p>
+        <p className="mt-3 text-muted">Write one take you can defend today — it takes about ten minutes.</p>
         <Link
           href="/today"
           className="ce-press mt-6 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"

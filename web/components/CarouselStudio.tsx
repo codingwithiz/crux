@@ -380,7 +380,7 @@ export function CarouselStudio({
         <EmptyState
           icon={PenLine}
           title="Nothing to edit yet"
-          description="The Studio opens whatever you last made. Commit a take and Crux will draft the carousel for you — then you tune it here."
+          description="The Studio opens whatever you last made. Save a take and Crux drafts the carousel for you — then you tune it here."
           cta={{ href: "/think", label: "Start thinking" }}
         />
         <p className="mt-4 text-center text-sm text-muted">
@@ -524,7 +524,7 @@ export function CarouselStudio({
           ))}
         </div>
 
-        <Label>Kicker</Label>
+        <Label>Label</Label>
         <Input value={current.kicker ?? ""} onChange={(v) => patch({ kicker: v })} />
 
         <Label>Headline</Label>

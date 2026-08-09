@@ -21,11 +21,11 @@ test("landing states the value chain and both ways in", async ({ page }) => {
 test("every nav surface resolves", async ({ page }) => {
   // Five intent surfaces plus You — flat, no dropdowns.
   const surfaces = [
-    ["Today", "/today", /conviction/i],
+    ["Today", "/today", /take/i],
     ["Explore", "/explore", /Explore/i],
     ["Think", "/think", /Think/i],
     ["Studio", "/studio", /Studio/i],
-    ["Ledger", "/ledger", /Ledger/i],
+    ["Track record", "/ledger", /Track record/i],
     ["You", "/voice", /You/i],
   ] as const;
 
@@ -51,9 +51,9 @@ test("renamed and retired routes still land somewhere sensible", async ({ page }
 
 test("explore lists items and offers curation", async ({ page }) => {
   await page.goto("/explore");
-  await expect(page.getByText("Curated for you")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Curate top picks/i })).toBeVisible();
-  await expect(page.getByText("All signal, ranked")).toBeVisible();
+  await expect(page.getByText("Top picks")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Pick the best for me/i })).toBeVisible();
+  await expect(page.getByText("Everything, ranked")).toBeVisible();
 });
 
 test("opening a feed item costs nothing until you ask", async ({ page }) => {
@@ -90,14 +90,14 @@ test("opening a feed item costs nothing until you ask", async ({ page }) => {
 
   await item.click();
   await expect(item).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("button", { name: /Synthesize/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Break it down/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /Read source/i })).toBeVisible();
   expect(synthesized).toBe(false);
 });
 
 test("today shows a pick with a way to read it first", async ({ page }) => {
   await page.goto("/today");
-  await expect(page.getByText(/Today.s conviction/)).toBeVisible();
+  await expect(page.getByText(/Today.s pick/)).toBeVisible();
   await expect(page.getByText("day streak")).toBeVisible();
 });
 
@@ -118,7 +118,7 @@ test("you page loads the voice and interests editors", async ({ page }) => {
 test("guide explains the current screens", async ({ page }) => {
   await page.goto("/guide");
   await expect(page.getByRole("heading", { name: /How Crux works/i })).toBeVisible();
-  await expect(page.getByText(/your first conviction/i)).toBeVisible();
+  await expect(page.getByText(/Your first take/i)).toBeVisible();
 });
 
 test("login page renders", async ({ page }) => {
