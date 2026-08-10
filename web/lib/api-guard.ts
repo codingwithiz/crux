@@ -1,15 +1,54 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabase } from "./supabase/server";
 import { supabaseConfigured } from "./env";
+import { costUsd, type ErrorCode, type TokenUsage } from "./ai/cost";
 
 /** Model calls allowed per user per trailing hour. */
 const CALLS_PER_HOUR = 60;
 const WINDOW_MS = 60 * 60 * 1000;
 
+/** What a finished model call is worth knowing about. */
+export interface CallRecord {
+  /** The pipeline step, which is finer than the route: /api/express serves both
+   *  express and explain, and they cost different amounts. */
+  label: string;
+  model?: string;
+  usage?: TokenUsage;
+  latencyMs: number;
+  attempts: number;
+  ok: boolean;
+  errorCode?: ErrorCode;
+}
+
 export interface Caller {
   /** null in localStorage-only mode, where there is no identity to scope to. */
   userId: string | null;
   supabase: SupabaseClient | null;
+  /** Correlates this request's log lines, its ai_calls row, and the
+   *  x-request-id the user is shown when something goes wrong. */
+  requestId: string;
+  /**
+   * Fill in what the call actually cost. Fire-and-forget by contract: it never
+   * throws, never blocks the response, and a failure to record is a warning in
+   * the logs — metering must not be able to break work the user is entitled to.
+   */
+  record(r: CallRecord): void;
+}
+
+const noRecord = () => {};
+
+/**
+ * A failure the user can quote back.
+ *
+ * The same id appears on this response, in the route's log lines, and on the
+ * `ai_calls` row for the call that failed — so "it broke, here's the reference"
+ * is one grep rather than a guess at which of today's requests they meant.
+ */
+export function fail(caller: Caller, error: string, status: number): Response {
+  return Response.json(
+    { error, requestId: caller.requestId },
+    { status, headers: { "x-request-id": caller.requestId } },
+  );
 }
 
 /**
@@ -23,14 +62,15 @@ export interface Caller {
  * there is no identity to check and no shared resource to protect, so allow.
  */
 async function currentUser(): Promise<Caller | Response> {
-  if (!supabaseConfigured) return { userId: null, supabase: null };
+  const requestId = crypto.randomUUID();
+  if (!supabaseConfigured) return { userId: null, supabase: null, requestId, record: noRecord };
 
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
-  return { userId: user.id, supabase };
+  return { userId: user.id, supabase, requestId, record: noRecord };
 }
 
 /** Auth only — for routes that read status but spend nothing. */
@@ -60,13 +100,50 @@ export async function guard(route: string): Promise<Caller | Response> {
     .gt("created_at", since);
 
   if ((count ?? 0) >= CALLS_PER_HOUR) {
-    return Response.json({ error: "rate_limited" }, { status: 429 });
+    return fail(caller, "rate_limited", 429);
   }
 
+  // The row is written BEFORE the work, so the limit bites on calls that never
+  // finish — a retry storm is exactly when you want it counted. `record` fills
+  // the rest in afterwards.
+  //
   // Metering must not fail a request the user is entitled to: until migration
   // 0009 is applied the table is missing, and the limit simply doesn't bite.
-  const { error } = await supabase.from("ai_calls").insert({ user_id: userId, route });
+  const id = crypto.randomUUID();
+  const { error } = await supabase
+    .from("ai_calls")
+    .insert({ id, user_id: userId, route, request_id: caller.requestId });
   if (error) console.warn(`[guard] ai_calls insert failed for ${route}: ${error.message}`);
 
-  return caller;
+  return {
+    ...caller,
+    record(r: CallRecord) {
+      const cost = costUsd(r.model, r.usage);
+      console.info(
+        `[${r.label}] ${r.ok ? "ok" : `fail:${r.errorCode}`} model=${r.model ?? "?"} ` +
+          `attempts=${r.attempts} ms=${r.latencyMs} ` +
+          `tokens=${r.usage?.inputTokens ?? "?"}/${r.usage?.outputTokens ?? "?"} ` +
+          `cost=${cost === null ? "unpriced" : `$${cost}`} rid=${caller.requestId}`,
+      );
+      // Deliberately not awaited: the user's response should not wait on
+      // bookkeeping, and a metering failure must not surface as a failed action.
+      void supabase
+        .from("ai_calls")
+        .update({
+          label: r.label,
+          model: r.model ?? null,
+          input_tokens: r.usage?.inputTokens ?? null,
+          output_tokens: r.usage?.outputTokens ?? null,
+          cost_usd: cost,
+          latency_ms: r.latencyMs,
+          attempts: r.attempts,
+          ok: r.ok,
+          error_code: r.errorCode ?? null,
+        })
+        .eq("id", id)
+        .then(({ error: e }) => {
+          if (e) console.warn(`[guard] ai_calls update failed for ${r.label}: ${e.message}`);
+        });
+    },
+  };
 }

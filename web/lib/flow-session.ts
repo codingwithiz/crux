@@ -18,6 +18,12 @@ export interface FlowSession {
    * opinion can retire the draft instead of leaving a duplicate behind.
    */
   draftId?: string;
+  /**
+   * The id this flow will save under — minted once and kept, so pressing save
+   * again after a failure updates the same row instead of banking a second
+   * take. Persisted here rather than held in memory so it survives a reload.
+   */
+  saveId?: string;
   synthesis: Synthesis | null;
   messages: UIMessage[];
   commit: {

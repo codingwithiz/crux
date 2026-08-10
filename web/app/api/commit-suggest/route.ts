@@ -5,7 +5,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { COMMIT_SUGGEST_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -57,9 +57,9 @@ ${transcript || "(no discussion yet — base the draft on my gut take only)"}
 Draft my commit fields.`;
 
   try {
-    const output = await generateStructured({ ms, schema: Schema, system: COMMIT_SUGGEST_SYSTEM, label: "commit-suggest", prompt });
+    const output = await generateStructured({ ms, schema: Schema, system: COMMIT_SUGGEST_SYSTEM, label: "commit-suggest", prompt, caller });
     return Response.json(output);
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "suggest_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "suggest_failed", 500);
   }
 }

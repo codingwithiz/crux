@@ -25,7 +25,9 @@ function localGet(): Thesis[] {
 }
 function localAdd(t: Thesis) {
   try {
-    const all = localGet();
+    // Same identity rule as the cloud path: saving the same take twice replaces
+    // it rather than stacking a second copy.
+    const all = localGet().filter((x) => x.id !== t.id);
     all.unshift(t);
     window.localStorage.setItem(KEY, JSON.stringify(all));
   } catch {
@@ -102,6 +104,17 @@ export async function getLedger(): Promise<Thesis[]> {
   return (data as Row[]).map(rowToThesis);
 }
 
+/**
+ * Save a take. Idempotent on `id`, which is what makes the save button safe to
+ * press twice.
+ *
+ * The failure path made this worse than a stray double-click: "Save + make
+ * carousel" banks the take first and generates second, so when generation
+ * failed the catch told the user their take was saved AND re-enabled the
+ * button — inviting a press that banked a duplicate. The flow now mints one id
+ * per attempt (see flow-session) and this upserts on it, so pressing again
+ * finishes the job instead of forking it.
+ */
 export async function addThesis(t: Thesis): Promise<void> {
   const userId = await currentUserId();
   if (!userId) return localAdd(t);
@@ -113,7 +126,7 @@ export async function addThesis(t: Thesis): Promise<void> {
     : null;
   await createClient()
     .from("theses")
-    .insert({
+    .upsert({
       id: toUuid(t.id),
       user_id: userId,
       embedding: embedding ?? null,

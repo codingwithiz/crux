@@ -1,6 +1,6 @@
 import { embed } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 import { cleanSecret } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -29,6 +29,6 @@ export async function POST(req: Request) {
     });
     return Response.json({ embedding });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "embed_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "embed_failed", 500);
   }
 }

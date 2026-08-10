@@ -6,7 +6,7 @@ import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { REPURPOSE_SYSTEM } from "@/lib/ai/prompts";
 import { voiceBlock } from "@/lib/ai/voice-prompt";
 import type { Settings, Synthesis, Thesis, VoiceProfile } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -52,9 +52,9 @@ What would change my mind: ${thesis.changeMyMind ?? "(none)"}${newsContext}
 Repurpose this into "thread" and "linkedin" — same opinion, my voice, nothing invented.`;
 
   try {
-    const output = await generateStructured({ ms, schema: Schema, system, label: "repurpose", prompt });
+    const output = await generateStructured({ ms, schema: Schema, system, label: "repurpose", prompt , caller });
     return Response.json(output);
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "repurpose_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "repurpose_failed", 500);
   }
 }

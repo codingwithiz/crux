@@ -7,7 +7,7 @@ import { REVOICE_SYSTEM, REVISE_SYSTEM } from "@/lib/ai/prompts";
 import { voiceBlock } from "@/lib/ai/voice-prompt";
 import type { CarouselSlide } from "@/lib/carousel/design";
 import type { Settings, VoiceProfile } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -86,6 +86,7 @@ export async function POST(req: Request) {
       schema: Schema,
       system,
       label: direction ? "revise" : "revoice",
+      caller,
       prompt: `${about ? `${about}\n\n` : ""}Current slides (JSON):\n${JSON.stringify(compact)}\n\n${task}\n\nReturn the same ${slides.length} slides, in the same order. Only change headline, body, and kicker.`,
     });
     if (output.slides.length !== slides.length) return Response.json({ error: "shape_mismatch" }, { status: 422 });
@@ -97,6 +98,6 @@ export async function POST(req: Request) {
     }));
     return Response.json({ slides: merged });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "revoice_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "revoice_failed", 500);
   }
 }

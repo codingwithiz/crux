@@ -6,7 +6,7 @@ import { MODULE_FILL_SYSTEM } from "@/lib/ai/prompts";
 import { ModuleSchema, normalizeModule } from "@/lib/carousel/llm";
 import { MODULE_TYPES, type ModuleType } from "@/lib/carousel/design";
 import type { Settings } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -39,12 +39,13 @@ export async function POST(req: Request) {
       schema: ModuleSchema,
       system: MODULE_FILL_SYSTEM,
       label: "module",
+      caller,
       prompt: `SLIDE:\nkicker: ${kicker ?? ""}\nheadline: ${headline ?? ""}\nbody: ${body ?? ""}\n\nFill a "${type}" module with concrete, specific data drawn from this slide. The module "type" must be "${type}". Use real, meaningful labels — no "point 1"/"step 1" placeholders.`,
     });
     const module = normalizeModule({ ...raw, type: type as ModuleType });
     if (!module) return Response.json({ error: "empty" }, { status: 422 });
     return Response.json({ module });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "module_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "module_failed", 500);
   }
 }

@@ -6,7 +6,7 @@ import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { CURATOR_SYSTEM } from "@/lib/ai/prompts";
 import { getNews } from "@/lib/sources";
 import type { BriefPick, Settings } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       schema: Schema,
       system: CURATOR_SYSTEM,
       label: "brief",
+      caller,
       prompt: `Today's candidate items (JSON):\n${JSON.stringify(candidates)}\n\nMy existing theses:\n${priors}\n\nSelect the 3-5 items most worth forming an opinion on, using the exact id values above.`,
     });
 
@@ -72,6 +73,6 @@ export async function POST(req: Request) {
 
     return Response.json({ picks });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "brief_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "brief_failed", 500);
   }
 }

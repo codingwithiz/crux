@@ -7,7 +7,7 @@ import { SYNTHESIZER_SYSTEM, GROUNDED_SYNTHESIZER_SYSTEM } from "@/lib/ai/prompt
 import { fetchReadable } from "@/lib/extract";
 import { verifyCitations } from "@/lib/citations";
 import type { Settings } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const output = await generateStructured({ ms, schema: Schema, system, prompt, label: "synthesize" });
+    const output = await generateStructured({ ms, schema: Schema, system, prompt, label: "synthesize", caller });
     // Verify the receipts before they ever reach the user. The model is asked
     // for verbatim quotes; this is what confirms it obliged.
     //
@@ -95,6 +95,6 @@ export async function POST(req: Request) {
     const source = sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined;
     return Response.json({ ...output, citations, grounded, source });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "synthesis_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "synthesis_failed", 500);
   }
 }
