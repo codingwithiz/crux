@@ -93,8 +93,13 @@ export function LedgerView() {
     setBusyId(t.id);
     try {
       const handle = getBrandKit().handle;
-      const { slides, designId } = await expressSlides(t, handle);
-      saveDraft({ slides, handle, designId });
+      const { slides, designId, format } = await expressSlides(t, handle);
+      saveDraft({
+        slides,
+        handle,
+        designId,
+        context: { mode: "express", thesis: t, synthesis: t.synthesis, sourceTitle: t.source?.title, format },
+      });
       router.push("/studio");
     } finally {
       setBusyId(null);

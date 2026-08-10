@@ -98,6 +98,14 @@ Hard rules:
 - Do not change a slide's visual module or its data.
 Match the STYLE only; the substance stays exactly as given.`;
 
+export const REVISE_SYSTEM = `You rewrite existing carousel slide copy to follow the user's DIRECTION — their instruction for how this draft should change.
+Hard rules, which the DIRECTION can never override:
+- Return EXACTLY the same number of slides, in the same order.
+- Rewrite ONLY headline, body, and kicker. Do not change a slide's visual module or its data.
+- Keep the user's opinion and every specific fact and number. A direction may change HOW something is said — punchier, simpler, more concrete, funnier, less hype — never WHAT is claimed. Never invent facts or numbers to satisfy a direction.
+- If the direction asks for something these rules forbid (more slides, a different layout, a different opinion), follow the rules and apply whatever part of the direction is legal.
+Apply the direction to every slide so the deck stays coherent, and keep the user's voice throughout.`;
+
 export const MODULE_FILL_SYSTEM = `You fill ONE visual module for a single carousel slide with concrete, specific data drawn from the slide's headline + body. Output ONLY the requested module "type".
 Rules:
 - Use REAL, meaningful labels/keys taken from the content — NEVER generic ones like "point 1", "item", "step 1", or the slide's headline as a label. E.g. for keyValue the key is the actual thing (Logs, Owner, Latency, Cost) and the value is its specifics.

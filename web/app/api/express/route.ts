@@ -29,6 +29,9 @@ interface Body {
   sourceTitle?: string;
   settings?: Settings;
   voice?: VoiceProfile;
+  /** Formats/styles the caller already has, so a second take is a different one
+   *  rather than the same deck with different words. */
+  avoid?: { formats?: string[]; designIds?: string[] };
 }
 
 function thesisContext(thesis: Thesis, synthesis?: Synthesis): string {
@@ -80,6 +83,7 @@ export async function POST(req: Request) {
     sourceTitle,
     settings: rawSettings,
     voice,
+    avoid,
   } = (await req.json().catch(() => ({}))) as Body;
 
   const explain = mode === "explain";
@@ -102,10 +106,22 @@ export async function POST(req: Request) {
   const base = explain ? EXPLAINER_SYSTEM : EXPRESSOR_SYSTEM;
   const system = vb ? `${base}\n\n${vb}` : base;
 
-  const designList = DESIGNS.map((d) => `- ${d.id}: ${d.name} (${d.mode})`).join("\n");
+  // Filter by id, never by instruction: asking the model to "avoid X" leaves it
+  // free to pick X anyway. Both lists fall back to the full catalog if avoiding
+  // everything would leave nothing legal to choose.
+  const taken = new Set(avoid?.designIds ?? []);
+  const freeDesigns = DESIGNS.filter((d) => !taken.has(d.id));
+  const designList = (freeDesigns.length ? freeDesigns : DESIGNS)
+    .map((d) => `- ${d.id}: ${d.name} (${d.mode})`)
+    .join("\n");
+
   const context = explain
     ? sourceBreakdown(synthesis!, sourceTitle)
     : thesisContext(thesis!, synthesis);
+
+  const different = avoid?.formats?.length
+    ? `\n\nI already have a version using the ${avoid.formats.join(" and ")} format. Pick a genuinely DIFFERENT format this time and structure the deck around its beats — not the same deck reworded.`
+    : "";
 
   try {
     const output = await generateStructured({
@@ -121,7 +137,7 @@ ${formatCatalog()}
 AVAILABLE STYLES — pick the ONE whose mood fits this topic and set "designId":
 ${designList}
 
-${explain ? EXPLAIN_TASK : EXPRESS_TASK}`,
+${explain ? EXPLAIN_TASK : EXPRESS_TASK}${different}`,
     });
     const designId = DESIGNS.some((d) => d.id === output.designId) ? output.designId : "paper";
     const format = FORMAT_IDS.includes(output.format ?? "") ? output.format : undefined;
