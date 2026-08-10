@@ -25,7 +25,7 @@ import { getVoice, effectiveVoice } from "@/lib/voice";
 import { fillModule, expressVariants, type Variant } from "@/lib/express-client";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
-import { PenLine } from "lucide-react";
+import { PenLine, ChevronDown } from "lucide-react";
 
 const LAYOUTS: SlideLayout[] = ["hero", "explainer", "statement", "cta"];
 
@@ -118,6 +118,7 @@ export function CarouselStudio({
   const [variants, setVariants] = useState<Variant[] | null>(null);
   const [variantJob, setVariantJob] = useState(false);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [context, setContext] = useState<DraftContext | undefined>(undefined);
 
   useEffect(() => {
@@ -500,7 +501,7 @@ export function CarouselStudio({
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_380px]">
       {/* Full-size renders for export — mounted only while one is running. */}
       {exporting && (
         <div aria-hidden style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}>
@@ -510,28 +511,64 @@ export function CarouselStudio({
         </div>
       )}
 
-      <div>
+      <div className="min-w-0">
+        {/* Six controls at one hierarchy level, so nothing looked like the main
+            action and Undo sat between Save and the exports. Title leads, Save
+            is primary, and the three ways of getting files out live together
+            behind one Export menu. */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Carousel title"
-            className="w-full min-w-0 rounded-lg border border-line bg-surface/40 px-3 py-2 text-base outline-none focus:border-accent sm:w-auto sm:flex-1 sm:py-1.5 sm:text-sm"
+            aria-label="Carousel title"
+            className="w-full min-w-0 basis-full rounded-lg border border-line bg-surface/40 px-3 py-2 font-serif text-lead outline-none focus:border-accent sm:basis-0 sm:flex-1"
           />
-          <button onClick={undo} disabled={histLen === 0} title="Undo last change" className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-40">
+          <button
+            onClick={undo}
+            disabled={histLen === 0}
+            title="Undo last change"
+            aria-label="Undo last change"
+            className="ce-press rounded-lg border border-line px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-40"
+          >
             ↶ Undo
           </button>
-          <button onClick={copyCaption} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface">
-            {copied ? "Copied ✓" : "Copy caption"}
-          </button>
-          <button onClick={save} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50">
+
+          <details className="relative" open={exportOpen} onToggle={(e) => setExportOpen((e.currentTarget as HTMLDetailsElement).open)}>
+            <summary className="ce-press inline-flex cursor-pointer list-none items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-sm transition hover:bg-surface">
+              Export <ChevronDown className="h-3.5 w-3.5" />
+            </summary>
+            <div className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+              <button
+                onClick={() => { setExportOpen(false); void downloadAll(); }}
+                disabled={busy}
+                className="block w-full px-3 py-2 text-left text-sm transition hover:bg-ink disabled:opacity-50"
+              >
+                {job === "zip" ? "Preparing…" : "All slides (.zip)"}
+              </button>
+              <button
+                onClick={() => { setExportOpen(false); void downloadPdf(); }}
+                disabled={busy}
+                title="One multi-page PDF — what LinkedIn document posts take"
+                className="block w-full px-3 py-2 text-left text-sm transition hover:bg-ink disabled:opacity-50"
+              >
+                {job === "pdf" ? "Building PDF…" : "PDF for LinkedIn"}
+              </button>
+              <button
+                onClick={() => { setExportOpen(false); void copyCaption(); }}
+                className="block w-full px-3 py-2 text-left text-sm transition hover:bg-ink"
+              >
+                {copied ? "Copied ✓" : "Copy the caption"}
+              </button>
+            </div>
+          </details>
+
+          <button
+            onClick={save}
+            disabled={busy}
+            className="ce-press rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg shadow-[2px_2px_0_0_var(--color-accent-fg)] transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50"
+          >
             {job === "save" ? "Saving…" : carouselId ? "Update" : "Save"}
-          </button>
-          <button onClick={downloadPdf} disabled={busy} title="One multi-page PDF — what LinkedIn document posts take" className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50">
-            {job === "pdf" ? "Building PDF…" : "PDF"}
-          </button>
-          <button onClick={downloadAll} disabled={busy} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50">
-            {job === "zip" ? "Preparing…" : "Download all (.zip)"}
           </button>
         </div>
         {saveMsg && (
@@ -698,7 +735,7 @@ export function CarouselStudio({
       </div>
 
       {/* Editor */}
-      <aside className="h-fit rounded-2xl border border-line bg-surface/40 p-5">
+      <aside className="h-fit min-w-0 rounded-2xl border border-line bg-surface/40 p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Slide {idx + 1} / {total}</h2>
           <div className="flex gap-1">
@@ -711,7 +748,7 @@ export function CarouselStudio({
               onClick={() => (confirmRemove === idx ? remove(idx) : setConfirmRemove(idx))}
               onBlur={() => confirmRemove === idx && setConfirmRemove(null)}
               aria-label="Delete slide"
-              className={`ml-2 rounded-md px-3 py-2 text-sm hover:bg-surface ${confirmRemove === idx ? "bg-red-500/15 text-red-300" : "text-red-400"}`}
+              className={`ml-2 rounded-md px-3 py-2 text-sm hover:bg-surface ${confirmRemove === idx ? "bg-danger/15 text-danger" : "text-danger"}`}
               title="Delete slide"
             >
               {confirmRemove === idx ? "Delete?" : "✕"}

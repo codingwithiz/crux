@@ -12,10 +12,13 @@ type Size = "sm" | "md";
  * were in. Variants encode intent; sizes are the two that were actually in use.
  */
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-accent text-accent-fg hover:brightness-110",
-  secondary: "border border-line text-fg hover:bg-surface",
+  // A printed-ink press rather than a floating pill: a hard offset shadow that
+  // collapses on click, so the button behaves like something stamped down.
+  primary:
+    "bg-accent text-accent-fg shadow-[2px_2px_0_0_var(--color-accent-fg)] hover:brightness-110 active:shadow-none active:translate-x-[2px] active:translate-y-[2px]",
+  secondary: "border border-line text-fg hover:border-accent/50 hover:bg-surface",
   ghost: "text-muted hover:bg-surface hover:text-fg",
-  danger: "border border-line text-danger hover:bg-danger/10",
+  danger: "border border-line text-danger hover:border-danger/50 hover:bg-danger/10",
 };
 
 const SIZES: Record<Size, string> = {

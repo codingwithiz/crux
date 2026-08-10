@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { LandingDemo } from "@/components/LandingDemo";
+import { Mark } from "@/components/ui/Ink";
 
 const CHAIN = ["Information", "Understanding", "Insight", "Opinion", "Content"];
 
@@ -42,56 +44,67 @@ const EDGES = [
 export default function Home() {
   return (
     <div className="mx-auto max-w-6xl px-5">
-      {/* Hero */}
-      <section className="ce-fade-up py-20 sm:py-28">
-        <p className="font-mono text-sm text-accent">crux</p>
-        <h1 className="mt-4 max-w-3xl font-serif text-5xl font-semibold leading-[1.05] tracking-tight sm:text-7xl">
-          It doesn’t write your posts. It makes you someone worth reading.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted">
-          {"Most tools summarize the news or spit out posts. This one lives in the middle — it helps you turn the day's noise into "}
-          <span className="text-fg">your own defensible opinion</span>
-          {", then a carousel."}
-        </p>
+      {/* Hero: the claim on the left, the thing it makes on the right, live. */}
+      <section className="ce-fade-up grid items-center gap-12 py-16 sm:py-24 lg:grid-cols-[1.15fr_1fr]">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">crux</p>
+          <h1 className="mt-4 max-w-2xl font-serif text-5xl font-semibold leading-[1.03] tracking-tight sm:text-6xl">
+            It doesn’t write your posts. It makes you{" "}
+            <Mark>someone worth reading</Mark>.
+          </h1>
+          <p className="mt-6 max-w-xl text-lead text-muted">
+            {"Most tools summarize the news or spit out posts. This one lives in the middle — it turns the day's noise into "}
+            <span className="text-fg">your own defensible opinion</span>
+            {", then a carousel in your voice."}
+          </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-2 font-mono text-xs">
-          {CHAIN.map((s, i) => (
-            <span key={s} className="flex items-center gap-2">
-              <span className={i === 3 ? "rounded bg-accent px-2 py-1 text-accent-fg" : "rounded bg-surface px-2 py-1 text-fg"}>
-                {s}
-              </span>
-              {i < CHAIN.length - 1 && <span className="text-muted">→</span>}
-            </span>
-          ))}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href="/today"
+              className="ce-press inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg shadow-[3px_3px_0_0_var(--color-accent-fg)] transition hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              Write today’s take <span>→</span>
+            </Link>
+            <Link href="/guide" className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
+              See how it works
+            </Link>
+          </div>
+
+          <p className="mt-6 text-xs text-muted">
+            Every quote it pulls is checked word-for-word against the source.{" "}
+            <span className="text-fg">1.0 citation faithfulness</span> on the current benchmark.
+          </p>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link
-            href="/today"
-            className="ce-press inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
-          >
-            Write today’s take <span>→</span>
-          </Link>
-          <Link href="/guide" className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
-            See how it works
-          </Link>
+        {/* The real renderer, cycling the real catalog — not a recording. */}
+        <div className="flex justify-center lg:justify-end">
+          <LandingDemo width={300} />
         </div>
       </section>
 
-      {/* Demo */}
-      <section className="pb-6">
-        <div className="rounded-2xl border border-line bg-surface/30 p-4">
-          <p className="mb-3 text-center font-mono text-xs uppercase tracking-wide text-muted">
-            One take, restyled across the design system
-          </p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/demo.gif" alt="A carousel restyled across the built-in design system" width={460} className="mx-auto rounded-lg" />
+      {/* The chain, as a designed sequence rather than a row of chips. */}
+      <section className="ce-rule py-12">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">The path</p>
+        <div className="mt-5 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-5">
+          {CHAIN.map((s, i) => (
+            <div
+              key={s}
+              className={`bg-ink px-4 py-5 ${i === 3 ? "bg-accent/10" : ""}`}
+            >
+              <p className="font-mono text-xs text-muted">{String(i + 1).padStart(2, "0")}</p>
+              <p className={`mt-1 font-serif text-lg ${i === 3 ? "text-accent" : "text-fg"}`}>{s}</p>
+            </div>
+          ))}
         </div>
+        <p className="mt-3 text-sm text-muted">
+          Everything else on the internet stops at step two. The <Mark tone="pink">opinion</Mark> is
+          the part that is yours, and the part Crux refuses to write.
+        </p>
       </section>
 
       {/* Two modes */}
-      <section className="border-t border-line py-14">
-        <h2 className="text-2xl font-bold tracking-tight">Two ways to use it</h2>
+      <section className="ce-rule py-14">
+        <h2 className="font-serif text-title font-semibold">Two ways to use it</h2>
         <p className="mt-1 text-muted">Same engine, your call per item.</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-line bg-surface/40 p-6">
@@ -112,8 +125,8 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-line py-14">
-        <h2 className="text-2xl font-bold tracking-tight">How it works</h2>
+      <section className="ce-rule py-14">
+        <h2 className="font-serif text-title font-semibold">How it works</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {STEPS.map((s) => (
             <div key={s.n} className="rounded-2xl border border-line bg-surface/40 p-5">
@@ -126,7 +139,7 @@ export default function Home() {
       </section>
 
       {/* Two ways in */}
-      <section className="grid gap-5 border-t border-line py-14 sm:grid-cols-2">
+      <section className="ce-rule grid gap-5 py-14 sm:grid-cols-2">
         <EntryCard
           href="/explore"
           kicker="Explore"
@@ -142,8 +155,8 @@ export default function Home() {
       </section>
 
       {/* Why it's different */}
-      <section className="border-t border-line py-14">
-        <h2 className="text-2xl font-bold tracking-tight">Why it’s different</h2>
+      <section className="ce-rule py-14">
+        <h2 className="font-serif text-title font-semibold">Why it’s different</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {EDGES.map((e) => (
             <div key={e.title} className="rounded-2xl border border-line bg-surface/40 p-5">
@@ -155,7 +168,7 @@ export default function Home() {
       </section>
 
       {/* Closing */}
-      <section className="border-t border-line py-16 text-center">
+      <section className="ce-rule py-16 text-center">
         <h2 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
           Your opinion deserves better than a hot take.
         </h2>

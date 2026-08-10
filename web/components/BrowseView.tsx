@@ -7,8 +7,20 @@ import { getSettings } from "@/lib/settings";
 import { getLedger } from "@/lib/ledger";
 import { rankItems, interestsAsPriors, type RankedItem } from "@/lib/rank";
 import { getVoice } from "@/lib/voice";
+import {
+  FileText,
+  FlaskConical,
+  Flame,
+  Code2,
+  MessageSquare,
+  Newspaper,
+  Rss,
+  type LucideIcon,
+} from "lucide-react";
 import { WhyThis } from "@/components/WhyThis";
 import { ProgressSteps } from "./ProgressSteps";
+import { Skeleton } from "@/components/Skeleton";
+import { Callout } from "@/components/ui/Callout";
 import type { BriefPick, NewsItem } from "@/lib/types";
 
 // A 10–20s call that used to report itself as a greyed-out button.
@@ -24,14 +36,16 @@ const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   news: "News",
 };
 
-const SOURCE_ICON: Record<NewsItem["source"], string> = {
-  hf: "📄",
-  hn: "💬",
-  github: "🐙",
-  reddit: "👽",
-  lobsters: "🦞",
-  arxiv: "🔬",
-  news: "📰",
+/** Emoji were the app's only iconography here, and they render as a different
+ *  typeface at a different weight on every platform. */
+const SOURCE_ICON: Record<NewsItem["source"], LucideIcon> = {
+  hf: FileText,
+  hn: MessageSquare,
+  github: Code2,
+  reddit: Flame,
+  lobsters: Rss,
+  arxiv: FlaskConical,
+  news: Newspaper,
 };
 
 interface RadarSnapshot {
@@ -85,8 +99,12 @@ function FeedItem({
     >
       <button onClick={onToggle} aria-expanded={expanded} className="block w-full p-3 text-left">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-xs text-accent">
-            {SOURCE_ICON[item.source]} {SOURCE_LABELS[item.source]}
+          <span className="inline-flex items-center gap-1.5 font-mono text-xs text-accent">
+            {(() => {
+              const Icon = SOURCE_ICON[item.source];
+              return <Icon className="h-3.5 w-3.5" aria-hidden />;
+            })()}
+            {SOURCE_LABELS[item.source]}
           </span>
           <span className="shrink-0 text-xs text-muted">
             {[item.meta, age].filter(Boolean).join(" · ")}
@@ -337,7 +355,7 @@ export function BrowseView() {
         )}
 
         {curateErr && (
-          <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
+          <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
             {curateErr}
           </div>
         )}
@@ -375,8 +393,25 @@ export function BrowseView() {
           )}
         </p>
 
-        {err && <p className="text-muted">Could not load the feed right now ({err}). Start from your own thought instead.</p>}
-        {!items && !err && <p className="text-muted">Loading the feed…</p>}
+        {/* A raw String(e) — "TypeError: Failed to fetch" — was the entire error
+            state. It told the user nothing and offered nowhere to go. */}
+        {err && (
+          <Callout tone="warning">
+            Couldn&rsquo;t load the feed just now. It&rsquo;s usually a source being slow — try
+            reloading, or{" "}
+            <Link href="/think" className="underline underline-offset-4">
+              start from your own thought
+            </Link>
+            .
+          </Callout>
+        )}
+        {!items && !err && (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20" />
+            ))}
+          </div>
+        )}
         {items && items.length === 0 && <p className="text-muted">Nothing right now — start from your own thought instead.</p>}
 
         {items && items.length > 0 && (

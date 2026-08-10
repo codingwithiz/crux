@@ -60,7 +60,7 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
 
         <div className="max-h-[58vh] overflow-y-auto p-4">
           {err ? (
-            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">{err}</p>
+            <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">{err}</p>
           ) : !data ? (
             <div className="flex items-center gap-2 py-10 text-sm text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Rewriting it in your voice…

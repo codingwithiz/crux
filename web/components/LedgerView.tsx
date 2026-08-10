@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookMarked, ChevronDown, ExternalLink, Share2 } from "lucide-react";
+import { BookMarked, ChevronDown, ExternalLink, MoreHorizontal, Share2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { RepurposeModal } from "@/components/RepurposeModal";
 import { Skeleton } from "@/components/Skeleton";
@@ -30,9 +30,9 @@ const STATUS_BADGE: Record<Thesis["status"], string | null> = {
 
 const OUTCOME_LABEL: Record<Outcome, string> = { held: "held up", mixed: "mixed", broke: "broke" };
 const OUTCOME_BADGE: Record<Outcome, string> = {
-  held: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  mixed: "border-amber-500/40 bg-amber-500/10 text-amber-200",
-  broke: "border-red-500/40 bg-red-500/10 text-red-300",
+  held: "border-success/40 bg-success/10 text-success",
+  mixed: "border-warning/40 bg-warning/10 text-warning",
+  broke: "border-danger/40 bg-danger/10 text-danger",
 };
 
 type Filter = "all" | "active" | "updated" | "abandoned" | "draft";
@@ -57,6 +57,8 @@ export function LedgerView() {
   const [query, setQuery] = useState("");
   const [repTo, setRepTo] = useState<Thesis | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** Which card's overflow menu is open — one at a time. */
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   useEffect(() => {
     getLedger().then(setItems);
@@ -154,60 +156,71 @@ export function LedgerView() {
 
   return (
     <div>
-      {/* Track record — the "keep score" surface */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Takes" value={stats.total} />
-        <Stat label="This week" value={stats.thisWeek} accent />
-        <Stat label="Revised" value={stats.updated} />
-        <Stat label="Abandoned" value={stats.abandoned} />
-      </div>
-      <div className="mb-5 flex items-center gap-3 text-xs text-muted">
-        <span className="font-mono uppercase tracking-wide">Confidence</span>
-        <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
-      </div>
-
-      {/* Shown from zero. This score is the thing that makes a ledger worth
-          keeping, and it used to be invisible until you'd already resolved
-          something — as did the only text explaining how to resolve anything. */}
-      {stats.total > 0 && (
-        <div className="mb-5 rounded-xl border border-line bg-surface/40 p-4">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-xs uppercase tracking-wide text-accent">Accuracy</p>
-            <p className="text-xs text-muted">
+      {/* One scorecard, not five stacked panels. Counts, accuracy and the
+          confidence mix are one thought — "how am I doing" — and they used to be
+          three separate bordered boxes you scrolled past to reach a take. */}
+      <div className="mb-6 rounded-xl border border-line bg-surface/40 p-5 shadow-[0_1px_0_0_var(--color-line),0_18px_40px_-28px_rgba(0,0,0,0.8)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">Accuracy</p>
+            {/* The number this whole surface exists to produce, at the size that
+                says so. It used to be 11px text at the end of a row. */}
+            <p className="mt-1 font-serif text-display font-semibold leading-none tabular-nums">
               {cal.resolved > 0 ? (
                 <>
-                  {cal.resolved} scored · <span className="text-fg">{cal.score}/100</span>
+                  {cal.score}
+                  <span className="text-lead text-muted">/100</span>
                 </>
               ) : (
-                <>not scored yet</>
+                <span className="text-title text-muted">not scored yet</span>
               )}
             </p>
+            <p className="mt-1 text-xs text-muted">
+              {cal.resolved > 0 ? `from ${cal.resolved} scored` : `${stats.total} saved, none scored`}
+            </p>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-3 text-center">
-            {(["high", "med", "low"] as Confidence[]).map((c) => (
-              <div key={c} className="rounded-lg border border-line bg-ink/40 p-2">
-                <p className="text-sm font-bold text-fg">
-                  {cal.byConfidence[c].hitRate === null
-                    ? "—"
-                    : `${Math.round((cal.byConfidence[c].hitRate as number) * 100)}%`}
-                </p>
-                <p className="text-[11px] capitalize text-muted">
-                  {c} held ({cal.byConfidence[c].resolved})
-                </p>
-              </div>
-            ))}
+
+          <div className="grid flex-1 grid-cols-2 gap-3 sm:max-w-sm sm:grid-cols-4">
+            <Stat label="Takes" value={stats.total} />
+            <Stat label="This week" value={stats.thisWeek} accent />
+            <Stat label="Revised" value={stats.updated} />
+            <Stat label="Abandoned" value={stats.abandoned} />
           </div>
-          <p className="mt-2 text-[11px] text-muted">
-            {cal.resolved > 0
-              ? "Were you right when you were confident?"
-              : "Once reality has weighed in, open a take and say whether it held up. Do that a few times and this becomes a real measure of whether your confidence is worth trusting."}
-          </p>
         </div>
-      )}
+
+        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+          {(["high", "med", "low"] as Confidence[]).map((c) => (
+            <div key={c} className="rounded-lg border border-line bg-ink/40 p-2">
+              <p className="text-sm font-bold tabular-nums text-fg">
+                {cal.byConfidence[c].hitRate === null
+                  ? "—"
+                  : `${Math.round((cal.byConfidence[c].hitRate as number) * 100)}%`}
+              </p>
+              <p className="text-xs capitalize text-muted">
+                {c} held ({cal.byConfidence[c].resolved})
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center gap-3 text-xs text-muted">
+          <span className="font-mono uppercase tracking-[0.14em]">Confidence</span>
+          <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
+        </div>
+
+        {/* Shown from zero. This score is what makes a track record worth
+            keeping, and it used to be invisible until you'd already scored
+            something — as did the only text explaining how to score anything. */}
+        <p className="mt-3 text-xs text-muted">
+          {cal.resolved > 0
+            ? "Were you right when you were confident?"
+            : "Once reality has weighed in, open a take and say whether it held up. Do that a few times and this becomes a real measure of whether your confidence is worth trusting."}
+        </p>
+      </div>
 
       {due.length > 0 && (
-        <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-          <p className="font-mono text-xs uppercase tracking-wide text-amber-200">Time to score these</p>
+        <div className="mb-5 rounded-xl border border-warning/30 bg-warning/5 p-4">
+          <p className="font-mono text-xs uppercase tracking-wide text-warning">Time to score these</p>
           <p className="mt-1 text-xs text-muted">
             You saved these a while ago. How did they hold up? Scoring keeps your accuracy honest.
           </p>
@@ -377,8 +390,8 @@ export function LedgerView() {
                         onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
                         className={`rounded-lg border px-3 py-1.5 text-xs ${
                           confirmDelete === t.id
-                            ? "border-red-400/60 text-red-300"
-                            : "border-line text-muted hover:text-red-400"
+                            ? "border-danger/60 text-danger"
+                            : "border-line text-muted hover:text-danger"
                         }`}
                       >
                         {confirmDelete === t.id ? "Tap again to discard" : "Discard"}
@@ -386,51 +399,49 @@ export function LedgerView() {
                     </>
                   ) : (
                   <>
+                  {/* One primary action, then a menu. Five peer buttons gave
+                      Delete the same weight as Make carousel. */}
                   <button
                     onClick={() => makeCarousel(t)}
                     disabled={busyId === t.id}
-                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+                    className="ce-press rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg shadow-[2px_2px_0_0_var(--color-accent-fg)] transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50"
                   >
                     {busyId === t.id ? "Building…" : "Make carousel"}
                   </button>
                   <button
                     onClick={() => setRepTo(t)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-fg hover:bg-surface"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-fg transition hover:border-accent/50 hover:bg-surface"
                   >
-                    <Share2 className="h-3.5 w-3.5" /> Repurpose
+                    <Share2 className="h-3.5 w-3.5" /> Reuse
                   </button>
-                  <button
-                    onClick={() => setEditId(t.id)}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-fg hover:bg-surface"
+
+                  <details
+                    className="relative"
+                    open={menuFor === t.id}
+                    onToggle={(e) => setMenuFor((e.currentTarget as HTMLDetailsElement).open ? t.id : null)}
                   >
-                    Revise
-                  </button>
-                  {t.status === "abandoned" ? (
-                    <button
-                      onClick={() => setStatus(t, "active")}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
+                    <summary
+                      aria-label="More actions"
+                      className="ce-press inline-flex cursor-pointer list-none items-center rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
                     >
-                      Reactivate
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setStatus(t, "abandoned")}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
-                    >
-                      Abandon
-                    </button>
-                  )}
-                  <button
-                    onClick={() => del(t.id)}
-                    onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs ${
-                      confirmDelete === t.id
-                        ? "border-red-400/60 text-red-300"
-                        : "border-line text-muted hover:text-red-400"
-                    }`}
-                  >
-                    {confirmDelete === t.id ? "Click again to delete" : "Delete"}
-                  </button>
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </summary>
+                    <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+                      <MenuItem onClick={() => { setMenuFor(null); setEditId(t.id); }}>Revise</MenuItem>
+                      <MenuItem
+                        onClick={() => { setMenuFor(null); void setStatus(t, t.status === "abandoned" ? "active" : "abandoned"); }}
+                      >
+                        {t.status === "abandoned" ? "Reactivate" : "Abandon"}
+                      </MenuItem>
+                      <MenuItem
+                        danger
+                        onClick={() => void del(t.id)}
+                        onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
+                      >
+                        {confirmDelete === t.id ? "Click again to delete" : "Delete"}
+                      </MenuItem>
+                    </div>
+                  </details>
                   </>
                   )}
                 </div>
@@ -448,6 +459,30 @@ export function LedgerView() {
 
       {repTo && <RepurposeModal thesis={repTo} onClose={() => setRepTo(null)} />}
     </div>
+  );
+}
+
+function MenuItem({
+  children,
+  onClick,
+  onBlur,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  onBlur?: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      onBlur={onBlur}
+      className={`block w-full px-3 py-2 text-left text-xs transition hover:bg-ink ${
+        danger ? "text-danger" : "text-fg"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

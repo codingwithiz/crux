@@ -20,6 +20,7 @@ export function GalleryView() {
   const [items, setItems] = useState<Carousel[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [exporting, setExporting] = useState<Carousel | null>(null);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -36,7 +37,17 @@ export function GalleryView() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
+  /**
+   * Two-step delete, the same rule the track record uses. A saved deck is real
+   * work — slides you edited, a style you chose — and this used to destroy it on
+   * one click with no undo, from a button sitting beside "Open".
+   */
   async function del(id: string) {
+    if (confirmDelete !== id) {
+      setConfirmDelete(id);
+      return;
+    }
+    setConfirmDelete(null);
     await removeCarousel(id);
     load();
   }
@@ -83,7 +94,7 @@ export function GalleryView() {
 
   if (!items)
     return (
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-28" />
         ))}
@@ -91,7 +102,7 @@ export function GalleryView() {
     );
   if (err)
     return (
-      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+      <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
         Couldn&rsquo;t load your carousels. Anything saved on this device is still safe — try
         reloading, or sign in again if the problem sticks.
       </div>
@@ -108,7 +119,7 @@ export function GalleryView() {
 
   const s = 0.16;
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {/* Off-screen render used when a carousel has no stored PNGs. */}
       {exporting && (
         <div aria-hidden style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}>
@@ -149,7 +160,17 @@ export function GalleryView() {
                 <div className="mt-auto flex flex-wrap gap-2 pt-3">
                   <Link href={`/studio?c=${c.id}`} className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110">Open</Link>
                   <button onClick={() => downloadZip(c)} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50">.zip</button>
-                  <button onClick={() => del(c.id)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg">Delete</button>
+                  <button
+                    onClick={() => void del(c.id)}
+                    onBlur={() => confirmDelete === c.id && setConfirmDelete(null)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                      confirmDelete === c.id
+                        ? "border-danger/60 text-danger"
+                        : "border-line text-muted hover:text-danger"
+                    }`}
+                  >
+                    {confirmDelete === c.id ? "Click again to delete" : "Delete"}
+                  </button>
                 </div>
                 {/* Opens the platform's composer with the caption ready. Moved
                     here from the Queue, whose scheduling stored a date nothing

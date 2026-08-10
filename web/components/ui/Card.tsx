@@ -16,14 +16,26 @@ const TONES: Record<Tone, string> = {
   muted: "border-line bg-ink/40",
 };
 
+/** `feature` reads as a pulled-out panel rather than another row in a stack —
+ *  for the one thing on a screen that deserves the eye first. */
+const FEATURE = "shadow-[0_1px_0_0_var(--color-line),0_18px_40px_-28px_rgba(0,0,0,0.8)]";
+
 export function Card({
   tone = "default",
+  feature = false,
   className = "",
   children,
 }: {
   tone?: Tone;
+  feature?: boolean;
   className?: string;
   children: ReactNode;
 }) {
-  return <div className={`rounded-xl border p-4 ${TONES[tone]} ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`rounded-xl border p-4 ${TONES[tone]} ${feature ? FEATURE : ""} ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
