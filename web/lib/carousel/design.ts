@@ -256,4 +256,8 @@ export interface CarouselSlide {
   doodles?: boolean;
   /** Show a hand-drawn swipe arrow under the headline (hero slides). */
   arrow?: boolean;
+  /** Overrides the deck's style for this one slide — a cover that stands apart,
+   *  or a single quote in a different world. Unset means "follow the deck".
+   *  Persists free: slides are already stored as jsonb. */
+  designId?: string;
 }

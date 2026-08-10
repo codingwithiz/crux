@@ -406,8 +406,14 @@ export function ConvictionFlow({
     setError(null);
     try {
       const handle = getBrandKit().handle;
-      const { slides, designId } = await explainerFromSynthesis(synthesis, sourceTitle, handle);
-      saveDraft({ slides, handle, designId });
+      const { slides, designId, format } = await explainerFromSynthesis(synthesis, sourceTitle, handle);
+      // Carry what this was made from, so the Studio can offer another version.
+      saveDraft({
+        slides,
+        handle,
+        designId,
+        context: { mode: "explain", synthesis, sourceTitle, format },
+      });
       clearFlow();
       router.push("/studio");
     } catch (e) {
@@ -493,8 +499,13 @@ export function ConvictionFlow({
     try {
       const thesis = await bankThesis();
       const handle = getBrandKit().handle;
-      const { slides, designId } = await expressSlides(thesis, handle);
-      saveDraft({ slides, handle, designId });
+      const { slides, designId, format } = await expressSlides(thesis, handle);
+      saveDraft({
+        slides,
+        handle,
+        designId,
+        context: { mode: "express", thesis, synthesis: thesis.synthesis, sourceTitle, format },
+      });
       clearFlow();
       router.push("/studio");
     } catch (e) {

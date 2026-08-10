@@ -18,11 +18,11 @@ import { applyBrand } from "@/lib/carousel/brand";
 import { slideToBlob, downloadBlob, nodesToPdf } from "@/lib/carousel/export";
 import { toast } from "sonner";
 import { buildCaption } from "@/lib/carousel/caption";
-import { loadDraft } from "@/lib/draft";
+import { loadDraft, type DraftContext } from "@/lib/draft";
 import { saveCarousel, getCarousel, uploadCarouselImages } from "@/lib/carousels";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { getVoice, effectiveVoice } from "@/lib/voice";
-import { fillModule } from "@/lib/express-client";
+import { fillModule, expressVariants, type Variant } from "@/lib/express-client";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { PenLine } from "lucide-react";
@@ -105,10 +105,20 @@ export function CarouselStudio({
   // wider than a phone's column, giving the page a horizontal scrollbar.
   const [previewW, setPreviewW] = useState(0);
   const slidesRef = useRef(slides);
-  const history = useRef<CarouselSlide[][]>([]);
+  const designIdRef = useRef(designId);
+  // Undo restores the style as well as the copy: applying a variant changes both
+  // at once, and an undo that put back the words but kept the new style would
+  // leave you somewhere you had never been.
+  const history = useRef<{ slides: CarouselSlide[]; designId: string }[]>([]);
   const [histLen, setHistLen] = useState(0);
   const [fillingModule, setFillingModule] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
+  const [direction, setDirection] = useState("");
+  const [revising, setRevising] = useState<"deck" | "slide" | null>(null);
+  const [variants, setVariants] = useState<Variant[] | null>(null);
+  const [variantJob, setVariantJob] = useState(false);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [context, setContext] = useState<DraftContext | undefined>(undefined);
 
   useEffect(() => {
     if (loaded.current) return;
@@ -134,6 +144,10 @@ export function CarouselStudio({
         if (d?.slides?.length) {
           setSlides(d.slides);
           setHandle(d.handle || initialHandle);
+          // What it was made from, when the flow passed it along. Decks reopened
+          // from the Library have none, which is why "another version" is a
+          // conditional button rather than one that fails when pressed.
+          setContext(d.context);
           // Brand-lock pins one style for new carousels; else use the LLM's per-topic pick.
           setDesignId(lockValid ?? d.designId ?? DESIGNS[0].id);
         } else if (lockValid) {
@@ -156,15 +170,20 @@ export function CarouselStudio({
     return () => ro.disconnect();
   }, []);
 
-  // Mirror current slides for the undo snapshotter (ref write in an effect, not during render).
+  // Mirror current slides + style for the undo snapshotter (ref writes in an
+  // effect, not during render).
   useEffect(() => {
     slidesRef.current = slides;
   }, [slides]);
+  useEffect(() => {
+    designIdRef.current = designId;
+  }, [designId]);
 
   const total = slides.length;
   const idx = Math.min(sel, total - 1);
   const current = slides[idx];
-  const designFor = (s: CarouselSlide) => applyBrand(getDesign(designId), s.brand);
+  // A slide may opt out of the deck's style; unset means "follow the deck".
+  const designFor = (s: CarouselSlide) => applyBrand(getDesign(s.designId ?? designId), s.brand);
 
   function patch(p: Partial<CarouselSlide>) {
     setSlides((arr) => arr.map((s, i) => (i === idx ? { ...s, ...p } : s)));
@@ -172,11 +191,15 @@ export function CarouselStudio({
   function setModule(m: SlideModule | undefined) {
     patch({ module: m });
   }
-  // Undo history — snapshots before structural changes (add/remove/move/layout/module/revoice).
-  function updateSlides(updater: (s: CarouselSlide[]) => CarouselSlide[]) {
-    history.current.push(slidesRef.current);
+  // Undo history — snapshots before structural changes (add/remove/move/layout/
+  // module/revoice/revise/variant).
+  function snapshot() {
+    history.current.push({ slides: slidesRef.current, designId: designIdRef.current });
     if (history.current.length > 60) history.current.shift();
     setHistLen(history.current.length);
+  }
+  function updateSlides(updater: (s: CarouselSlide[]) => CarouselSlide[]) {
+    snapshot();
     setSlides(updater(slidesRef.current));
   }
   function patchTracked(p: Partial<CarouselSlide>) {
@@ -186,7 +209,8 @@ export function CarouselStudio({
     const prev = history.current.pop();
     if (!prev) return;
     setHistLen(history.current.length);
-    setSlides(prev);
+    setSlides(prev.slides);
+    setDesignId(prev.designId);
   }
   // Switch a slide's module: instant content-aware heuristic (one undo entry),
   // then upgrade it in place with LLM-filled, slide-specific data.
@@ -234,6 +258,17 @@ export function CarouselStudio({
       return n;
     });
     setSel(j);
+  }
+  /** Drag a thumbnail onto another position. The ←/→ buttons stay: dragging is
+   *  the fast path on a desktop and unavailable on touch. */
+  function moveTo(from: number, to: number) {
+    if (from === to || to < 0 || to >= total) return;
+    updateSlides((arr) => {
+      const n = [...arr];
+      n.splice(to, 0, ...n.splice(from, 1));
+      return n;
+    });
+    setSel(to);
   }
 
   /**
@@ -300,27 +335,97 @@ export function CarouselStudio({
     }
   }
 
-  async function revoice() {
-    setRevoicing(true);
+  /**
+   * Rewrite copy through /api/revoice — in the user's voice, or toward a
+   * direction they typed, for the whole deck or one slide.
+   *
+   * One call site for all four combinations because the route treats them the
+   * same way: it returns only headline/body/kicker and merges them onto the
+   * slides we sent, so nothing a direction says can alter the layout, the module
+   * data or the slide count.
+   */
+  async function rewrite(opts: { direction?: string; only?: number } = {}) {
+    const scope = opts.only !== undefined ? "slide" : "deck";
+    const target = opts.only !== undefined ? [slides[opts.only]] : slides;
+    if (opts.direction !== undefined) setRevising(scope);
+    else setRevoicing(true);
     setRevoiceMsg(null);
     try {
-      const voice = effectiveVoice(await getVoice());
+      const voice = effectiveVoice(await getVoice().catch(() => null));
       const res = await fetch("/api/revoice", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slides, settings: getSettings(), voice }),
+        body: JSON.stringify({
+          slides: target,
+          direction: opts.direction,
+          context: context && { thesis: context.thesis?.statement, sourceTitle: context.sourceTitle },
+          settings: getSettings(),
+          voice,
+        }),
       });
       const j = (await res.json()) as { slides?: CarouselSlide[]; error?: string };
       if (!res.ok || !j.slides?.length) {
-        throw new Error(j.error === "no_model" ? "No model key — add one in the Model menu (top-right)." : j.error || "Re-voice failed");
+        throw new Error(
+          j.error === "no_model"
+            ? "No AI model is configured for this deployment."
+            : j.error === "shape_mismatch"
+              ? "That came back the wrong shape, so nothing was changed. Try rewording it."
+              : j.error || "Rewrite failed",
+        );
       }
-      updateSlides(() => j.slides!);
-      setRevoiceMsg("Rewritten in your voice.");
+      const next = j.slides;
+      if (opts.only !== undefined) {
+        updateSlides((arr) => arr.map((s, i) => (i === opts.only ? { ...s, ...next[0] } : s)));
+      } else {
+        updateSlides(() => next);
+      }
+      setRevoiceMsg(
+        opts.direction
+          ? scope === "slide"
+            ? "This slide rewritten."
+            : "Rewritten with your direction."
+          : "Rewritten in your voice.",
+      );
+      if (opts.direction) setDirection("");
     } catch (e) {
       setRevoiceMsg((e as Error).message);
     } finally {
+      setRevising(null);
       setRevoicing(false);
     }
+  }
+
+  /**
+   * Two more takes on the same source material, deliberately in different
+   * formats and styles — for when the deck is fine but isn't the one you wanted.
+   * Only offered when the Studio knows what the deck was made from.
+   */
+  async function tryVariants() {
+    if (!context) return;
+    setVariantJob(true);
+    setRevoiceMsg(null);
+    try {
+      const got = await expressVariants(context, {
+        formats: [context.format].filter(Boolean) as string[],
+        designIds: [designId],
+      });
+      setVariants(got);
+    } catch (e) {
+      setRevoiceMsg((e as Error).message);
+    } finally {
+      setVariantJob(false);
+    }
+  }
+
+  /** Applying a variant swaps copy and style together — one undo entry. */
+  function applyVariant(v: Variant) {
+    snapshot();
+    setSlides(v.slides);
+    if (v.designId) setDesignId(v.designId);
+    setContext((c) => c && { ...c, format: v.format });
+    setSel(0);
+    setVariants(null);
+    setRevoiceMsg("Swapped in that version — undo puts the old one back.");
   }
 
   async function save() {
@@ -470,13 +575,75 @@ export function CarouselStudio({
           </div>
         </div>
 
+        {/* Not good enough? Say what to change. The deck is one roll of the dice
+            otherwise — you could edit every word by hand or start over. */}
+        <div className="mt-4 rounded-xl border border-line bg-surface/40 p-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (direction.trim()) void rewrite({ direction: direction.trim() });
+            }}
+            className="flex flex-wrap gap-2"
+          >
+            <input
+              value={direction}
+              onChange={(e) => setDirection(e.target.value)}
+              maxLength={300}
+              aria-label="Say how to change this deck"
+              placeholder="Redo it, but… punchier / simpler / less hype"
+              className="min-w-0 flex-1 basis-full rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:basis-0 sm:text-sm"
+            />
+            <button
+              type="submit"
+              disabled={!direction.trim() || revising !== null}
+              className="ce-press shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:brightness-110 disabled:opacity-50"
+            >
+              {revising === "deck" ? "Rewriting…" : "Redo the deck"}
+            </button>
+            <button
+              type="button"
+              onClick={() => direction.trim() && void rewrite({ direction: direction.trim(), only: idx })}
+              disabled={!direction.trim() || revising !== null}
+              title="Apply this direction to the slide you're on"
+              className="shrink-0 rounded-lg border border-line px-4 py-2 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
+            >
+              {revising === "slide" ? "Rewriting…" : "This slide only"}
+            </button>
+          </form>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {["punchier", "simpler", "more concrete", "less hype", "funnier"].map((p) => (
+              <button
+                key={p}
+                onClick={() => setDirection(p)}
+                className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:bg-surface hover:text-fg"
+              >
+                {p}
+              </button>
+            ))}
+            <span className="text-xs text-muted">· wording only — your layout and numbers stay put</span>
+          </div>
+        </div>
+
         {/* Thumbnails */}
         <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
           {slides.map((s, i) => (
             <button
               key={i}
               onClick={() => setSel(i)}
-              className={`shrink-0 overflow-hidden rounded-md ${i === idx ? "ring-2 ring-accent" : "ring-1 ring-line"}`}
+              // Drag to reorder. Native DnD needs no library, and the ←/→
+              // buttons in the editor stay as the touch path.
+              draggable
+              onDragStart={() => setDragFrom(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragFrom !== null) moveTo(dragFrom, i);
+                setDragFrom(null);
+              }}
+              onDragEnd={() => setDragFrom(null)}
+              title="Drag to reorder"
+              className={`shrink-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
+                i === idx ? "ring-2 ring-accent" : "ring-1 ring-line"
+              } ${dragFrom === i ? "opacity-40" : ""}`}
               style={{ width: 1080 * thumb, height: 1350 * thumb }}
             >
               <div style={{ width: 1080, height: 1350, transform: `scale(${thumb})`, transformOrigin: "top left" }}>
@@ -485,6 +652,49 @@ export function CarouselStudio({
             </button>
           ))}
         </div>
+
+        {/* A different deck entirely, from the same material. Only possible when
+            the Studio was handed what the deck was made from. */}
+        {context && (
+          <div className="mt-3">
+            {variants ? (
+              <div className="rounded-xl border border-cool/40 bg-cool/5 p-3">
+                <p className="text-sm font-medium">Pick a version</p>
+                <p className="mt-0.5 text-xs text-muted">
+                  Same take, different structure and style. Applying one is a single undo.
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <VariantCard
+                    label="Current"
+                    slide={slides[0]}
+                    design={applyBrand(getDesign(designId), slides[0]?.brand)}
+                    handle={handle}
+                    onPick={() => setVariants(null)}
+                  />
+                  {variants.map((v, i) => (
+                    <VariantCard
+                      key={i}
+                      label={v.format ? v.format.replace(/[-_]/g, " ") : `Version ${i + 2}`}
+                      slide={v.slides[0]}
+                      design={applyBrand(getDesign(v.designId ?? designId), v.slides[0]?.brand)}
+                      handle={handle}
+                      onPick={() => applyVariant(v)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => void tryVariants()}
+                disabled={variantJob}
+                title="Generates 2 alternative decks from the same take"
+                className="rounded-lg border border-line px-4 py-2 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
+              >
+                {variantJob ? "Building 2 more versions…" : "Try 2 more versions"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Editor */}
@@ -510,7 +720,7 @@ export function CarouselStudio({
         </div>
 
         <div className="mt-3 flex items-center gap-2">
-          <button onClick={() => void revoice()} disabled={revoicing} className="rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50">
+          <button onClick={() => void rewrite()} disabled={revoicing} className="rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50">
             {revoicing ? "Rewriting…" : "✶ Rewrite in my voice"}
           </button>
           <a href="/voice" className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline">edit voice →</a>
@@ -521,6 +731,29 @@ export function CarouselStudio({
         <div className="mt-1 flex flex-wrap gap-1">
           {LAYOUTS.map((l) => (
             <button key={l} onClick={() => patchTracked({ layout: l })} className={`rounded-md border px-2 py-1 text-xs capitalize ${(current.layout ?? "explainer") === l ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}>{l}</button>
+          ))}
+        </div>
+
+        {/* One slide can step out of the deck's style — a cover that stands
+            apart, a single quote in another world. */}
+        <Label>This slide&rsquo;s style</Label>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => patchTracked({ designId: undefined })}
+            className={`rounded-md border px-2 py-1 text-xs ${!current.designId ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
+          >
+            Same as deck
+          </button>
+          {DESIGNS.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => patchTracked({ designId: d.id })}
+              title={d.name}
+              className={`h-7 w-7 rounded-full border-2 ${current.designId === d.id ? "border-fg" : "border-line"}`}
+              style={{ background: d.bg }}
+            >
+              <span className="block h-full w-full rounded-full" style={{ boxShadow: `inset 0 0 0 3px ${d.accent}` }} />
+            </button>
           ))}
         </div>
 
@@ -630,6 +863,37 @@ export function CarouselStudio({
         <Input value={handle} onChange={setHandle} />
       </aside>
     </div>
+  );
+}
+
+/** One option in the variant picker: its cover slide, at a glance. */
+function VariantCard({
+  label,
+  slide,
+  design,
+  handle,
+  onPick,
+}: {
+  label: string;
+  slide?: CarouselSlide;
+  design: ReturnType<typeof getDesign>;
+  handle: string;
+  onPick: () => void;
+}) {
+  const s = 0.11;
+  if (!slide) return null;
+  return (
+    <button onClick={onPick} className="group text-left">
+      <div
+        className="overflow-hidden rounded-md ring-1 ring-line transition group-hover:ring-2 group-hover:ring-accent"
+        style={{ width: 1080 * s, height: 1350 * s }}
+      >
+        <div style={{ width: 1080, height: 1350, transform: `scale(${s})`, transformOrigin: "top left" }}>
+          <SlideCanvas slide={slide} design={design} index={0} total={1} handle={handle} />
+        </div>
+      </div>
+      <p className="mt-1 truncate text-xs capitalize text-muted group-hover:text-fg">{label}</p>
+    </button>
   );
 }
 
