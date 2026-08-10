@@ -37,7 +37,7 @@ export function TodayView() {
 
   useEffect(() => {
     void (async () => {
-      const [items, voice] = await Promise.all([getLedger(), getVoice()]);
+      const [items, voice] = await Promise.all([getLedger(), getVoice().catch(() => null)]);
       setLedger(items);
       try {
         // Prefer the Cron-prepared radar snapshot; fall back to a live scan.
@@ -58,13 +58,32 @@ export function TodayView() {
           const d = (await (await fetch("/api/news")).json()) as { items?: NewsItem[] };
           raw = d.items ?? [];
         }
-        const ordered = preRanked
+        const ranked = preRanked
           ? raw
           : rankItems(raw, [
               ...items.map((t) => ({ topic: t.topic, statement: t.statement })),
               ...interestsAsPriors(voice?.interests ?? []),
             ]);
-        // Skip items you've already formed a conviction on.
+
+        // Something fetched for a topic you chose beats anything the general
+        // scan happened to surface, so it leads the shortlist.
+        let ordered = ranked;
+        const interests = voice?.interests ?? [];
+        if (interests.length) {
+          try {
+            const t = (await (
+              await fetch(`/api/news?topics=${encodeURIComponent(interests.join(","))}`)
+            ).json()) as { items?: RankedItem[] };
+            if (t.items?.length) {
+              const lead = new Set(t.items.map((i) => i.title.toLowerCase()));
+              ordered = [...t.items, ...ranked.filter((i) => !lead.has(i.title.toLowerCase()))];
+            }
+          } catch {
+            /* the general scan still stands */
+          }
+        }
+
+        // Skip items you've already written a take on.
         const seen = new Set(
           items.map((t) => (t.source?.title ?? "").toLowerCase()).filter(Boolean),
         );
@@ -250,7 +269,7 @@ export function TodayView() {
             </div>
             <p className="mt-1 text-lg font-semibold">{pick.title}</p>
             {pick.detail && <p className="mt-1 text-sm text-muted">{pick.detail}</p>}
-            <WhyThis why={pick.why} />
+            <WhyThis why={pick.why} related={pick.related} viaInterest={pick.viaInterest} />
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setStarted(true)}

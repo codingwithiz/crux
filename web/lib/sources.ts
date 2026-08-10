@@ -3,7 +3,16 @@ import type { NewsItem, NewsSource } from "./types";
 const UA = { "user-agent": "conviction-engine/0.1 (personal project)" };
 
 async function jget(url: string, headers: Record<string, string> = {}): Promise<unknown> {
-  return JSON.parse(await jtext(url, headers));
+  const body = await jtext(url, headers);
+  try {
+    return JSON.parse(body);
+  } catch {
+    // A source occasionally answers 200 with an empty or truncated body. Every
+    // caller is inside a Promise.allSettled, so this is already survivable — but
+    // as a bare SyntaxError it reached the logs naming neither the source nor
+    // the cause.
+    throw new Error(`${new URL(url).host} returned a non-JSON body`);
+  }
 }
 
 async function jtext(url: string, headers: Record<string, string> = {}): Promise<string> {
@@ -200,6 +209,58 @@ async function fetchArxiv(): Promise<NewsItem[]> {
   const q =
     "search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=12";
   return parseFeed(await jtext(`http://export.arxiv.org/api/query?${q}`), "arXiv", "arxiv", 12);
+}
+
+// ---- Topic search: what a followed interest actually reaches for ----
+
+/**
+ * Interests used to be a sort hint over a fixed list of AI outlets, which meant
+ * following "robotics" or "biotech" changed nothing at all — measured against a
+ * live snapshot, seven of twelve ordinary topics matched zero of the thirty
+ * items. A topic you follow has to be able to *fetch*, so these three endpoints
+ * take a query. All of them parse with the feed/JSON readers already here.
+ */
+export const topicQueryUrls = (topic: string) => {
+  const q = encodeURIComponent(topic.trim());
+  return {
+    // Google News search — the same RSS shape the outlet feeds already use.
+    news: `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`,
+    // Quoted so a multi-word interest stays a phrase rather than an OR of words.
+    arxiv: `http://export.arxiv.org/api/query?search_query=all:%22${q}%22&sortBy=submittedDate&sortOrder=descending&max_results=4`,
+  };
+};
+
+/** How many followed topics we'll actually go and fetch for, per request. */
+export const TOPIC_LIMIT = 6;
+
+async function fetchTopic(topic: string): Promise<NewsItem[]> {
+  const urls = topicQueryUrls(topic);
+  const settled = await Promise.allSettled([
+    jtext(urls.news).then((x) => parseFeed(x, `News · ${topic}`, "news", 4)),
+    jtext(urls.arxiv).then((x) => parseFeed(x, `arXiv · ${topic}`, "arxiv", 4)),
+    fetchHN(topic).then((x) => x.slice(0, 3)),
+  ]);
+  const out: NewsItem[] = [];
+  for (const r of settled) if (r.status === "fulfilled") out.push(...r.value);
+  // Provenance travels with the item so the UI can say, truthfully, which topic
+  // of yours put it here.
+  return out.map((it) => ({ ...it, viaInterest: topic }));
+}
+
+/**
+ * Items fetched because the user follows these topics. Resilient per topic and
+ * per source: any one failing costs its own results and nothing else.
+ */
+export async function getTopicNews(topics: string[]): Promise<NewsItem[]> {
+  const wanted = [...new Set(topics.map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(
+    0,
+    TOPIC_LIMIT,
+  );
+  if (!wanted.length) return [];
+  const settled = await Promise.allSettled(wanted.map(fetchTopic));
+  // Interleave so one prolific topic can't bury the rest.
+  const per = settled.map((r) => (r.status === "fulfilled" ? r.value : []));
+  return dedupe(interleave(per));
 }
 
 // Major AI outlets + lab/company blogs (best-effort; any feed that 404s is skipped).

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ConvictionFlow } from "./ConvictionFlow";
 import { getSettings } from "@/lib/settings";
 import { getLedger } from "@/lib/ledger";
@@ -95,7 +96,7 @@ function FeedItem({
         {item.detail && !expanded && (
           <p className="mt-1 line-clamp-2 text-xs text-muted">{item.detail}</p>
         )}
-        <WhyThis why={item.why} />
+        <WhyThis why={item.why} related={item.related} viaInterest={item.viaInterest} />
       </button>
 
       {expanded && (
@@ -127,13 +128,19 @@ function FeedItem({
   );
 }
 
+/** Normalized title, the same key `dedupe` uses in lib/sources.ts. */
+const titleKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 60);
+
 /**
- * One "explore the firehose" surface. Shows the full ranked list immediately
- * (free), with optional AI curation (the old Daily Brief — 3-5 picks + why it
- * matters) layered on top on demand. Both feed the same conviction pipeline.
+ * One "explore" surface. Shows the full ranked list immediately (free), the
+ * items fetched for the topics you follow above it, and optional AI curation
+ * layered on top on demand. All three feed the same pipeline.
  */
 export function BrowseView() {
   const [items, setItems] = useState<NewsItem[] | null>(null);
+  const [topicItems, setTopicItems] = useState<RankedItem[]>([]);
+  /** Topics you follow that returned nothing today — said out loud, not hidden. */
+  const [quietTopics, setQuietTopics] = useState<string[]>([]);
   const [picked, setPicked] = useState<NewsItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -146,6 +153,12 @@ export function BrowseView() {
   useEffect(() => {
     void (async () => {
       try {
+        // The voice is needed on every path now, not just the un-ranked one:
+        // the topics you follow decide what we go and fetch, independently of
+        // how the base feed got ordered.
+        const voice = await getVoice().catch(() => null);
+        const interests = voice?.interests ?? [];
+
         let raw: NewsItem[] = [];
         let alreadyRanked = false;
         try {
@@ -162,17 +175,34 @@ export function BrowseView() {
           const d = (await (await fetch("/api/news")).json()) as { items?: NewsItem[] };
           raw = d.items ?? [];
         }
-        if (alreadyRanked) {
-          setItems(raw);
-        } else {
-          const [ledger, voice] = await Promise.all([getLedger(), getVoice()]);
-          setItems(
-            rankItems(raw, [
-              ...ledger.map((t) => ({ topic: t.topic, statement: t.statement })),
-              ...interestsAsPriors(voice?.interests ?? []),
-            ]),
-          );
+
+        // Followed topics go and fetch. Best-effort: a failure here must never
+        // cost you the main feed.
+        let topics: NewsItem[] = [];
+        if (interests.length) {
+          try {
+            const t = (await (
+              await fetch(`/api/news?topics=${encodeURIComponent(interests.join(","))}`)
+            ).json()) as { items?: NewsItem[] };
+            topics = t.items ?? [];
+          } catch {
+            /* the base feed still stands */
+          }
+          const got = new Set(topics.map((i) => i.viaInterest));
+          setQuietTopics(interests.filter((k) => !got.has(k)));
         }
+        setTopicItems(topics);
+
+        const base = alreadyRanked
+          ? raw
+          : rankItems(raw, [
+              ...(await getLedger()).map((t) => ({ topic: t.topic, statement: t.statement })),
+              ...interestsAsPriors(interests),
+            ]);
+        // Anything already shown under "topics you follow" doesn't need a second
+        // slot in the general feed.
+        const shown = new Set(topics.map((i) => titleKey(i.title)));
+        setItems(base.filter((i) => !shown.has(titleKey(i.title))));
       } catch (e) {
         setErr(String(e));
       }
@@ -237,6 +267,50 @@ export function BrowseView() {
 
   return (
     <div className="space-y-8">
+      {/* Fetched for the topics you follow. Before this existed, following a
+          topic could only re-sort a fixed list of AI outlets — so following
+          "robotics" or "biotech" changed the page by nothing at all. */}
+      {(topicItems.length > 0 || quietTopics.length > 0) && (
+        <section>
+          <p className="font-mono text-xs uppercase tracking-wide text-cool">
+            From the topics you follow
+          </p>
+          <p className="mb-3 text-sm text-muted">
+            Fetched because you follow them — not just sorted.{" "}
+            <Link href="/voice" className="text-cool underline-offset-4 hover:underline">
+              Edit your topics
+            </Link>
+          </p>
+
+          {topicItems.length > 0 && (
+            <div className="space-y-2">
+              {topicItems.map((it) => (
+                <FeedItem
+                  key={it.id}
+                  item={it}
+                  expanded={expandedId === it.id}
+                  onToggle={() => setExpandedId(expandedId === it.id ? null : it.id)}
+                  onSynthesize={() => setPicked(it)}
+                />
+              ))}
+            </div>
+          )}
+
+          {quietTopics.length > 0 && (
+            <p className="mt-2 text-xs text-muted">
+              Nothing on{" "}
+              {quietTopics.map((k, i) => (
+                <span key={k}>
+                  {i > 0 && (i === quietTopics.length - 1 ? " or " : ", ")}
+                  <span className="text-fg">{k}</span>
+                </span>
+              ))}{" "}
+              today.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* Curated picks (AI) */}
       <section>
         <div className="flex items-center justify-between gap-3">

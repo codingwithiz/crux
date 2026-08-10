@@ -100,6 +100,9 @@ export interface NewsItem {
   meta?: string;
   detail?: string;
   score: number;
+  /** Set when this item was fetched *because* the user follows that topic —
+   *  provenance, not a guess, so the UI can say so without inferring it. */
+  viaInterest?: string;
 }
 
 /** A Curator pick — a news item the agent selected as worth forming an opinion on. */
