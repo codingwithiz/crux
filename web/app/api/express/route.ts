@@ -8,7 +8,7 @@ import { CarouselSchema, normalizeSlide } from "@/lib/carousel/llm";
 import { DESIGNS } from "@/lib/carousel/design";
 import { formatCatalog, FORMAT_IDS } from "@/lib/carousel/formats";
 import type { Settings, Synthesis, Thesis, VoiceProfile } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -129,6 +129,7 @@ export async function POST(req: Request) {
       schema: CarouselSchema,
       system,
       label: explain ? "explain" : "express",
+      caller,
       prompt: `${context}
 
 AVAILABLE FORMATS — pick the ONE that best fits this topic and set "format":
@@ -143,6 +144,6 @@ ${explain ? EXPLAIN_TASK : EXPRESS_TASK}${different}`,
     const format = FORMAT_IDS.includes(output.format ?? "") ? output.format : undefined;
     return Response.json({ slides: output.slides.map(normalizeSlide), designId, format });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "express_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "express_failed", 500);
   }
 }

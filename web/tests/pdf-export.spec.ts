@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { jpegsToPdf } from "../lib/carousel/pdf";
 
-// Serial: jsPDF is dynamically imported, and four workers transpiling it at once
-// from a cold cache raced its module init. One worker pays the cost once.
+// Serial: jsPDF is dynamically imported, and these all pay for it once rather
+// than four times over. (The intermittent failure here was never that race — it
+// was local-state.spec.ts installing a bare `window` stub into the shared worker
+// global, which jsPDF then bound its `atob` from. See the note there.)
 test.describe.configure({ mode: "serial" });
 
 // A 1x1 JPEG. Enough to prove a page carries an image and the container is

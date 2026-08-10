@@ -5,7 +5,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { TAKE_DRAFTS_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings, Synthesis } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -40,9 +40,9 @@ export async function POST(req: Request) {
     .join("\n\n");
 
   try {
-    const output = await generateStructured({ ms, schema: Schema, system: TAKE_DRAFTS_SYSTEM, label: "take-drafts", prompt: `${context}\n\nGive me 2-3 divergent draft takes I could react to.` });
+    const output = await generateStructured({ ms, schema: Schema, system: TAKE_DRAFTS_SYSTEM, label: "take-drafts", prompt: `${context}\n\nGive me 2-3 divergent draft takes I could react to.` , caller });
     return Response.json(output);
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "drafts_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "drafts_failed", 500);
   }
 }

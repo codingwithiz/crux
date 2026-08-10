@@ -90,6 +90,15 @@ export function ConvictionFlow({
   const [parking, setParking] = useState(false);
   /** Set when this flow was resumed from a parked draft (see parkSynthesis). */
   const [draftId, setDraftId] = useState<string | undefined>(undefined);
+  /**
+   * One id for whatever this flow saves, minted at the start and kept.
+   *
+   * It used to be minted inside the save itself, so a second press banked a
+   * second take — and the failure path invited exactly that, telling you your
+   * take was saved while re-enabling the button. Stable id + upsert makes the
+   * retry finish the job instead of forking it.
+   */
+  const [saveId, setSaveId] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const autosynth = useRef(false);
 
@@ -292,6 +301,7 @@ export function ConvictionFlow({
       setChangeMyMind(saved.commit.changeMyMind);
       setTopic(saved.commit.topic);
       setDraftId(saved.draftId);
+      if (saved.saveId) setSaveId(saved.saveId);
       // Only mark as seeded when there's an actual conversation to restore;
       // otherwise the seeding effect above will start the Adversary so a
       // resumed-but-unstarted flow doesn't hang.
@@ -319,18 +329,20 @@ export function ConvictionFlow({
       input,
       take,
       draftId,
+      saveId,
       synthesis,
       messages,
       commit: { statement, confidence, evidenceFor, steelman, changeMyMind, topic },
       savedAt: new Date().toISOString(),
     });
   }, [
-    mode, sourceTitle, step, input, take, draftId, synthesis, messages,
+    mode, sourceTitle, step, input, take, draftId, saveId, synthesis, messages,
     statement, confidence, evidenceFor, steelman, changeMyMind, topic,
   ]);
 
   function startOver() {
     clearFlow();
+    setSaveId(crypto.randomUUID());
     setResumed(false);
     setSynthesis(null);
     setTake("");
@@ -432,7 +444,7 @@ export function ConvictionFlow({
     try {
       const source = synthesis.source ?? (sourceTitle ? { title: sourceTitle, url: sourceUrl } : undefined);
       await addThesis({
-        id: draftId ?? crypto.randomUUID(),
+        id: draftId ?? saveId,
         topic: topic.trim() || sourceTitle || input.trim().slice(0, 80) || "Saved for later",
         statement: "",
         confidence,
@@ -453,7 +465,7 @@ export function ConvictionFlow({
   /** Bank the thesis. Shared by both commit paths; returns it for the caller. */
   async function bankThesis(): Promise<Thesis> {
     const thesis: Thesis = {
-      id: crypto.randomUUID(),
+      id: saveId,
       topic: topic.trim() || (mode === "news" ? sourceTitle ?? "AI" : "My take"),
       statement: statement.trim() || take.trim(),
       confidence,

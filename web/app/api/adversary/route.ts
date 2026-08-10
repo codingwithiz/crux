@@ -48,6 +48,11 @@ export async function POST(req: Request) {
     .filter(Boolean)
     .join("\n\n");
 
+  // The only streaming call in the product, so its spend arrives at the end
+  // rather than as a return value — and it is the chattiest step, so leaving it
+  // unmetered would have hidden the largest share of a session's cost.
+  const started = Date.now();
+
   const result = streamText({
     model: getModel(ms),
     system: context ? `${baseSystem}\n\n${context}` : baseSystem,
@@ -56,6 +61,27 @@ export async function POST(req: Request) {
     // model-specific, see fastReasoningEffort) and keep replies terse. Only
     // affects OpenAI reasoning models; ignored by other providers.
     providerOptions: { openai: { reasoningEffort: fastReasoningEffort(ms.model), textVerbosity: "low" } },
+    abortSignal: AbortSignal.timeout(60_000),
+    onFinish: ({ usage }) =>
+      caller.record({
+        label: mode === "spar" ? "spar" : "coach",
+        model: ms.model,
+        usage,
+        latencyMs: Date.now() - started,
+        attempts: 1,
+        ok: true,
+      }),
+    onError: ({ error }) => {
+      caller.record({
+        label: mode === "spar" ? "spar" : "coach",
+        model: ms.model,
+        latencyMs: Date.now() - started,
+        attempts: 1,
+        ok: false,
+        errorCode: "unknown",
+      });
+      console.warn(`[adversary] stream failed: ${(error as Error)?.message}`);
+    },
   });
 
   return result.toUIMessageStreamResponse();

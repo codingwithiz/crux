@@ -4,7 +4,7 @@ import { stepModelSettings } from "@/lib/ai/routing";
 import { resolveServerSettings } from "@/lib/ai/server-settings";
 import { VOICE_DISTILL_SYSTEM } from "@/lib/ai/prompts";
 import type { Settings } from "@/lib/types";
-import { guard } from "@/lib/api-guard";
+import { guard, fail } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +37,6 @@ export async function POST(req: Request) {
     });
     return Response.json({ guide: text.trim() });
   } catch (e) {
-    return Response.json({ error: (e as Error).message ?? "distill_failed" }, { status: 500 });
+    return fail(caller, (e as Error).message ?? "distill_failed", 500);
   }
 }

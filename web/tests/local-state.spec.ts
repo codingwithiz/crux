@@ -11,7 +11,16 @@ const localStorage = {
   removeItem: (k: string) => void store.delete(k),
   clear: () => store.clear(),
 };
-(globalThis as { window?: unknown }).window = { localStorage };
+// Inherit from globalThis rather than replacing it. Playwright reuses a worker
+// process across spec files, so this stub outlives this file — and a bare
+// `{ localStorage }` is a `window` with nothing else on it. jsPDF resolves
+// `window || global` at module load and then calls `.bind` on `window.atob`, so
+// whenever this file happened to run before pdf-export.spec.ts in the same
+// worker, the PDF tests failed with "Cannot read properties of undefined". That
+// looked like a cold-start race for months; it was this line.
+(globalThis as { window?: unknown }).window = Object.assign(Object.create(globalThis), {
+  localStorage,
+});
 (globalThis as { localStorage?: unknown }).localStorage = localStorage;
 
 /**
