@@ -6,6 +6,7 @@ import { BookMarked, ChevronDown, ExternalLink, Share2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { RepurposeModal } from "@/components/RepurposeModal";
 import { Skeleton } from "@/components/Skeleton";
+import { ProgressSteps } from "@/components/ProgressSteps";
 import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
 import { ledgerStats, calibration } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
@@ -40,8 +41,11 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "active", label: "Active" },
   { id: "updated", label: "Revised" },
   { id: "abandoned", label: "Abandoned" },
-  { id: "draft", label: "Parked" },
+  { id: "draft", label: "Saved for later" },
 ];
+
+// "Make carousel" is a 10–20s call that used to report itself as "Building…".
+const CAROUSEL_STEPS = ["Reading your take", "Drafting the slides", "Picking a layout", "Setting it in your voice"];
 
 export function LedgerView() {
   const router = useRouter();
@@ -137,9 +141,9 @@ export function LedgerView() {
     return (
       <EmptyState
         icon={BookMarked}
-        title="No convictions yet"
-        description="Every opinion you commit is saved here with a calibration score — so you learn whether you were right when you were confident."
-        cta={{ href: "/think", label: "Form your first conviction" }}
+        title="No takes yet"
+        description="Every take you save lands here. Score them as reality weighs in, and you find out whether you're right when you're confident."
+        cta={{ href: "/think", label: "Write your first take" }}
       />
     );
 
@@ -147,7 +151,7 @@ export function LedgerView() {
     <div>
       {/* Track record — the "keep score" surface */}
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Convictions" value={stats.total} />
+        <Stat label="Takes" value={stats.total} />
         <Stat label="This week" value={stats.thisWeek} accent />
         <Stat label="Revised" value={stats.updated} />
         <Stat label="Abandoned" value={stats.abandoned} />
@@ -163,11 +167,11 @@ export function LedgerView() {
       {stats.total > 0 && (
         <div className="mb-5 rounded-xl border border-line bg-surface/40 p-4">
           <div className="flex items-center justify-between">
-            <p className="font-mono text-xs uppercase tracking-wide text-accent">Calibration</p>
+            <p className="font-mono text-xs uppercase tracking-wide text-accent">Accuracy</p>
             <p className="text-xs text-muted">
               {cal.resolved > 0 ? (
                 <>
-                  {cal.resolved} resolved · <span className="text-fg">{cal.score}/100</span> calibrated
+                  {cal.resolved} scored · <span className="text-fg">{cal.score}/100</span>
                 </>
               ) : (
                 <>not scored yet</>
@@ -191,7 +195,7 @@ export function LedgerView() {
           <p className="mt-2 text-[11px] text-muted">
             {cal.resolved > 0
               ? "Were you right when you were confident?"
-              : "Once reality has weighed in, open a thesis and say whether it held up. Do that a few times and this becomes a real measure of whether your confidence is worth trusting."}
+              : "Once reality has weighed in, open a take and say whether it held up. Do that a few times and this becomes a real measure of whether your confidence is worth trusting."}
           </p>
         </div>
       )}
@@ -200,7 +204,7 @@ export function LedgerView() {
         <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
           <p className="font-mono text-xs uppercase tracking-wide text-amber-200">Time to score these</p>
           <p className="mt-1 text-xs text-muted">
-            You committed these a while ago. How did they hold up? Scoring keeps your calibration honest.
+            You saved these a while ago. How did they hold up? Scoring keeps your accuracy honest.
           </p>
           <div className="mt-3 space-y-2">
             {due.map((t) => (
@@ -298,7 +302,7 @@ export function LedgerView() {
                     </span>
                     {STATUS_BADGE[t.status] && (
                       <span className={`rounded-full border px-2 py-0.5 ${STATUS_BADGE[t.status]}`}>
-                        {t.status === "updated" ? "revised" : t.status === "draft" ? "parked" : t.status}
+                        {t.status === "updated" ? "revised" : t.status === "draft" ? "saved for later" : t.status}
                       </span>
                     )}
                     {t.outcome && (
@@ -314,7 +318,7 @@ export function LedgerView() {
                     {t.evidenceFor && (
                       <Detail label="Evidence for">{t.evidenceFor}</Detail>
                     )}
-                    {t.steelman && <Detail label="Strongest counter I accept">{t.steelman}</Detail>}
+                    {t.steelman && <Detail label="The other side's best case">{t.steelman}</Detail>}
                     {t.changeMyMind && <Detail label="Would change my mind">{t.changeMyMind}</Detail>}
                     {t.source?.title && (
                       <Detail label="Source">
@@ -333,7 +337,7 @@ export function LedgerView() {
                       </Detail>
                     )}
                     {!t.evidenceFor && !t.steelman && !t.changeMyMind && !t.source?.title && (
-                      <p className="text-xs text-muted">No extra detail captured for this thesis.</p>
+                      <p className="text-xs text-muted">No extra detail captured for this take.</p>
                     )}
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <span className="text-xs uppercase tracking-wide text-muted">How did it hold up?</span>
@@ -425,6 +429,12 @@ export function LedgerView() {
                   </>
                   )}
                 </div>
+
+                {busyId === t.id && (
+                  <div className="mt-3">
+                    <ProgressSteps steps={CAROUSEL_STEPS} />
+                  </div>
+                )}
               </div>
             ),
           )}

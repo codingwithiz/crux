@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { repurpose, type Repurposed } from "@/lib/express-client";
 import type { Thesis } from "@/lib/types";
 
-/** Re-express a committed thesis as an X thread + a LinkedIn post, with copy. */
+/** Re-express a saved take as an X thread + a LinkedIn post, with copy. */
 export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: () => void }) {
   const [data, setData] = useState<Repurposed | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -29,10 +29,10 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
   }
 
   return (
-    <Dialog open onClose={onClose} title="Repurpose this conviction" align="top" z={110} className="max-w-lg">
+    <Dialog open onClose={onClose} title="Reuse this take" align="top" z={110} className="max-w-lg">
         <div className="flex items-start justify-between gap-3 border-b border-line p-4">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold">Repurpose this conviction</h2>
+            <h2 className="text-sm font-semibold">Reuse this take</h2>
             <p className="mt-0.5 line-clamp-1 text-xs text-muted">{thesis.statement}</p>
           </div>
           <button
@@ -63,7 +63,7 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">{err}</p>
           ) : !data ? (
             <div className="flex items-center gap-2 py-10 text-sm text-muted">
-              <Loader2 className="h-4 w-4 animate-spin" /> Repurposing in your voice…
+              <Loader2 className="h-4 w-4 animate-spin" /> Rewriting it in your voice…
             </div>
           ) : tab === "thread" ? (
             <div className="space-y-2">

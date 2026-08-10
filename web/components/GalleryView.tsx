@@ -101,7 +101,7 @@ export function GalleryView() {
       <EmptyState
         icon={Images}
         title="No carousels yet"
-        description="Turn a committed opinion into a studio-grade carousel — saved decks land here, ready to re-open and export."
+        description="Turn a take you've saved into a studio-grade carousel — saved decks land here, ready to re-open and export."
         cta={{ href: "/studio", label: "Open the Studio" }}
       />
     );

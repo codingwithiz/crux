@@ -134,18 +134,23 @@ export function TodayView() {
       {ledger && stats.total === 0 && (
         <div className="rounded-2xl border border-cool/40 bg-cool/5 p-5">
           <p className="font-mono text-xs uppercase tracking-wide text-cool">Welcome</p>
-          <h2 className="mt-1 text-lg font-semibold">Form your first conviction — in three steps</h2>
+          <h2 className="mt-1 text-lg font-semibold">Your first take, in three steps</h2>
+          {/* Each step names the button you'll actually press and says what it
+              does. The old list used the app's vocabulary as if you already had
+              it — and nothing anywhere taught it. */}
           <ol className="mt-3 space-y-2.5 text-sm">
             {[
-              "Pick a news item or type a raw thought — we break down the real source for you.",
-              "Talk it through with Coach (optional). It never writes your opinion — it sharpens it.",
-              "Commit your take. It becomes a studio-grade carousel in your voice.",
-            ].map((s, i) => (
+              ["Break it down", "Pick a story or paste a link. Crux reads the real page and tells you what's actually new."],
+              ["Talk it through", "Optional. A sparring partner pushes back until your take holds up. It never writes it for you."],
+              ["Save my take", "Your take lands in your track record — and becomes a carousel in your voice."],
+            ].map(([verb, what], i) => (
               <li key={i} className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cool/40 bg-cool/10 text-xs font-semibold text-cool">
                   {i + 1}
                 </span>
-                <span className="text-fg">{s}</span>
+                <span className="text-muted">
+                  <span className="font-medium text-fg">{verb}</span> — {what}
+                </span>
               </li>
             ))}
           </ol>
@@ -175,7 +180,7 @@ export function TodayView() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-fg">{t.topic}</p>
                   <p className="mt-0.5 text-xs text-muted">
-                    Parked {new Date(t.createdAt).toLocaleDateString()}
+                    Saved {new Date(t.createdAt).toLocaleDateString()}
                     {t.synthesis?.grounded ? " · grounded in the source" : ""}
                   </p>
                 </div>
@@ -209,10 +214,10 @@ export function TodayView() {
           <h1 className="mt-1 text-3xl font-bold tracking-tight">
             {doneToday ? (
               <span className="inline-flex items-center gap-2">
-                Conviction formed today <Check className="h-6 w-6 text-emerald-400" />
+                Take saved today <Check className="h-6 w-6 text-emerald-400" />
               </span>
             ) : (
-              "Form one conviction today"
+              "One strong take a day"
             )}
           </h1>
           <p className="mt-1 text-muted">
@@ -229,14 +234,14 @@ export function TodayView() {
 
       {/* Track record */}
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Convictions" value={stats.total} />
+        <Stat label="Takes" value={stats.total} />
         <Stat label="This week" value={stats.thisWeek} accent />
         <Stat label="Revised" value={stats.updated} />
       </div>
 
-      {/* Today's conviction */}
+      {/* Today's pick */}
       <div className="rounded-2xl border border-accent/40 bg-accent/5 p-5">
-        <p className="font-mono text-xs uppercase tracking-wide text-accent">Today&rsquo;s conviction</p>
+        <p className="font-mono text-xs uppercase tracking-wide text-accent">Today&rsquo;s pick</p>
         {pick ? (
           <>
             <div className="mt-2 flex items-center justify-between gap-2">
@@ -251,7 +256,7 @@ export function TodayView() {
                 onClick={() => setStarted(true)}
                 className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
               >
-                {doneToday ? "Form another →" : "Form today's conviction →"}
+                {doneToday ? "Break down another →" : "Break it down →"}
               </button>
               {/* The source was previously unreachable from here — you were asked
                   to spend a synthesis on an item you couldn't read first. */}
@@ -272,6 +277,11 @@ export function TodayView() {
                 </button>
               )}
             </div>
+            {/* One line, once: the primary CTA is a verb nobody has met before. */}
+            <p className="mt-2 text-xs text-muted">
+              Breaking it down reads the real page and shows you what&rsquo;s actually new before you
+              form a view.
+            </p>
           </>
         ) : (
           <p className="mt-2 text-sm text-muted">
@@ -286,14 +296,14 @@ export function TodayView() {
           <p className="font-mono text-xs uppercase tracking-wide text-cool">Revisit your thinking</p>
           <p className="mt-2 text-sm text-fg">{revisit.statement}</p>
           <p className="mt-1 text-xs text-muted">
-            Committed {new Date(revisit.createdAt).toLocaleDateString()} ·{" "}
+            Saved {new Date(revisit.createdAt).toLocaleDateString()} ·{" "}
             <span className="uppercase">{revisit.confidence}</span> confidence
           </p>
           <Link
             href="/ledger"
             className="mt-3 inline-block text-sm text-cool underline-offset-4 hover:underline"
           >
-            Does today change it? Revise in your Ledger →
+            Does today change it? Update your track record →
           </Link>
         </div>
       )}
@@ -303,7 +313,7 @@ export function TodayView() {
         {[
           ["/explore", "Explore what’s happening"],
           ["/think", "Start from a thought"],
-          ["/ledger", "Your Ledger"],
+          ["/ledger", "Your track record"],
         ].map(([href, label]) => (
           <Link
             key={href}

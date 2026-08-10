@@ -7,7 +7,11 @@ import { getLedger } from "@/lib/ledger";
 import { rankItems, interestsAsPriors, type RankedItem } from "@/lib/rank";
 import { getVoice } from "@/lib/voice";
 import { WhyThis } from "@/components/WhyThis";
+import { ProgressSteps } from "./ProgressSteps";
 import type { BriefPick, NewsItem } from "@/lib/types";
+
+// A 10–20s call that used to report itself as a greyed-out button.
+const CURATE_STEPS = ["Reading today's feed", "Weighing it against your takes", "Choosing the best few"];
 
 const SOURCE_LABELS: Record<NewsItem["source"], string> = {
   hf: "Papers (HF)",
@@ -56,7 +60,7 @@ function itemAge(it: NewsItem): string | null {
  *
  * Clicking a card used to fire a 5-15s model call immediately, which made every
  * moment of curiosity cost real money and time — you couldn't even read the
- * source first. Expanding is free; only "Synthesize" spends.
+ * source first. Expanding is free; only "Break it down" spends.
  */
 function FeedItem({
   item,
@@ -103,7 +107,7 @@ function FeedItem({
               onClick={onSynthesize}
               className="ce-press rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
             >
-              Synthesize →
+              Break it down →
             </button>
             <a
               href={item.url}
@@ -113,7 +117,9 @@ function FeedItem({
             >
               Read source ↗
             </a>
-            <span className="text-xs text-muted">Reading is free — only Synthesize uses a model.</span>
+            <span className="text-xs text-muted">
+              Reading is free. Breaking it down reads the real page and shows what&rsquo;s new.
+            </span>
           </div>
         </div>
       )}
@@ -188,8 +194,8 @@ export function BrowseView() {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(
           j.error === "no_model"
-            ? "No model key found — add one in the Model menu (top-right)."
-            : j.error || "Curation failed",
+            ? "No AI model is configured for this deployment — add a provider key and try again."
+            : j.error || "Couldn't pick right now. Try again.",
         );
       }
       const j = (await res.json()) as { picks?: BriefPick[] };
@@ -235,9 +241,10 @@ export function BrowseView() {
       <section>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-wide text-accent">Curated for you</p>
+            <p className="font-mono text-xs uppercase tracking-wide text-accent">Top picks</p>
             <p className="text-sm text-muted">
-              Let the Curator pick the 3–5 items most worth an opinion — weighted to your ledger.
+              Crux reads today&rsquo;s feed and picks the 3–5 stories most worth an opinion, weighted
+              to what you&rsquo;ve already written about.
             </p>
           </div>
           <button
@@ -245,9 +252,15 @@ export function BrowseView() {
             disabled={curating}
             className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
           >
-            {curating ? "Curating…" : picks ? "Re-curate" : "Curate top picks"}
+            {curating ? "Picking…" : picks ? "Pick again" : "Pick the best for me"}
           </button>
         </div>
+
+        {curating && (
+          <div className="mt-3">
+            <ProgressSteps steps={CURATE_STEPS} />
+          </div>
+        )}
 
         {curateErr && (
           <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
@@ -277,7 +290,7 @@ export function BrowseView() {
 
       {/* Full ranked list */}
       <section>
-        <p className="font-mono text-xs uppercase tracking-wide text-accent">All signal, ranked</p>
+        <p className="font-mono text-xs uppercase tracking-wide text-accent">Everything, ranked</p>
         <p className="mb-3 text-sm text-muted">
           Ranked by how much attention an item is getting, blended with how close it sits to what
           you&rsquo;ve already written about.
@@ -288,9 +301,9 @@ export function BrowseView() {
           )}
         </p>
 
-        {err && <p className="text-muted">Could not load news right now ({err}). Try the thought path.</p>}
-        {!items && !err && <p className="text-muted">Loading the AI firehose…</p>}
-        {items && items.length === 0 && <p className="text-muted">No items right now — try the thought path.</p>}
+        {err && <p className="text-muted">Could not load the feed right now ({err}). Start from your own thought instead.</p>}
+        {!items && !err && <p className="text-muted">Loading the feed…</p>}
+        {items && items.length === 0 && <p className="text-muted">Nothing right now — start from your own thought instead.</p>}
 
         {items && items.length > 0 && (
           <div className="space-y-2">

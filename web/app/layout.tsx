@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Crux",
     description:
-      "It doesn’t write your posts. It makes you someone worth reading — turn the AI firehose into your own defensible opinion, then a carousel.",
+      "It doesn’t write your posts. It makes you someone worth reading — turn the day’s noise into your own defensible opinion, then a carousel.",
     type: "website",
   },
 };

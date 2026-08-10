@@ -20,7 +20,7 @@ const LINKS = [
   { href: "/explore", label: "Explore" },
   { href: "/think", label: "Think" },
   { href: "/studio", label: "Studio" },
-  { href: "/ledger", label: "Ledger" },
+  { href: "/ledger", label: "Track record" },
   { href: "/voice", label: "You" },
 ];
 
