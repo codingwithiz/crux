@@ -14,6 +14,11 @@ on:
 jobs:
   eval:
     runs-on: ubuntu-latest
+    # The last step commits eval-history.json. Without this the whole run
+    # completes, spends its tokens, and then dies on "Write access to repository
+    # not granted" — losing the measurement it just paid for.
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: web
