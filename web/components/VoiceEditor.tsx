@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSettings } from "@/lib/settings";
 import { getVoice, saveVoice, DEFAULT_VOICE, VOICE_PRESETS } from "@/lib/voice";
 import type { VoiceProfile } from "@/lib/types";
@@ -17,10 +17,23 @@ export function VoiceEditor() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  /**
+   * The last profile actually persisted. Topics save the moment you add one, and
+   * they must not drag along a half-typed voice guide sitting in the form — so
+   * the write is built from this, not from the live editor state.
+   */
+  const saved = useRef<VoiceProfile>(DEFAULT_VOICE);
+
   useEffect(() => {
     void (async () => {
-      const v = await getVoice();
+      let v: VoiceProfile | null = null;
+      try {
+        v = await getVoice();
+      } catch (e) {
+        setMsg((e as Error).message);
+      }
       const base: VoiceProfile = v ?? DEFAULT_VOICE;
+      saved.current = base;
       setSamples(base.samples.length ? base.samples : [""]);
       setGuide(base.guide ?? "");
       setTone(base.tone ?? "");
@@ -30,6 +43,24 @@ export function VoiceEditor() {
       setLoaded(true);
     })();
   }, []);
+
+  /**
+   * Topics persist on change rather than waiting for the Save button at the
+   * bottom of the page. A chip appearing the instant you press Add reads as
+   * committed — and two screens further down is not where you find out it wasn't.
+   */
+  async function persistInterests(next: string[]) {
+    setInterests(next);
+    try {
+      const profile = { ...saved.current, interests: next };
+      await saveVoice(profile);
+      saved.current = profile;
+      setMsg(next.length ? "Topics saved — your feed follows them now." : "Topics cleared.");
+    } catch (e) {
+      setInterests(saved.current.interests ?? []);
+      setMsg("Couldn't save your topics: " + (e as Error).message);
+    }
+  }
 
   function setSample(i: number, val: string) {
     setSamples((s) => s.map((x, k) => (k === i ? val : x)));
@@ -51,7 +82,7 @@ export function VoiceEditor() {
       .split(",")
       .map((k) => k.trim().toLowerCase())
       .filter((k) => k.length > 1 && !interests.includes(k));
-    if (next.length) setInterests((cur) => [...cur, ...next].slice(0, 24));
+    if (next.length) void persistInterests([...interests, ...next].slice(0, 24));
     setInterestDraft("");
   }
 
@@ -90,16 +121,18 @@ export function VoiceEditor() {
     setBusy(true);
     setMsg(null);
     try {
-      await saveVoice({
+      const profile: VoiceProfile = {
         samples: cleanSamples(),
         guide: guide.trim() || undefined,
         tone: tone.trim() || undefined,
         emoji,
         interests,
         updatedAt: new Date().toISOString(),
-      });
+      };
+      await saveVoice(profile);
+      saved.current = profile;
       setIsDefault(false);
-      setMsg("Saved — carousels sound like you, and your feed follows your interests.");
+      setMsg("Saved — your carousels sound like you.");
     } catch (e) {
       setMsg("Save failed: " + (e as Error).message);
     } finally {
@@ -199,10 +232,10 @@ export function VoiceEditor() {
       </div>
 
       <div>
-        <label className="text-sm font-medium">Interests</label>
+        <label className="text-sm font-medium">Topics you follow</label>
         <p className="text-xs text-muted">
-          Topics you want surfaced. Until you&rsquo;ve committed a few opinions there&rsquo;s nothing
-          for the feed to learn from — these fill that gap, and keep steering it afterwards.
+          Crux goes and fetches these for you — they appear in their own section on Explore and can
+          become your daily pick. Saved as soon as you add one.
         </p>
         <div className="mt-2 flex gap-2">
           <input
@@ -231,7 +264,7 @@ export function VoiceEditor() {
             {interests.map((k) => (
               <button
                 key={k}
-                onClick={() => setInterests((cur) => cur.filter((x) => x !== k))}
+                onClick={() => void persistInterests(interests.filter((x) => x !== k))}
                 title={`Remove ${k}`}
                 className="rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-red-400/60 hover:text-red-300"
               >

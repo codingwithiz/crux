@@ -118,7 +118,15 @@ function rowToVoice(r: Row): VoiceProfile {
   };
 }
 
-/** The user's saved voice, or null if they haven't set one (then use DEFAULT_VOICE). */
+/**
+ * The user's saved voice, or null if they haven't set one (then use
+ * DEFAULT_VOICE).
+ *
+ * A read *failure* throws rather than returning null. Collapsing the two meant a
+ * permissions or network problem was indistinguishable from "never configured":
+ * the editor quietly presented the built-in default as though it were yours, and
+ * the feed silently de-personalized, with nothing anywhere saying why.
+ */
 export async function getVoice(): Promise<VoiceProfile | null> {
   const uid = await currentUserId();
   if (!uid) return localRead();
@@ -127,15 +135,23 @@ export async function getVoice(): Promise<VoiceProfile | null> {
     .select("samples,guide,tone,emoji,interests,updated_at")
     .eq("user_id", uid)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`could not load your voice: ${error.message}`);
+  if (!data) return null;
   return rowToVoice(data as Row);
 }
 
+/**
+ * Persist the whole row. Supabase reports write failures in the result rather
+ * than throwing, and this used to discard it — so every failure, from a
+ * permissions error to a dropped connection, resolved as success and the editor
+ * still said "Saved". Nobody, user or developer, could tell a lost write from an
+ * empty profile.
+ */
 export async function saveVoice(v: VoiceProfile): Promise<void> {
   const next = { ...v, updatedAt: new Date().toISOString() };
   const uid = await currentUserId();
   if (!uid) return localWrite(next);
-  await createClient()
+  const { error } = await createClient()
     .from("user_voice")
     .upsert(
       {
@@ -149,6 +165,7 @@ export async function saveVoice(v: VoiceProfile): Promise<void> {
       },
       { onConflict: "user_id" },
     );
+  if (error) throw new Error(error.message);
 }
 
 /** What the Expressor should actually use: the saved voice, else the default. */
