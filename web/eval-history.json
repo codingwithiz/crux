@@ -1,0 +1,28 @@
+[
+  {
+    "ranAt": "2026-08-10T17:04:18.165Z",
+    "commit": "0f30eeb47bf7236eee93bdd4e8c2eceaa16f1c41",
+    "judge": {
+      "provider": "openai",
+      "model": "gpt-5.5"
+    },
+    "attempted": 10,
+    "count": 10,
+    "failed": 0,
+    "durationMs": 685342,
+    "averages": {
+      "synthesis": {
+        "grounding": 3.5,
+        "clarity": 4.3,
+        "neutrality": 4.2
+      },
+      "carousel": {
+        "faithful": 4.5,
+        "sharp": 4.2,
+        "noFabrication": 4.7,
+        "quality": 4.1
+      },
+      "citationFaithfulness": 1
+    }
+  }
+]
