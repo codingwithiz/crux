@@ -7,7 +7,7 @@
 Turn a story or a raw thought into a defensible opinion — then a studio-grade social carousel in your voice.
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
-[![CI](https://github.com/codingwithiz/crux/actions/workflows/ci.yml/badge.svg)](https://github.com/codingwithiz/crux/actions/workflows/ci.yml)
+[![CI](https://github.com/codingwithiz/crux/workflows/CI/badge.svg)](https://github.com/codingwithiz/crux/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
