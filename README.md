@@ -2,115 +2,110 @@
 
 # Crux
 
-**Turn AI news or a raw thought into a world‑class social carousel — two modes, one engine: form your own *defensible* opinion, or brief your audience with a clear explainer.**
+**It doesn't write your posts. It makes you someone worth reading.**
+
+Turn a story or a raw thought into a defensible opinion — then a studio-grade social carousel in your voice.
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
+[![CI](https://github.com/codingwithiz/Agentic-Conviction-Content-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/codingwithiz/Agentic-Conviction-Content-Engine/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![AI SDK](https://img.shields.io/badge/AI%20SDK-v6-000)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcodingwithiz%2FAgentic-Conviction-Content-Engine&root-directory=web&project-name=conviction-engine&repository-name=Agentic-Conviction-Content-Engine&env=OPENAI_API_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=An%20AI%20provider%20key%20(plus%20optional%20Supabase%20cloud%20sync))
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcodingwithiz%2FAgentic-Conviction-Content-Engine&root-directory=web&project-name=crux&repository-name=crux&env=OPENAI_API_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,CRON_SECRET&envDescription=An%20AI%20provider%20key%2C%20your%20Supabase%20project%2C%20and%20a%20random%20string%20for%20CRON_SECRET)
 
-_One carousel, restyled across the built‑in design system — every topic gets its own look:_
-
-![Demo — one carousel restyled across the built-in design system](docs/demo.gif)
+![Crux](docs/landing.png)
 
 </div>
 
-Most AI writing tools generate your opinion *for* you. That's slop. This one is built on the opposite bet: the value isn't the content, it's the **conviction** behind it. The AI is a thinking partner that *sharpens your view* and never writes it for you — then expresses your committed take as a studio‑grade carousel.
+Most AI writing tools generate your opinion *for* you. That's slop. Crux is built on the opposite bet: the value isn't the content, it's the thinking behind it. The AI reads the source, argues with you, and designs the carousel — but it will not write the opinion, because the opinion is the only part that was ever yours.
 
-> Information → Understanding → **Conviction** → Content.
-> Everyone automates the first and last steps. The defensible wedge is the middle — so that's what this engine protects.
-
-## Two ways to use it
-
-Pick per item — the engine is the same, the intent differs:
-
-- **🎯 Form a take** — the conviction flow. Synthesize the source → (optionally) sharpen it with Coach/Spar → commit *your* opinion → a carousel in your voice. The AI never writes the opinion; you own it.
-- **📰 Explain it** — the explainer flow. Synthesize the source → a neutral, easy‑to‑follow carousel with the key takeaways ("what to note"), ready to brief your audience. No opinion required.
+> Information → Understanding → Insight → **Opinion** → Content.
+> Everything else automates the first step and the last. The middle is the part worth protecting.
 
 ---
 
-## 📸 Screenshots
+## What it actually does
 
-**The Studio** — live preview, 12 styles, undo, LLM‑backed module editing, one‑click PNG/ZIP export:
+**Break it down.** Paste a link or pick a story. Crux fetches the real page and tells you what happened, what's genuinely new versus repackaged, where the disagreement is, and the skeptic's best case — with **quotes checked word-for-word against the source**.
 
-![The carousel Studio](docs/studio.png)
+**Talk it through.** Optional. *Coach* helps you find a view; *Spar* attacks the one you have. Both refuse to hand you a conclusion.
 
-**Dynamic per‑topic theming** — one editorial system, a different brand color world + **official logo** for each topic:
+**Save your take.** It lands in your track record with how sure you were. Score it later as reality weighs in, and you find out whether you're right *when you're confident*.
 
-![Per-topic brand theming](docs/theming.png)
+**Get the carousel.** Your take becomes a 1080×1350 deck in your voice — twelve editorial styles, ten narrative formats, ten visual modules — exported as PNGs, a ZIP, or a **LinkedIn-ready PDF**. If it isn't right, tell it what to change ("punchier", "less hype") or ask for two more versions.
 
-**The Thesis Ledger** — calibration scoring + re‑surfacing ("time to score these") · **Mobile‑first + Google sign‑in**:
+| Explore | Track record | Studio |
+| --- | --- | --- |
+| ![Explore](docs/explore.png) | ![Track record](docs/ledger.png) | ![Studio](docs/studio.png) |
 
-| Ledger | Mobile |
+---
+
+## Measured, not asserted
+
+Crux ships an eval harness: a golden set of ten items — including three adversarial sources (one dense with numbers, one deliberately hedged, one pure marketing hype) — run through the **real** pipeline and scored by an LLM judge, plus one deterministic check that no model gets a say in.
+
+Latest run ([`web/eval-history.json`](web/eval-history.json)):
+
+| Metric | Score |
 | --- | --- |
-| ![Thesis Ledger](docs/ledger.png) | ![Mobile + Google auth](docs/mobile.png) |
+| **citationFaithfulness** (deterministic) | **1.00** |
+| synthesis — grounding / clarity / neutrality | 3.5 / 4.3 / 4.2 |
+| carousel — faithful / sharp / no-fabrication / quality | 4.5 / 4.2 / 4.7 / 4.1 |
+| items scored | 10 / 10, 0 failures |
 
-> The dev‑only `/lab` route renders every style and module for quick visual review.
+`citationFaithfulness` is the one to read. It takes every quote the synthesizer produced and checks by string match that it appears verbatim in the fetched source — no judge, no opinion. **1.00 means nothing was invented.** Judge scores wobble ±0.3 between identical runs, so treat small movements there as noise.
 
----
-
-## ✨ What makes it different
-
-### 🧠 A thinking pipeline, not a content generator
-A 6‑agent, human‑in‑the‑loop flow where **you** own the opinion:
-
-`Input → Synthesize → Discuss → Commit → Carousel`
-
-- **Synthesizer** — reads the real source (NotebookLM‑style, source‑grounded) and breaks it down in plain English: what happened, what's genuinely new vs. repackaged, the key debate, the skeptic's case, and the questions you must answer first. Returns **verbatim citations** so claims are receipted, not hallucinated.
-- **Coach / Spar (the Adversary, reimagined)** — *optional and adaptive*. **Coach** mode is supportive: it reflects what's good in your take and offers angles to help you *find* a view. **Spar** mode is a hard adversary that escalates and pressure‑tests you. Either way it **refuses to write your conclusion** — and it's forced to be **concrete and specific**, never vague.
-- **Compile‑to‑commit** — when you're done talking it through, it compiles *your own* argued points into a draft thesis you can commit in one click.
-- **Expressor** — turns your committed thesis into a carousel: it picks a narrative *format* and a *visual style* that fit the topic, chooses a concrete visual module per slide, detects the brand, and writes it in your voice — grounded in the synthesis, **never inventing numbers**.
-
-### 🎨 A world‑class carousel engine
-- **Real HTML/CSS rendering, exported client‑side** (`modern-screenshot`) — the on‑screen preview *is* the exported 1080×1350 PNG. Full CSS: blur, shadows, real fonts, gradients. No server render cost.
-- **Topic‑aligned dynamic theming** — the LLM detects the subject brand (Redis, OpenAI, Stripe, Discord…) and the carousel renders its **official full‑color logo** + a color world derived from the **official brand hex**. Curated logos in‑app + a CDN fallback for the long tail.
-- **A 10‑module visualization library** the LLM fills per slide: stat bars, bar chart, line/trend chart, donut, big stat, timeline, icon flow, comparison, key→value, and callout — all real SVG/CSS, all export‑faithful.
-- **10 narrative formats** (explainer, myth‑vs‑reality, "N levels", before/after, hidden‑cost, contrarian, listicle, timeline, case study, conviction arc) so every topic doesn't tell the same story.
-- **12 cohesive design styles** (editorial paper, clean product, brutalist, pastel, magazine, dusk, ink, slate, blueprint, terminal, aurora mesh, neon night) — each with its own serif/sans/mono type personality. The LLM picks one per topic; a **brand‑lock** toggle pins one look for a consistent page.
-- **Distinct slide layouts** — hero cover, content explainer, bold statement, closing CTA — that actually look different.
-
-### 🛠️ A real editing Studio
-- **Undo** for structural edits, a live preview, a 12‑style picker + brand‑lock, **revoice the whole deck**, copy‑caption, and **one‑click PNG / ZIP export**.
-- **LLM‑backed module switching** — switch a slide's visual module and it regenerates *meaningful, slide‑specific data* (real keys/labels, not "point 1") from that slide's content, with an instant heuristic fallback.
-
-### 🗣️ Your voice, as a signature
-- Distill your real posts into a reusable style guide, or start from **voice presets** (Punchy operator · Calm analyst · Playful builder · Clear academic). Your voice steers the copy *and* nudges the format/style picks — so the output is recognizably yours, not generic AI.
-
-### 📒 The Thesis Ledger — a compounding moat
-- Every committed opinion is saved, searchable, and revisable. **Calibration scoring** keeps score: were you right *when you were confident?* And **re‑surfacing** nudges you to score older convictions ("Time to score these"), closing the loop so you actually learn.
-
-### ⚙️ Built like a product, not a demo
-- **Durable AI workflow** — a `generateStructured` wrapper adds retries, **schema‑repair** (re‑asks the model when its JSON fails validation), and latency logging across every structured call.
-- **An eval / benchmark harness** (`POST /api/eval`, dev‑only) — runs a golden set through the *real* pipeline and scores it with an LLM‑as‑judge on grounding, sharpness, no‑fabrication, and quality, plus a **deterministic citation‑faithfulness** check. Quality is a tracked number, not a vibe.
-- **Mobile‑first** responsive UI with **email + Google sign‑in** (Supabase, per‑user RLS). The app is **login‑only** — your convictions and carousels save to your account.
-
-### 🔁 A real publishing workflow
-- **Repurpose** — turn one committed conviction into an **X thread** and a **LinkedIn post** in your voice (same opinion, nothing invented), with per‑post copy.
-- **Queue** — a planning board: schedule carousels by date and hand them off to X / LinkedIn / Instagram. Live auto‑publishing slots in behind a pluggable `Publisher` once platform access is connected.
-- **Brand kit** — set your handle once; it's stamped on every carousel.
-- **Voice input** — dictate your thought or take with the browser's built‑in speech‑to‑text.
-- **Inspiration sparks** — beat the blank page with a spicy AI/tech take you make your own.
-- **⌘K command palette**, a design‑token system, lucide iconography, tasteful motion, and real empty states — built to feel like a premium product, not a demo.
+Run it yourself: the **Eval** workflow (manual dispatch — it spends real tokens) appends to `eval-history.json`, so quality is a trend rather than a claim.
 
 ---
 
-## 🧩 The flow
+## How it's built
 
 ```
-                              ┌─ Form a take → Discuss (Coach/Spar, optional) → Commit ─┐
- news / thought ─→ SYNTHESIZE ─┤   you own the opinion                                   ├─→ CAROUSEL ─→ Repurpose · Queue
-   (grounded + citations)      └─ Explain it  → neutral, key‑takeaways deck ─────────────┘     (thread/LinkedIn · schedule)
+paste a link ─┐
+              ├─→ fetchReadable ─→ SYNTHESIZE ─→ verify citations ─┐
+pick a story ─┤    (SSRF-guarded)   (grounded)   (substring, deterministic)
+              │                                                     │
+raw thought ──┘                                                     ▼
+                                        ┌── understand it → neutral explainer deck
+        [ you read it ] ────────────────┼── your take → Coach/Spar → SAVE ──→ carousel
+                                        └── save for later (no opinion required)
 ```
 
-The human owns "form view" + "commit" in *Form a take*; *Explain it* stays neutral by design.
+Every arrow is a human click. There is no server-side workflow engine and that is deliberate: the pauses *are* the product. Notes on that and the other rejected designs live in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+**Things worth a look if you're reading the code:**
+
+- **`lib/citations.ts`** — anti-fabrication as code, not a prompt. Quotes are matched against the source text with punctuation-tolerant normalization; unmatched ones are shipped to the UI marked *unverified* rather than quietly dropped. When there's no source at all, citations are dropped entirely — models will happily invent quote-shaped text with plausible URLs.
+- **`lib/ai/generate.ts`** — one choke point for every structured call: an error taxonomy (a 401 fails in a second instead of burning three retries on a "return valid JSON" plea), jittered backoff that honours `retry-after`, a 45s timeout, and token/cost recording.
+- **`lib/ai/server-settings.ts`** — the client sends a *tier* (`speed` / `balanced` / `deep`), never a provider or model. The server picks from what it can actually reach, which makes "choose a provider you have no key for" unrepresentable.
+- **`lib/rank.ts`** — feed ranking that can explain itself, keeping topics you chose separate from words you happened to write.
+- **`components/carousel/SlideCanvas.tsx`** — the renderer. The preview *is* the export: real HTML/CSS rasterized client-side, so what you see is the pixel-exact PNG.
+
+### Cost observability
+
+Every model call records tokens, price, latency, attempts and an error code. Three queries answer most of what you'd want to know:
+
+```sql
+-- What did today cost, by pipeline step?
+select label, round(sum(cost_usd)::numeric, 4) as usd, count(*) as calls
+from ai_calls where created_at > now() - interval '1 day'
+group by label order by usd desc;
+
+-- Which steps are slow, and how often do they need a retry?
+select label, round(avg(latency_ms)) as ms, round(avg(attempts), 2) as tries
+from ai_calls where ok group by label order by ms desc;
+
+-- What's failing, and why?
+select error_code, count(*) from ai_calls where not ok group by error_code;
+```
 
 ---
 
-## 🚀 Getting started
+## Getting started
 
 ```bash
 cd web
@@ -118,78 +113,69 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-The app lives in [`web/`](web) (Next.js 16 App Router). It's **login‑only** — add your Supabase + AI keys to `web/.env.local` (below), then sign in with email or Google.
+The app lives in [`web/`](web) (Next.js 16 App Router). With Supabase configured it is **login-only**; without it, it runs single-user out of this browser's local storage, which is the supported way to try it locally.
 
 ### Environment (`web/.env.local`)
 
 ```bash
-# AI providers (any one works; OpenAI is the default). Server-side only —
-# users never bring their own keys.
+# AI provider — any one works. Server-side only; there is no bring-your-own-key.
 OPENAI_API_KEY=...
-GOOGLE_GENERATIVE_AI_API_KEY=...
-# ANTHROPIC_API_KEY=...        # optional (Claude Adversary upgrade)
+# GOOGLE_GENERATIVE_AI_API_KEY=...
+# ANTHROPIC_API_KEY=...
 
-# Accounts + cloud sync. Without these the app runs single-user in this
-# browser and the login gate is inactive.
+# Accounts + cloud sync. Omit all three to run single-user locally.
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...  # for the daily radar cron only
+SUPABASE_SERVICE_ROLE_KEY=...   # the daily feed scan writes with this
+
+# Required in production: the cron route fails closed without it.
+CRON_SECRET=...
 
 # Eval judge override (optional)
 # JUDGE_PROVIDER=google
 # JUDGE_MODEL=gemini-2.5-pro
 ```
 
-> `.env.local` is gitignored. For Google sign‑in, enable the Google provider in your Supabase dashboard and add `…/auth/callback` to the allowed redirect URLs. See [`web/SUPABASE.md`](web/SUPABASE.md) for the cloud setup.
+Apply the migrations in [`web/supabase/migrations/`](web/supabase/migrations) **in order** — see [`web/SUPABASE.md`](web/SUPABASE.md). They are not optional: several fix real data-exposure bugs.
 
-### Deploy
-
-One click with the **Deploy with Vercel** button at the top — it preconfigures `web/` as the project root and prompts for the env keys. Or via CLI:
-
-```bash
-cd web && vercel --prod
-```
-
-> After deploying, add your production URL's `…/auth/callback` to the **Supabase → Authentication → URL Configuration** redirect allowlist (and to your Google OAuth client) so sign‑in works on the live domain.
-
-### Useful commands
+### Commands
 
 ```bash
 npm run dev        # dev server
 npm run build      # production build
+npm run typecheck  # tsc --noEmit (includes the tests)
 npm run lint       # eslint
-npm run test:e2e   # Playwright tests
+npm run test:e2e   # Playwright: unit specs, then browser specs
 ```
 
-Run the benchmark (with the dev server running): `POST http://localhost:3000/api/eval`.
+CI runs typecheck, lint and the full suite with **no Supabase env and `MOCK_LLM=1`** — deterministic, free, and no secrets required, so a fork's CI passes on the first push.
 
 ---
 
-## 🏗️ Tech stack
+## Tech
 
-- **Next.js 16** (App Router, React 19) · **TypeScript** · **Tailwind v4**
-- **AI SDK v6** (`ai`) with OpenAI / Google / Anthropic / Ollama providers
-- **Supabase** (Postgres + Auth + RLS) — login required (email + Google)
-- **modern-screenshot** (client PNG export) · **simple-icons** + curated logos · **Framer Motion**
-- **Zod** structured outputs · **JSZip** carousel export
+**Next.js 16** (App Router, React 19) · **TypeScript** · **Tailwind v4** · **AI SDK v6** (OpenAI / Google / Anthropic / Ollama) · **Supabase** (Postgres, Auth, RLS, pgvector, Storage) · **Zod** structured outputs · **modern-screenshot** (client PNG) · **jsPDF** (LinkedIn PDFs) · **JSZip** · **cmdk** · **lucide-react** · **sonner**
 
-## 📁 Structure (high level)
+Feed sources are dependency-free: HN, Hugging Face papers, GitHub, Reddit, Lobsters, arXiv, and ~17 RSS feeds, parsed with regex rather than a library.
 
 ```
 web/
-  app/            # routes (today, news, think, studio, gallery, ledger, voice, login) + /api/*
-  components/     # ConvictionFlow, CarouselStudio, LedgerView, VoiceEditor, Nav, …
-    carousel/     # SlideCanvas (HTML/CSS renderer) + decor primitives
+  app/            # today · explore · think · studio · gallery · ledger · voice · login + /api/*
+  components/     # ConvictionFlow, CarouselStudio, LedgerView, BrowseView, TodayView, …
+    carousel/     # SlideCanvas (the renderer) + decor primitives
+    ui/           # Button, Card, Callout, Field, Dialog, Ink (marker/underline/rules)
   lib/
-    ai/           # model router, prompts, generateStructured (durable), step routing
-    carousel/     # design system (12 styles), formats (10), modules, brand resolution, llm schema, export
-    ledger.ts · carousels.ts · voice.ts · settings.ts · supabase/
+    ai/           # model routing, prompts, generateStructured, cost, server-settings
+    carousel/     # 12 designs, 10 formats, 10 modules, brand resolution, export, pdf
+    rank.ts · citations.ts · ledger.ts · voice.ts · sources.ts · supabase/
+  supabase/migrations/   # 0001–0013, applied in order by hand
+  tests/          # Playwright: unit specs + browser specs + the docs capture rig
 ```
 
 ---
 
-## 📌 Status
+## License
 
-Built and verified across phases: backend fixes → world‑class carousel engine + visualization library → mobile + Google auth → durable AI + eval harness → friendlier flow, creative variety, voice, ledger calibration → a design‑system + brand refresh, multi‑format repurpose, a scheduling Queue, brand kit, voice input, inspiration sparks, and a second **Explain it** mode (neutral news → explainer carousel). The dev‑only `/lab` route showcases the rendering engine and every style.
+MIT — see [`LICENSE`](LICENSE).
 
-*Anti‑slop principle, always: the AI scaffolds and expresses; the human forms the view and owns the commit.*
+*The principle, throughout: the AI scaffolds and expresses; the human forms the view and owns it.*

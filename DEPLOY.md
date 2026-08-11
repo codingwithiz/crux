@@ -1,4 +1,4 @@
-# Deploy — Conviction Engine (Vercel)
+# Deploy — Crux (Vercel)
 
 The app is deploy-ready: it builds clean, ships a `vercel.json` (daily-radar Cron),
 and runs **free** on Vercel Hobby. The project root for the app is `web/`.
@@ -59,4 +59,4 @@ trigger it. No Cron is needed for the rest of the app (it's on-demand).
 - **Not** wired: auto-posting/scheduling — intentionally (human-in-the-loop; see
   PLAN A6/A8). The Studio's **Copy caption** gets you a ready-to-paste post.
 - Free-forever floor holds on Hobby: Gemini free tier + Supabase free + Vercel
-  Hobby = `$0`; BYOK/Claude are optional upgrades.
+  Hobby = `$0`. Model calls run on the deployment's own provider key — there is no bring-your-own-key.

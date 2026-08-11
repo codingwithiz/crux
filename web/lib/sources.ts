@@ -153,8 +153,21 @@ function decodeEntities(s: string): string {
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)))
     .replace(/&[a-z]+;/gi, " ");
 }
+/**
+ * Text out of a feed field.
+ *
+ * Decode BEFORE stripping, then strip again. Feeds that escape their markup —
+ * Google News wraps every description in `&lt;a href=…&gt;` — survived a
+ * strip-then-decode order untouched, because at strip time there were no literal
+ * tags to remove, and decoding then produced raw HTML *as the item's summary*.
+ * Users saw `<a href="https://news.google.com/rss/articles/CBMifkF…` where the
+ * description should be.
+ */
 function stripTags(s: string): string {
-  return decodeEntities(s.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  return decodeEntities(decodeEntities(s).replace(/<[^>]+>/g, " "))
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 function tag(block: string, name: string): string {
   const m = block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i"));

@@ -1,4 +1,5 @@
 import type { CarouselSlide } from "./carousel/design";
+import type { SlideSize } from "./carousel/size";
 import type { Synthesis, Thesis } from "./types";
 
 const KEY = "ce.draft";
@@ -25,6 +26,7 @@ export interface Draft {
   slides: CarouselSlide[];
   handle: string;
   designId?: string;
+  size?: SlideSize;
   context?: DraftContext;
 }
 

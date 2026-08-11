@@ -15,6 +15,7 @@ import {
   type SlideModule,
 } from "@/lib/carousel/design";
 import { applyBrand } from "@/lib/carousel/brand";
+import { SLIDE_SIZES, DEFAULT_SLIDE_SIZE, slideDims, type SlideSize } from "@/lib/carousel/size";
 import { slideToBlob, downloadBlob, nodesToPdf } from "@/lib/carousel/export";
 import { toast } from "sonner";
 import { buildCaption } from "@/lib/carousel/caption";
@@ -119,6 +120,10 @@ export function CarouselStudio({
   const [variantJob, setVariantJob] = useState(false);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  /** Deck shape. Stored on the slides themselves, so it survives save/reload. */
+  const [size, setSize] = useState<SlideSize>(DEFAULT_SLIDE_SIZE);
+  /** The deck as it was before you applied a variant, so you can put it back. */
+  const [previous, setPrevious] = useState<Variant | null>(null);
   const [context, setContext] = useState<DraftContext | undefined>(undefined);
 
   useEffect(() => {
@@ -133,6 +138,7 @@ export function CarouselStudio({
           const c = await getCarousel(loadId);
           if (c) {
             setSlides(c.slides);
+            setSize(c.slides[0]?.size ?? DEFAULT_SLIDE_SIZE);
             setDesignId(c.designId || DESIGNS[0].id);
             setHandle(c.handle);
             setTitle(c.title);
@@ -144,6 +150,7 @@ export function CarouselStudio({
         const d = loadDraft();
         if (d?.slides?.length) {
           setSlides(d.slides);
+          setSize(d.size ?? d.slides[0]?.size ?? DEFAULT_SLIDE_SIZE);
           setHandle(d.handle || initialHandle);
           // What it was made from, when the flow passed it along. Decks reopened
           // from the Library have none, which is why "another version" is a
@@ -160,7 +167,12 @@ export function CarouselStudio({
     })();
   }, [loadId, initialHandle]);
 
-  // Responsive preview: scale the 1080px slide to the available width.
+  // Responsive preview: scale the slide to the available width.
+  //
+  // Keyed on `hydrated`, not []: this component early-returns an empty state
+  // until the draft loads, so on first mount `previewWrap.current` is null and
+  // a one-shot effect observed nothing — leaving previewW at 0 and the preview
+  // pinned to its minimum scale forever.
   useEffect(() => {
     const el = previewWrap.current;
     if (!el) return;
@@ -168,8 +180,9 @@ export function CarouselStudio({
       for (const e of entries) setPreviewW(e.contentRect.width);
     });
     ro.observe(el);
+    setPreviewW(el.clientWidth);
     return () => ro.disconnect();
-  }, []);
+  }, [hydrated]);
 
   // Mirror current slides + style for the undo snapshotter (ref writes in an
   // effect, not during render).
@@ -227,6 +240,11 @@ export function CarouselStudio({
     const filled = await fillModule(slide, t);
     setFillingModule(false);
     if (filled) setSlides((arr) => arr.map((s, i) => (i === at ? { ...s, module: filled } : s)));
+  }
+  /** Stamp the shape on every slide — that's what carries it through save. */
+  function pickSize(next: SlideSize) {
+    setSize(next);
+    updateSlides((arr) => arr.map((sl) => ({ ...sl, size: next })));
   }
   function pickDesign(id: string) {
     setDesignId(id);
@@ -421,6 +439,9 @@ export function CarouselStudio({
   /** Applying a variant swaps copy and style together — one undo entry. */
   function applyVariant(v: Variant) {
     snapshot();
+    // Keep what you're replacing. Undo already restored it, but undo is
+    // invisible and one-shot — you couldn't look at the old one and decide.
+    setPrevious({ slides: slidesRef.current, designId: designIdRef.current, format: context?.format });
     setSlides(v.slides);
     if (v.designId) setDesignId(v.designId);
     setContext((c) => c && { ...c, format: v.format });
@@ -466,8 +487,11 @@ export function CarouselStudio({
     }
   }
 
-  const big = Math.max(0.18, Math.min(previewW / 1080, 0.46));
+  const dims = slideDims(size);
+  // Fill the column rather than floating a postage stamp in the middle of it.
+  const big = Math.max(0.2, Math.min((previewW - 8) / dims.w, 0.62));
   const thumb = 0.12;
+  const thumbH = dims.h * thumb;
 
   // Must precede the editor: with no slides, `idx` is -1 and `current` is
   // undefined, which the JSX below dereferences. The load is async, so this also
@@ -506,7 +530,7 @@ export function CarouselStudio({
       {exporting && (
         <div aria-hidden style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}>
           {slides.map((s, i) => (
-            <SlideCanvas key={i} slide={s} design={designFor(s)} index={i} total={total} handle={handle} innerRef={(el) => { exportRefs.current[i] = el; }} />
+            <SlideCanvas key={i} slide={s} design={designFor(s)} index={i} total={total} handle={handle} size={size} innerRef={(el) => { exportRefs.current[i] = el; }} />
           ))}
         </div>
       )}
@@ -594,6 +618,24 @@ export function CarouselStudio({
               <span className="block h-full w-full rounded-full" style={{ boxShadow: `inset 0 0 0 3px ${d.accent}` }} />
             </button>
           ))}
+          {/* Deck shape. Square is the safe universal — Instagram, LinkedIn
+              documents and X all take it uncropped; 4:5 is the taller of the two
+              ratios Instagram allows, so it occupies more of the feed. */}
+          <span className="ml-1 inline-flex overflow-hidden rounded-lg border border-line">
+            {(Object.keys(SLIDE_SIZES) as SlideSize[]).map((k) => (
+              <button
+                key={k}
+                onClick={() => pickSize(k)}
+                title={SLIDE_SIZES[k].hint}
+                aria-pressed={size === k}
+                className={`px-2.5 py-1 text-xs transition ${
+                  size === k ? "bg-accent text-accent-fg" : "text-muted hover:bg-surface hover:text-fg"
+                }`}
+              >
+                {SLIDE_SIZES[k].label}
+              </button>
+            ))}
+          </span>
           <button
             onClick={toggleLock}
             title="Pin this style for all your carousels (brand-lock)"
@@ -605,9 +647,9 @@ export function CarouselStudio({
 
         {/* Big preview */}
         <div ref={previewWrap} className="flex justify-center rounded-2xl border border-line bg-surface/40 p-3 sm:p-6">
-          <div className="shadow-2xl" style={{ width: 1080 * big, height: 1350 * big, overflow: "hidden", borderRadius: 14 }}>
-            <div style={{ width: 1080, height: 1350, transform: `scale(${big})`, transformOrigin: "top left" }}>
-              <SlideCanvas slide={current} design={designFor(current)} index={idx} total={total} handle={handle} />
+          <div className="shadow-2xl" style={{ width: dims.w * big, height: dims.h * big, overflow: "hidden", borderRadius: 14 }}>
+            <div style={{ width: dims.w, height: dims.h, transform: `scale(${big})`, transformOrigin: "top left" }}>
+              <SlideCanvas slide={current} design={designFor(current)} index={idx} total={total} handle={handle} size={size} />
             </div>
           </div>
         </div>
@@ -662,7 +704,7 @@ export function CarouselStudio({
         </div>
 
         {/* Thumbnails */}
-        <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+        <div className="ce-strip mt-4 flex gap-3 overflow-x-auto px-0.5 pb-3 pt-0.5">
           {slides.map((s, i) => (
             <button
               key={i}
@@ -681,10 +723,10 @@ export function CarouselStudio({
               className={`shrink-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
                 i === idx ? "ring-2 ring-accent" : "ring-1 ring-line"
               } ${dragFrom === i ? "opacity-40" : ""}`}
-              style={{ width: 1080 * thumb, height: 1350 * thumb }}
+              style={{ width: dims.w * thumb, height: thumbH }}
             >
-              <div style={{ width: 1080, height: 1350, transform: `scale(${thumb})`, transformOrigin: "top left" }}>
-                <SlideCanvas slide={s} design={designFor(s)} index={i} total={total} handle={handle} />
+              <div style={{ width: dims.w, height: dims.h, transform: `scale(${thumb})`, transformOrigin: "top left" }}>
+                <SlideCanvas slide={s} design={designFor(s)} index={i} total={total} handle={handle} size={size} />
               </div>
             </button>
           ))}
@@ -695,29 +737,78 @@ export function CarouselStudio({
         {context && (
           <div className="mt-3">
             {variants ? (
-              <div className="rounded-xl border border-cool/40 bg-cool/5 p-3">
+              <div className="rounded-xl border border-cool/40 bg-cool/5 p-4">
                 <p className="text-sm font-medium">Pick a version</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  Same take, different structure and style. Applying one is a single undo.
+                  Same take, different structure and style. Whatever you pick, the one you had is
+                  kept below so you can switch back.
                 </p>
-                <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className="mt-3 flex flex-wrap gap-4">
                   <VariantCard
-                    label="Current"
+                    label="What you have"
+                    cta="keep this"
                     slide={slides[0]}
                     design={applyBrand(getDesign(designId), slides[0]?.brand)}
                     handle={handle}
+                    size={size}
                     onPick={() => setVariants(null)}
                   />
                   {variants.map((v, i) => (
                     <VariantCard
                       key={i}
                       label={v.format ? v.format.replace(/[-_]/g, " ") : `Version ${i + 2}`}
+                      cta="use this one"
                       slide={v.slides[0]}
                       design={applyBrand(getDesign(v.designId ?? designId), v.slides[0]?.brand)}
                       handle={handle}
+                      size={size}
                       onPick={() => applyVariant(v)}
                     />
                   ))}
+                </div>
+              </div>
+            ) : previous ? (
+              /* After swapping, the deck you replaced stays on screen. Undo
+                 already restored it, but undo is invisible and one-shot — you
+                 could not look at the old one and then decide. */
+              <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-surface/40 p-4">
+                <VariantCard
+                  label="Your previous version"
+                  cta="switch back"
+                  slide={previous.slides[0]}
+                  design={applyBrand(getDesign(previous.designId ?? designId), previous.slides[0]?.brand)}
+                  handle={handle}
+                  size={size}
+                  onPick={() => {
+                    const back = previous;
+                    snapshot();
+                    setPrevious({ slides: slidesRef.current, designId: designIdRef.current, format: context?.format });
+                    setSlides(back.slides);
+                    if (back.designId) setDesignId(back.designId);
+                    setSel(0);
+                    setRevoiceMsg("Back to your previous version.");
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-muted">
+                    Kept so you can compare. Press it to swap back — you can flip between the two as
+                    often as you like.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => void tryVariants()}
+                      disabled={variantJob}
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:bg-surface disabled:opacity-50"
+                    >
+                      {variantJob ? "Building…" : "Try 2 more"}
+                    </button>
+                    <button
+                      onClick={() => setPrevious(null)}
+                      className="rounded-lg px-3 py-1.5 text-xs text-muted transition hover:text-fg"
+                    >
+                      Discard it
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -909,27 +1000,33 @@ function VariantCard({
   slide,
   design,
   handle,
+  size,
   onPick,
+  cta,
 }: {
   label: string;
   slide?: CarouselSlide;
   design: ReturnType<typeof getDesign>;
   handle: string;
+  size: SlideSize;
   onPick: () => void;
+  cta?: string;
 }) {
-  const s = 0.11;
+  const s = 0.15;
+  const d = slideDims(size);
   if (!slide) return null;
   return (
     <button onClick={onPick} className="group text-left">
       <div
         className="overflow-hidden rounded-md ring-1 ring-line transition group-hover:ring-2 group-hover:ring-accent"
-        style={{ width: 1080 * s, height: 1350 * s }}
+        style={{ width: d.w * s, height: d.h * s }}
       >
-        <div style={{ width: 1080, height: 1350, transform: `scale(${s})`, transformOrigin: "top left" }}>
-          <SlideCanvas slide={slide} design={design} index={0} total={1} handle={handle} />
+        <div style={{ width: d.w, height: d.h, transform: `scale(${s})`, transformOrigin: "top left" }}>
+          <SlideCanvas slide={slide} design={design} index={0} total={1} handle={handle} size={size} />
         </div>
       </div>
-      <p className="mt-1 truncate text-xs capitalize text-muted group-hover:text-fg">{label}</p>
+      <p className="mt-1.5 truncate text-xs font-medium capitalize text-fg">{label}</p>
+      {cta && <p className="truncate text-xs text-muted group-hover:text-accent">{cta}</p>}
     </button>
   );
 }

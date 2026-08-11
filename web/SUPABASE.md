@@ -1,9 +1,13 @@
-# Cloud setup (Supabase) — Thesis Ledger sync + accounts
+# Cloud setup (Supabase) — accounts + track-record sync
 
-The app runs **without** Supabase (the Thesis Ledger lives in your browser's
-localStorage). Add Supabase to get **multi-user accounts** and a **cloud ledger
-that syncs across devices**, with per-user isolation enforced by row-level
-security.
+The app runs **without** Supabase: your track record lives in this browser's
+local storage and every page is open. That's the supported way to try it
+locally.
+
+Add Supabase and two things change together: you get **accounts** and
+cross-device sync, and **every page becomes login-only** — the proxy gates the
+app and each API route checks the session, because those routes spend the
+deployment's own provider key. There is no configuration in between.
 
 ## 1. Create a Supabase project
 1. Sign up at https://supabase.com and create a new project (free tier is fine).
@@ -113,9 +117,29 @@ applied in the browser); if no snapshot exists it falls back to a live scan.
   `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` if you want the daily radar, in
   the Vercel project's Environment Variables. The Cron in `vercel.json` runs
   automatically once deployed.
-- Migration order recap: `0001` theses → `0002` carousels → `0003` embeddings →
-  `0004` user secrets (dropped again by `0009`) → `0005` carousel storage →
-  `0006` radar → `0007` voice → `0008` thesis outcomes (calibration) →
-  `0009` drop secrets + add `ai_calls` → `0010` thesis synthesis →
-  `0011` interests. Apply `0010` and `0011` before deploying the code that
-  writes them, or committing a thesis and saving your voice will fail.
+## Migrations — apply all of them, in order
+
+Run every file in `supabase/migrations/` in the SQL editor, oldest first. They
+are not optional extras: **0009 and 0012 each close a real data-exposure bug**,
+and a deployment that stops before them is worse than one with no cloud sync at
+all.
+
+| # | What it does | If you skip it |
+| --- | --- | --- |
+| `0001` | theses | nothing works |
+| `0002` | carousels | decks don't sync |
+| `0003` | embeddings (pgvector) | no "related to your past thinking" |
+| `0004` | user secrets | superseded — **dropped by 0009** |
+| `0005` | carousel storage bucket | exported PNGs don't persist |
+| `0006` | radar snapshots | the daily scan can't store anything |
+| `0007` | user voice | saving your voice fails |
+| `0008` | thesis outcomes | you can't score a take, so accuracy never computes |
+| `0009` | **drops `user_secrets`**, adds `ai_calls` | provider keys stay in a plaintext table, and the hourly rate limit doesn't bite |
+| `0010` | `theses.synthesis` | **saving a take fails outright** |
+| `0011` | `user_voice.interests` | **saving your voice fails outright** |
+| `0012` | scopes storage reads to the owner | **every user's rendered slides are publicly enumerable** |
+| `0013` | widens `ai_calls` (tokens/cost/latency/errors) | cost tracking records nothing |
+
+Apply `0010`, `0011` and `0013` *before* deploying the code that writes them —
+Postgres rejects the whole insert on an unknown column, so the affected action
+fails rather than degrading.

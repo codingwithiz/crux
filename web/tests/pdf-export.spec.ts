@@ -28,9 +28,13 @@ test("one page per slide", async () => {
   expect((text.match(/\/Type\s*\/Page[^s]/g) ?? []).length).toBe(3);
 });
 
-test("pages are the deck's native 1080x1350 portrait", async () => {
-  const text = await asText(await jpegsToPdf([JPEG]));
-  expect(text).toMatch(/\/MediaBox\s*\[0 0 1080\.?\d* 1350\.?\d*\]/);
+test("pages follow the deck's own shape", async () => {
+  // Square is the default; a portrait deck must not be letterboxed onto it.
+  const square = await asText(await jpegsToPdf([JPEG]));
+  expect(square).toMatch(/\/MediaBox\s*\[0 0 1080\.?\d* 1080\.?\d*\]/);
+
+  const portrait = await asText(await jpegsToPdf([JPEG], 1080, 1350));
+  expect(portrait).toMatch(/\/MediaBox\s*\[0 0 1080\.?\d* 1350\.?\d*\]/);
 });
 
 test("images are embedded as DCTDecode, not re-encoded", async () => {

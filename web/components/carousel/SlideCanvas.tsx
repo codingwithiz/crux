@@ -6,6 +6,7 @@
  * brand logos, corner doodles.
  */
 import type { CSSProperties, ReactNode, Ref } from "react";
+import { slideDims, type SlideSize } from "@/lib/carousel/size";
 import type { CarouselDesign, CarouselSlide, ChartTone, SlideModule, StatBarRow } from "@/lib/carousel/design";
 import { DoodleEye, DoodleGhost, GrainOverlay, HandArrow, Squiggle } from "./decor";
 import { BrandMark, BRAND_LOGOS } from "@/lib/carousel/logos";
@@ -14,8 +15,6 @@ const SERIF = "var(--font-newsreader), Georgia, serif";
 const SANS = "var(--font-geist-sans), system-ui, sans-serif";
 const MONO = "var(--font-geist-mono), ui-monospace, monospace";
 
-const W = 1080;
-const H = 1350;
 const PAD = 96;
 
 function trackBg(d: CarouselDesign) {
@@ -415,6 +414,7 @@ export function SlideCanvas({
   handle,
   innerRef,
   style,
+  size,
 }: {
   slide: CarouselSlide;
   design: CarouselDesign;
@@ -423,7 +423,10 @@ export function SlideCanvas({
   handle: string;
   innerRef?: Ref<HTMLDivElement>;
   style?: CSSProperties;
+  /** Deck shape. Absent means the default (square). */
+  size?: SlideSize;
 }) {
+  const dims = slideDims(size);
   const layout = slide.layout ?? "explainer";
   const isHero = layout === "hero";
   const isStatement = layout === "statement";
@@ -437,8 +440,8 @@ export function SlideCanvas({
     <div
       ref={innerRef}
       style={{
-        width: W,
-        height: H,
+        width: dims.w,
+        height: dims.h,
         position: "relative",
         overflow: "hidden",
         background: `linear-gradient(160deg, ${design.bg2} 0%, ${design.bg} 70%)`,

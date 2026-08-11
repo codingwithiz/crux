@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { SlideCanvas } from "@/components/carousel/SlideCanvas";
 import { getDesign } from "@/lib/carousel/design";
+import { slideDims } from "@/lib/carousel/size";
 import { applyBrand } from "@/lib/carousel/brand";
 import { slideToBlob, downloadBlob } from "@/lib/carousel/export";
 import { buildCaption } from "@/lib/carousel/caption";
@@ -118,6 +119,7 @@ export function GalleryView() {
     );
 
   const s = 0.16;
+  const dimsOf = (c: Carousel) => slideDims(c.slides[0]?.size);
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {/* Off-screen render used when a carousel has no stored PNGs. */}
@@ -131,6 +133,7 @@ export function GalleryView() {
               index={i}
               total={exporting.slides.length}
               handle={exporting.handle}
+              size={sl.size}
               innerRef={(el) => { exportRefs.current[i] = el; }}
             />
           ))}
@@ -142,13 +145,13 @@ export function GalleryView() {
         return (
           <div key={c.id} className="rounded-xl border border-line bg-surface/40 p-3">
             <div className="flex gap-3">
-              <div className="shrink-0 overflow-hidden rounded-md ring-1 ring-line" style={{ width: 1080 * s, height: 1350 * s }}>
+              <div className="shrink-0 overflow-hidden rounded-md ring-1 ring-line" style={{ width: dimsOf(c).w * s, height: dimsOf(c).h * s }}>
                 {c.imageUrls?.[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.imageUrls[0]} alt={c.title || "carousel"} width={1080 * s} height={1350 * s} />
+                  <img src={c.imageUrls[0]} alt={c.title || "carousel"} width={dimsOf(c).w * s} height={dimsOf(c).h * s} />
                 ) : first ? (
-                  <div style={{ width: 1080, height: 1350, transform: `scale(${s})`, transformOrigin: "top left" }}>
-                    <SlideCanvas slide={first} design={applyBrand(getDesign(c.designId), first.brand)} index={0} total={c.slides.length || 1} handle={c.handle} />
+                  <div style={{ width: dimsOf(c).w, height: dimsOf(c).h, transform: `scale(${s})`, transformOrigin: "top left" }}>
+                    <SlideCanvas slide={first} design={applyBrand(getDesign(c.designId), first.brand)} index={0} total={c.slides.length || 1} handle={c.handle} size={first.size} />
                   </div>
                 ) : null}
               </div>

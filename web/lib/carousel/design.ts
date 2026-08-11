@@ -9,6 +9,8 @@
  * client-side via modern-screenshot, so the on-screen preview IS the PNG.
  */
 
+import type { SlideSize } from "./size";
+
 export type DesignMode = "light" | "dark";
 
 export interface CarouselDesign {
@@ -256,6 +258,10 @@ export interface CarouselSlide {
   doodles?: boolean;
   /** Show a hand-drawn swipe arrow under the headline (hero slides). */
   arrow?: boolean;
+  /** The deck's shape, stamped on every slide. It lives here rather than on the
+   *  carousel row because slides are already jsonb — so it round-trips through
+   *  save/load with no migration and no new column. Read it from slide 0. */
+  size?: SlideSize;
   /** Overrides the deck's style for this one slide — a cover that stands apart,
    *  or a single quote in a different world. Unset means "follow the deck".
    *  Persists free: slides are already stored as jsonb. */
