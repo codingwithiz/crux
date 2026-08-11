@@ -1,7 +1,9 @@
 {
-  "name": "web",
+  "name": "crux",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "description": "Turn a story or a raw thought into a defensible opinion, then a social carousel in your voice.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
