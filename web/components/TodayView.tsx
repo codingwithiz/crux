@@ -11,6 +11,9 @@ import { ledgerStats, dailyStreak } from "@/lib/ledger-stats";
 import { rankItems, interestsAsPriors, type RankedItem } from "@/lib/rank";
 import { getVoice } from "@/lib/voice";
 import { WhyThis } from "@/components/WhyThis";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Mark } from "@/components/ui/Ink";
 import type { NewsItem, Thesis } from "@/lib/types";
 
 const SOURCE_LABELS: Record<NewsItem["source"], string> = {
@@ -223,67 +226,58 @@ export function TodayView() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      {/* Masthead. The streak is a chip beside the date, not a boxed number —
+          it was styled as the loudest thing on the page while the one item you
+          came here to read sat fifth, below the fold. */}
+      <div>
+        <div className="flex flex-wrap items-center gap-3">
           {/* Date is formatted in the user's locale/timezone, which the server
               can't match — suppress the expected hydration diff. */}
-          <p className="font-mono text-xs text-accent" suppressHydrationWarning>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent" suppressHydrationWarning>
             {dateLabel}
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">
-            {doneToday ? (
-              <span className="inline-flex items-center gap-2">
-                Take saved today <Check className="h-6 w-6 text-emerald-400" />
-              </span>
-            ) : (
-              "One strong take a day"
-            )}
-          </h1>
-          <p className="mt-1 text-muted">
-            Ten minutes of real thinking beats a day of scrolling. One item, one defended take.
-          </p>
+          {streak > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">
+              <Flame className="h-3.5 w-3.5 text-accent" /> {streak}-day streak
+            </span>
+          )}
+          {doneToday && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2.5 py-0.5 text-xs text-success">
+              <Check className="h-3.5 w-3.5" /> saved today
+            </span>
+          )}
         </div>
-        <div className="rounded-xl border border-line bg-surface/40 px-4 py-3 text-center">
-          <p className="flex items-center justify-center gap-1.5 text-2xl font-bold text-accent">
-            <Flame className="h-5 w-5" /> {streak}
-          </p>
-          <p className="text-xs text-muted">day streak</p>
-        </div>
+        <h1 className="mt-2 font-serif text-display font-semibold">
+          {doneToday ? "That's today done." : <>One strong <Mark>take</Mark> a day.</>}
+        </h1>
+        <p className="mt-2 max-w-xl text-lead text-muted">
+          Ten minutes of real thinking beats a day of scrolling.
+        </p>
       </div>
 
-      {/* Track record */}
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Takes" value={stats.total} />
-        <Stat label="This week" value={stats.thisWeek} accent />
-        <Stat label="Revised" value={stats.updated} />
-      </div>
-
-      {/* Today's pick */}
-      <div className="rounded-2xl border border-accent/40 bg-accent/5 p-5">
-        <p className="font-mono text-xs uppercase tracking-wide text-accent">Today&rsquo;s pick</p>
+      {/* Today's pick — first, and the biggest thing on the page. */}
+      <Card tone="accent" feature className="p-5 sm:p-6">
+        <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">Today&rsquo;s pick</p>
         {pick ? (
           <>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="font-mono text-xs text-muted">{SOURCE_LABELS[pick.source]}</span>
-              {pick.meta && <span className="text-xs text-muted">{pick.meta}</span>}
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
+              <span className="font-mono">{SOURCE_LABELS[pick.source]}</span>
+              {pick.meta && <span>{pick.meta}</span>}
             </div>
-            <p className="mt-1 text-lg font-semibold">{pick.title}</p>
-            {pick.detail && <p className="mt-1 text-sm text-muted">{pick.detail}</p>}
+            <p className="mt-2 font-serif text-title font-semibold leading-tight">{pick.title}</p>
+            {pick.detail && <p className="mt-2 text-sm leading-relaxed text-muted">{pick.detail}</p>}
             <WhyThis why={pick.why} related={pick.related} viaInterest={pick.viaInterest} />
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setStarted(true)}
-                className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
-              >
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Button variant="primary" onClick={() => setStarted(true)}>
                 {doneToday ? "Break down another →" : "Break it down →"}
-              </button>
+              </Button>
               {/* The source was previously unreachable from here — you were asked
                   to spend a synthesis on an item you couldn't read first. */}
               <a
                 href={pick.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg border border-line px-4 py-2.5 text-sm text-fg hover:bg-surface"
+                className="ce-press inline-flex items-center rounded-lg border border-line px-4 py-2.5 text-sm text-fg transition hover:border-accent/50 hover:bg-surface"
               >
                 Read source ↗
               </a>
@@ -297,7 +291,7 @@ export function TodayView() {
               )}
             </div>
             {/* One line, once: the primary CTA is a verb nobody has met before. */}
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-3 text-xs text-muted">
               Breaking it down reads the real page and shows you what&rsquo;s actually new before you
               form a view.
             </p>
@@ -307,12 +301,20 @@ export function TodayView() {
             Scanning sources… or jump straight in via the links below.
           </p>
         )}
+      </Card>
+
+      {/* Below the fold: your numbers, which matter but are not why you opened
+          this page. They used to sit above the pick. */}
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Takes" value={stats.total} />
+        <Stat label="This week" value={stats.thisWeek} accent />
+        <Stat label="Revised" value={stats.updated} />
       </div>
 
       {/* Revisit your thinking */}
       {revisit && (
         <div className="rounded-2xl border border-cool/40 bg-cool/5 p-5">
-          <p className="font-mono text-xs uppercase tracking-wide text-cool">Revisit your thinking</p>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-cool">Revisit your thinking</p>
           <p className="mt-2 text-sm text-fg">{revisit.statement}</p>
           <p className="mt-1 text-xs text-muted">
             Saved {new Date(revisit.createdAt).toLocaleDateString()} ·{" "}

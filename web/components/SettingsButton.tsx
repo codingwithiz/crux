@@ -55,7 +55,7 @@ export function SettingsButton() {
         className="ml-1 rounded-md border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
       >
         <span
-          className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-emerald-400" : "bg-accent"}`}
+          className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-success" : "bg-accent"}`}
         />
         {label}
       </button>

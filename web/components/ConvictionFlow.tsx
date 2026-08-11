@@ -20,6 +20,7 @@ import { MicButton } from "./MicButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { Callout } from "@/components/ui/Callout";
+import { Underline } from "@/components/ui/Ink";
 import { Check, AlertTriangle, Lightbulb, Sparkles, Copy, ExternalLink, Square, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
@@ -99,6 +100,8 @@ export function ConvictionFlow({
    * retry finish the job instead of forking it.
    */
   const [saveId, setSaveId] = useState(() => crypto.randomUUID());
+  /** Shows the "saved" stamp over the step while we navigate away. */
+  const [stamped, setStamped] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autosynth = useRef(false);
 
@@ -497,7 +500,10 @@ export function ConvictionFlow({
     try {
       await bankThesis();
       clearFlow();
-      toast.success("Saved to your track record");
+      // The one moment in this flow worth marking: you committed to a view.
+      // Long enough to read the stamp, short enough not to be a wait.
+      setStamped(true);
+      await new Promise((r) => setTimeout(r, 900));
       router.push("/ledger");
     } catch (e) {
       setError((e as Error).message);
@@ -627,11 +633,11 @@ export function ConvictionFlow({
                   summary of a page nobody fetched, with no warning at all. */}
               <div className="mb-3 flex items-center gap-2 text-xs">
                 {synthesis.grounded ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2.5 py-1 font-medium text-success">
                     <Check className="h-3 w-3" /> Grounded in the source
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-200">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1 font-medium text-warning">
                     <AlertTriangle className="h-3 w-3" /> From the model&rsquo;s knowledge — check it before you rely on it
                   </span>
                 )}
@@ -648,11 +654,13 @@ export function ConvictionFlow({
               </div>
               <div className="space-y-3">
                 {synthesis.plainEnglish && (
-                  <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-accent">
+                  <div className="rounded-xl border border-accent/40 bg-accent/5 p-5 shadow-[0_1px_0_0_var(--color-line),0_18px_40px_-28px_rgba(0,0,0,0.8)]">
+                    <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
                       In plain English
                     </p>
-                    <p className="mt-1 font-serif text-lg leading-relaxed text-fg">{synthesis.plainEnglish}</p>
+                    <p className="mt-2 font-serif text-lead leading-relaxed text-fg">
+                      {synthesis.plainEnglish}
+                    </p>
                   </div>
                 )}
               </div>
@@ -666,10 +674,16 @@ export function ConvictionFlow({
                   <span className="hidden group-open:inline">Hide the full breakdown</span>
                 </summary>
                 <div className="mt-3 space-y-3">
-                {SYNTH_ROWS.map((r) => (
-                  <div key={r.key} className="rounded-xl border border-line bg-surface/40 p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-accent">{r.label}</p>
-                    <p className="mt-1 text-sm text-fg">{synthesis[r.key] as string}</p>
+                {/* Staggered so the breakdown arrives in an order you can
+                    follow, rather than four cards appearing at once. */}
+                {SYNTH_ROWS.map((r, i) => (
+                  <div
+                    key={r.key}
+                    style={{ "--i": i } as React.CSSProperties}
+                    className="ce-stagger rounded-xl border border-line bg-surface/40 p-4"
+                  >
+                    <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">{r.label}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-fg">{synthesis[r.key] as string}</p>
                   </div>
                 ))}
                 {synthesis.questions?.length > 0 && (
@@ -685,25 +699,25 @@ export function ConvictionFlow({
                   </div>
                 )}
                 {citations.length > 0 && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-emerald-300">
+                  <div className="rounded-xl border border-success/30 bg-success/5 p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-success">
                       Receipts — quotes from the source
                     </p>
                     <ul className="mt-2 space-y-2">
                       {citations.map((c, i) => (
-                        <li key={i} className="border-l-2 border-emerald-500/40 pl-3 text-sm italic text-muted">
+                        <li key={i} className="border-l-2 border-success/40 pl-3 text-sm italic text-muted">
                           &ldquo;{c.quote}&rdquo;
                           {c.verified ? (
                             <span
                               title="Found word-for-word in the source"
-                              className="ml-2 not-italic text-xs text-emerald-300"
+                              className="ml-2 not-italic text-xs text-success"
                             >
                               <Check className="inline h-3 w-3" /> verified
                             </span>
                           ) : (
                             <span
                               title="We could not match this quote to the source text — treat it with suspicion"
-                              className="ml-2 not-italic text-xs text-amber-300"
+                              className="ml-2 not-italic text-xs text-warning"
                             >
                               <AlertTriangle className="inline h-3 w-3" /> unverified
                             </span>
@@ -875,7 +889,7 @@ export function ConvictionFlow({
               </div>
             )}
             {chatError && (
-              <div className="self-start rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
+              <div className="self-start rounded-2xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
 Your sparring partner hit an error: {chatError.message}. Try sending again.
               </div>
             )}
@@ -972,6 +986,20 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
             >
               {suggesting ? "Writing it up…" : "Write up my take →"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* The stamp. Saving a take is the point of the whole flow and it used to
+          be acknowledged by a toast sliding into a corner. */}
+      {stamped && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm" role="status">
+          <div className="ce-stamp rounded-xl border-2 border-accent bg-ink px-8 py-6 text-center shadow-[6px_6px_0_0_var(--color-accent)]">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Saved</p>
+            <p className="mt-2 font-serif text-title font-semibold">
+              <Underline draw>That&rsquo;s your take.</Underline>
+            </p>
+            <p className="mt-3 text-xs text-muted">It&rsquo;s in your track record now.</p>
           </div>
         </div>
       )}

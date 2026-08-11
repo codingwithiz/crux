@@ -59,7 +59,7 @@ export default function LoginPage() {
       </p>
 
       {!configured ? (
-        <div className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+        <div className="mt-8 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
           Accounts aren&rsquo;t set up on this deployment yet, so your work stays in this browser.
           Everything still works — it just won&rsquo;t follow you to another device.
         </div>

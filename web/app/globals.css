@@ -26,9 +26,28 @@
   --color-danger: #f87171;
   --color-danger-fg: #2a0a0a;
 
+  /* The marker pens from the carousel designs, brought into the app itself.
+     Crux has a distinctive print language — grain, marker highlights, hand-drawn
+     rules — that lived entirely inside the thing it exported while the chrome
+     around it looked like any other dark dashboard. */
+  --color-marker: #fbe36b;
+  --color-marker-pink: #f4c9c2;
+
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+
+  /* Six steps, used deliberately. 85% of all type was text-sm or text-xs, with
+     text-[11px] and text-[10px] escaping below the scale — so nothing was loud
+     and nothing was quiet, and every screen read as one flat plane. */
+  --text-display: 2.75rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-title: 1.875rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.015em;
+  --text-lead: 1.25rem;
+  --text-lead--line-height: 1.45;
 }
 
 html {
@@ -44,6 +63,25 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Paper grain over the whole app, the same treatment the slides carry.
+   A tiled SVG turbulence as a data URI: no element, no extra DOM, no repaint
+   cost — and it survives the export path untouched because it never touches it. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Everything the app renders sits above the grain. */
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 ::selection {
@@ -121,6 +159,91 @@ body {
 }
 .ce-press:active {
   transform: scale(0.97);
+}
+
+/* ── The print language ──────────────────────────────────────────────────────
+   Marker highlight and hand-drawn rules, matching what the carousels use. Kept
+   sparing on purpose: a highlighter that touches everything highlights nothing. */
+
+/* A marker sweep behind a phrase.
+   Opaque ink with dark text, exactly as the carousels draw it — a real
+   highlighter is not translucent. A semi-transparent yellow over the dark ground
+   muddied to olive and left light text sitting on it at poor contrast, which
+   read as a redaction bar rather than a highlight. */
+.ce-marker {
+  display: inline;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 10%,
+    var(--color-marker) 10%,
+    var(--color-marker) 92%,
+    transparent 92%
+  );
+  background-repeat: no-repeat;
+  color: var(--color-ink);
+  padding-inline: 0.14em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.ce-marker-pink {
+  --color-marker: var(--color-marker-pink);
+}
+
+/* Broadsheet rule: a heavier line above a section than a hairline border. */
+.ce-rule {
+  border-top: 2px solid var(--color-line);
+}
+
+/* The hand-drawn underline, as a background so any inline text can carry it. */
+.ce-underline {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M1 6 Q 10 1, 20 6 T 40 6 T 60 6 T 80 6 T 100 6 T 119 6' fill='none' stroke='%23f4b740' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.34em;
+  padding-bottom: 0.22em;
+}
+/* Draws itself when it appears — used once, on the moment a take is saved. */
+@keyframes ce-draw {
+  from {
+    background-size: 0 0.34em;
+  }
+  to {
+    background-size: 100% 0.34em;
+  }
+}
+.ce-underline-draw {
+  animation: ce-draw 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* ── Signature motion ────────────────────────────────────────────────────────
+   Three moments, chosen because each marks something real happening. Everything
+   else stays instant; the reduced-motion rule above disables all of it. */
+
+/* The stamp: saving a take is the emotional peak of the product and used to be
+   acknowledged by a toast. */
+@keyframes ce-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.35) rotate(-4deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.94) rotate(-1.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-2deg);
+  }
+}
+.ce-stamp {
+  animation: ce-stamp 0.42s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+/* Breakdown cards arrive in sequence rather than all at once, so the eye has an
+   order to follow. Depth is set per item as --i. */
+.ce-stagger {
+  animation: ce-fade-up 0.42s ease both;
+  animation-delay: calc(var(--i, 0) * 60ms);
 }
 
 /* Command palette (cmdk) group headings. */

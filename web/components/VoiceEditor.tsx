@@ -205,7 +205,7 @@ export function VoiceEditor() {
               />
               <button
                 onClick={() => removeSample(i)}
-                className="absolute right-2 top-2 rounded px-2 py-0.5 text-xs text-muted hover:text-red-400"
+                className="absolute right-2 top-2 rounded px-2 py-0.5 text-xs text-muted hover:text-danger"
                 title="Remove"
               >
                 ✕
@@ -266,7 +266,7 @@ export function VoiceEditor() {
                 key={k}
                 onClick={() => void persistInterests(interests.filter((x) => x !== k))}
                 title={`Remove ${k}`}
-                className="rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-red-400/60 hover:text-red-300"
+                className="rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-danger/60 hover:text-danger"
               >
                 {k} <span aria-hidden>×</span>
               </button>

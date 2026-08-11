@@ -98,7 +98,9 @@ test("opening a feed item costs nothing until you ask", async ({ page }) => {
 test("today shows a pick with a way to read it first", async ({ page }) => {
   await page.goto("/today");
   await expect(page.getByText(/Today.s pick/)).toBeVisible();
-  await expect(page.getByText("day streak")).toBeVisible();
+  // The pick leads the page now; the streak is a chip beside the date and is
+  // hidden at zero rather than announcing a 0-day streak to a new user.
+  await expect(page.getByRole("heading", { name: /One strong take a day/ })).toBeVisible();
 });
 
 test("studio without a draft says so instead of showing a stranger's deck", async ({ page }) => {
