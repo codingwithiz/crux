@@ -7,14 +7,14 @@
 Turn a story or a raw thought into a defensible opinion — then a studio-grade social carousel in your voice.
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
-[![CI](https://github.com/codingwithiz/Agentic-Conviction-Content-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/codingwithiz/Agentic-Conviction-Content-Engine/actions/workflows/ci.yml)
+[![CI](https://github.com/codingwithiz/crux/actions/workflows/ci.yml/badge.svg)](https://github.com/codingwithiz/crux/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![AI SDK](https://img.shields.io/badge/AI%20SDK-v6-000)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcodingwithiz%2FAgentic-Conviction-Content-Engine&root-directory=web&project-name=crux&repository-name=crux&env=OPENAI_API_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,CRON_SECRET&envDescription=An%20AI%20provider%20key%2C%20your%20Supabase%20project%2C%20and%20a%20random%20string%20for%20CRON_SECRET)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcodingwithiz%2Fcrux&root-directory=web&project-name=crux&repository-name=crux&env=OPENAI_API_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,CRON_SECRET&envDescription=An%20AI%20provider%20key%2C%20your%20Supabase%20project%2C%20and%20a%20random%20string%20for%20CRON_SECRET)
 
 ![Crux](docs/landing.png)
 
