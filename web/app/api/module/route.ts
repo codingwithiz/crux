@@ -42,9 +42,11 @@ export async function POST(req: Request) {
       caller,
       prompt: `SLIDE:\nkicker: ${kicker ?? ""}\nheadline: ${headline ?? ""}\nbody: ${body ?? ""}\n\nFill a "${type}" module with concrete, specific data drawn from this slide. The module "type" must be "${type}". Use real, meaningful labels — no "point 1"/"step 1" placeholders.`,
     });
-    const module = normalizeModule({ ...raw, type: type as ModuleType });
-    if (!module) return Response.json({ error: "empty" }, { status: 422 });
-    return Response.json({ module });
+    // Not named `module`: assigning that identifier shadows the bundler's own
+    // module object, which Next flags as an error rather than a style note.
+    const filled = normalizeModule({ ...raw, type: type as ModuleType });
+    if (!filled) return Response.json({ error: "empty" }, { status: 422 });
+    return Response.json({ module: filled });
   } catch (e) {
     return fail(caller, (e as Error).message ?? "module_failed", 500);
   }

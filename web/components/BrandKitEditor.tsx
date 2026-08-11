@@ -10,11 +10,16 @@ export function BrandKitEditor() {
   const [handle, setHandle] = useState("@you");
   const [name, setName] = useState("");
 
+  // Seeded after mount on purpose: the brand kit lives in localStorage, which
+  // the server can't read. Initialising from it during render would make the
+  // server and client first paints disagree — a hydration error, not a nicety.
+  /* eslint-disable react-hooks/set-state-in-effect -- see note above */
   useEffect(() => {
     const b = getBrandKit();
     setHandle(b.handle);
     setName(b.name ?? "");
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function save() {
     const next = { handle: normalizeHandle(handle), name: name.trim() || undefined };

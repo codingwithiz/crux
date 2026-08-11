@@ -37,6 +37,9 @@ export function MicButton({ onText }: { onText: (t: string) => void }) {
     onTextRef.current = onText;
   }, [onText]);
 
+  // Feature detection can only happen on the client — the server has no
+  // SpeechRecognition to detect, so this cannot be a render-time initialiser.
+  /* eslint-disable react-hooks/set-state-in-effect -- see note above */
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: SRCtor; webkitSpeechRecognition?: SRCtor };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
@@ -63,6 +66,7 @@ export function MicButton({ onText }: { onText: (t: string) => void }) {
       }
     };
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!supported) return null;
 

@@ -24,9 +24,13 @@ export function SettingsButton() {
   const [tier, setTier] = useState<Tier>("balanced");
   const [status, setStatus] = useState<ProviderStatus | null>(null);
 
+  // localStorage again: read after hydration so the first paint matches the
+  // server's.
+  /* eslint-disable react-hooks/set-state-in-effect -- see note above */
   useEffect(() => {
     setTier(getSettings().tier ?? "balanced");
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     fetch("/api/providers")

@@ -291,6 +291,10 @@ export function ConvictionFlow({
   // Mount: resume a saved in-progress conviction if one matches this flow;
   // otherwise kick off the news auto-synthesis. One effect so there's no race
   // between restoring and auto-running.
+  // Restoring a saved flow is inherently post-hydration work: the session lives
+  // in localStorage, and seeding from it during render would make the server's
+  // markup disagree with the client's.
+  /* eslint-disable react-hooks/set-state-in-effect -- see note above */
   useEffect(() => {
     const saved = loadFlow();
     if (flowMatches(saved, mode, sourceTitle)) {
@@ -322,6 +326,7 @@ export function ConvictionFlow({
     hydrated.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Persist progress on every change so a refresh/crash resumes here.
   useEffect(() => {

@@ -22,6 +22,9 @@ export function CommandPalette() {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
+  // The standard "we are past hydration" flag: the palette portals into
+  // document.body, which only exists on the client.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {

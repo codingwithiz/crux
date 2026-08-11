@@ -69,13 +69,17 @@ export function LedgerView() {
   const cal = useMemo(() => calibration(items ?? []), [items]);
   // Re-surface convictions committed a while ago that still have no recorded
   // outcome — the nudge that closes the calibration loop.
+  // `now` is read once per mount rather than inside the memo: calling Date.now()
+  // during render means the same inputs can yield different output, which is the
+  // definition of an impure render.
+  const [now] = useState(() => Date.now());
   const due = useMemo(() => {
-    const cutoff = Date.now() - 14 * 86400000;
+    const cutoff = now - 14 * 86400000;
     return (items ?? [])
       .filter((t) => t.status === "active" && !t.outcome && new Date(t.createdAt).getTime() < cutoff)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       .slice(0, 5);
-  }, [items]);
+  }, [items, now]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (items ?? []).filter((t) => {
