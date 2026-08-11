@@ -8,6 +8,7 @@ import { getSettings, SETTINGS_EVENT } from "@/lib/settings";
 import { addThesis, removeThesis } from "@/lib/ledger";
 import { expressSlides, explainerFromSynthesis } from "@/lib/express-client";
 import { saveDraft } from "@/lib/draft";
+import { DEFAULT_SLIDE_SIZE } from "@/lib/carousel/size";
 import { getBrandKit } from "@/lib/brand-kit";
 import { INSPIRATION } from "@/lib/inspiration";
 import { findRelated, type RelatedThesis } from "@/lib/related";
@@ -424,7 +425,7 @@ export function ConvictionFlow({
       const { slides, designId, format } = await explainerFromSynthesis(synthesis, sourceTitle, handle);
       // Carry what this was made from, so the Studio can offer another version.
       saveDraft({
-        slides,
+        slides: slides.map((sl) => ({ ...sl, size: DEFAULT_SLIDE_SIZE })),
         handle,
         designId,
         context: { mode: "explain", synthesis, sourceTitle, format },
@@ -519,7 +520,7 @@ export function ConvictionFlow({
       const handle = getBrandKit().handle;
       const { slides, designId, format } = await expressSlides(thesis, handle);
       saveDraft({
-        slides,
+        slides: slides.map((sl) => ({ ...sl, size: DEFAULT_SLIDE_SIZE })),
         handle,
         designId,
         context: { mode: "express", thesis, synthesis: thesis.synthesis, sourceTitle, format },

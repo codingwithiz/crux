@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { SlideCanvas } from "@/components/carousel/SlideCanvas";
 import { DESIGNS, getDesign, type CarouselSlide } from "@/lib/carousel/design";
+import { slideDims, type SlideSize } from "@/lib/carousel/size";
+
+const SIZE: SlideSize = "square";
 
 /**
  * The hero's proof: a real carousel, rendered by the same component the product
@@ -39,7 +42,8 @@ export function LandingDemo({ width = 300 }: { width?: number }) {
     return () => clearInterval(t);
   }, [paused]);
 
-  const scale = width / 1080;
+  const dims = slideDims(SIZE);
+  const scale = width / dims.w;
   const design = getDesign(CYCLE[i]);
 
   return (
@@ -50,7 +54,7 @@ export function LandingDemo({ width = 300 }: { width?: number }) {
     >
       <div
         className="overflow-hidden rounded-xl ring-1 ring-line shadow-[0_30px_60px_-30px_rgba(0,0,0,0.9)]"
-        style={{ width, height: 1350 * scale }}
+        style={{ width, height: dims.h * scale }}
       >
         {/* The fade lives on a wrapper, never on the scaled element: ce-fade-up
             animates `transform`, and a running animation overrides an inline
@@ -58,9 +62,9 @@ export function LandingDemo({ width = 300 }: { width?: number }) {
             inside a 300px frame, i.e. a blank cream rectangle. */}
         <div key={CYCLE[i]} className="ce-fade-up">
           <div
-            style={{ width: 1080, height: 1350, transform: `scale(${scale})`, transformOrigin: "top left" }}
+            style={{ width: dims.w, height: dims.h, transform: `scale(${scale})`, transformOrigin: "top left" }}
           >
-            <SlideCanvas slide={SLIDE} design={design} index={0} total={7} handle="@you" />
+            <SlideCanvas slide={SLIDE} design={design} index={0} total={7} handle="@you" size={SIZE} />
           </div>
         </div>
       </div>

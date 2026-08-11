@@ -10,6 +10,7 @@ import { ProgressSteps } from "@/components/ProgressSteps";
 import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
 import { ledgerStats, calibration } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
+import { DEFAULT_SLIDE_SIZE } from "@/lib/carousel/size";
 import { expressSlides } from "@/lib/express-client";
 import { getBrandKit } from "@/lib/brand-kit";
 import { saveFlow, parkedToFlow } from "@/lib/flow-session";
@@ -97,7 +98,7 @@ export function LedgerView() {
       const handle = getBrandKit().handle;
       const { slides, designId, format } = await expressSlides(t, handle);
       saveDraft({
-        slides,
+        slides: slides.map((sl) => ({ ...sl, size: DEFAULT_SLIDE_SIZE })),
         handle,
         designId,
         context: { mode: "express", thesis: t, synthesis: t.synthesis, sourceTitle: t.source?.title, format },

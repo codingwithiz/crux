@@ -68,20 +68,21 @@ body {
 /* Paper grain over the whole app, the same treatment the slides carry.
    A tiled SVG turbulence as a data URI: no element, no extra DOM, no repaint
    cost — and it survives the export path untouched because it never touches it. */
+/* Behind the content, above the background — a negative z-index, NOT a positive
+   one on every child. Lifting `body > *` to z-index 1 also set them
+   `position: relative`, and every dialog in the app portals to document.body:
+   that silently overrode `position: fixed` and dropped modals, the command
+   palette and their full-width backdrops into the page flow, halfway down the
+   document. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   opacity: 0.035;
   mix-blend-mode: screen;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-/* Everything the app renders sits above the grain. */
-body > * {
-  position: relative;
-  z-index: 1;
 }
 
 ::selection {
@@ -244,6 +245,26 @@ body > * {
 .ce-stagger {
   animation: ce-fade-up 0.42s ease both;
   animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Horizontally scrolling strips (the Studio's slide thumbnails).
+   The default 10px scrollbar sat directly under the selected thumbnail's amber
+   ring, reading as a stray yellow-then-grey line ruled across the page. Thin,
+   dim, and clear of the ring. */
+.ce-strip::-webkit-scrollbar {
+  height: 6px;
+}
+.ce-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ce-strip::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border: none;
+  border-radius: 999px;
+}
+.ce-strip {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
 }
 
 /* Command palette (cmdk) group headings. */
