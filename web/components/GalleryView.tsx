@@ -103,7 +103,7 @@ export function GalleryView() {
     );
   if (err)
     return (
-      <div className="rounded-surface border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+      <div className="rounded-surface border border-warning/40 bg-warning/10 p-4 text-small text-warning">
         Couldn&rsquo;t load your carousels. Anything saved on this device is still safe — try
         reloading, or sign in again if the problem sticks.
       </div>
@@ -112,8 +112,8 @@ export function GalleryView() {
     return (
       <EmptyState
         icon={Images}
-        title="No carousels yet"
-        description="Turn a take you've saved into a studio-grade carousel — saved decks land here, ready to re-open and export."
+        title="Your Library is quiet."
+        description="Every take you save can become a carousel, export-ready, in your voice. Make one and it lands here."
         cta={{ href: "/studio", label: "Open the Studio" }}
       />
     );
@@ -156,17 +156,17 @@ export function GalleryView() {
                 ) : null}
               </div>
               <div className="flex min-w-0 flex-1 flex-col">
-                <p className="truncate text-sm font-medium">{c.title || "Untitled"}</p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="truncate text-small font-medium">{c.title || "Untitled"}</p>
+                <p className="mt-1 text-micro text-muted">
                   {c.slides.length} slides · {new Date(c.createdAt).toLocaleDateString()}
                 </p>
                 <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                  <Link href={`/studio?c=${c.id}`} className="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110">Open</Link>
-                  <button onClick={() => downloadZip(c)} disabled={busy} className="rounded-control border border-line px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50">.zip</button>
+                  <Link href={`/studio?c=${c.id}`} className="rounded-control bg-accent px-3 py-1.5 text-micro font-medium text-accent-fg hover:brightness-110">Open</Link>
+                  <button onClick={() => downloadZip(c)} disabled={busy} className="rounded-control border border-line px-3 py-1.5 text-micro hover:bg-surface disabled:opacity-50">.zip</button>
                   <button
                     onClick={() => void del(c.id)}
                     onBlur={() => confirmDelete === c.id && setConfirmDelete(null)}
-                    className={`rounded-control border px-3 py-1.5 text-xs transition ${
+                    className={`rounded-control border px-3 py-1.5 text-micro transition ${
                       confirmDelete === c.id
                         ? "border-danger/60 text-danger"
                         : "border-line text-muted hover:text-danger"

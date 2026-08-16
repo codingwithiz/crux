@@ -32,34 +32,34 @@ export function BrandKitEditor() {
     <div className="rounded-surface border border-line bg-surface/40 p-5">
       <div className="flex items-center gap-2">
         <AtSign className="h-4 w-4 text-accent" />
-        <h2 className="text-base font-semibold">Brand kit</h2>
+        <h2 className="text-body font-semibold">Brand kit</h2>
       </div>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-small text-muted">
         Your handle is stamped on every carousel footer. Set it once and it applies everywhere.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted">Handle</span>
+          <span className="text-micro font-medium uppercase tracking-wide text-muted">Handle</span>
           <input
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
             placeholder="@yourname"
-            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-small outline-none focus:border-accent"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted">Display name (optional)</span>
+          <span className="text-micro font-medium uppercase tracking-wide text-muted">Display name (optional)</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your Name"
-            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-small outline-none focus:border-accent"
           />
         </label>
       </div>
       <button
         onClick={save}
-        className="ce-press mt-4 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+        className="ce-press mt-4 rounded-control bg-accent px-4 py-2 text-small font-medium text-accent-fg hover:brightness-110"
       >
         Save brand kit
       </button>

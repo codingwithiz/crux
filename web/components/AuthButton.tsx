@@ -56,7 +56,7 @@ export function AuthButton() {
           setEmail(null);
           router.refresh();
         }}
-        className="ml-1 rounded-control border border-line px-3 py-1.5 text-sm text-muted transition hover:bg-surface hover:text-fg"
+        className="ml-1 rounded-control px-3 py-1.5 text-small text-muted transition duration-(--dur-fast) ease-out hover:bg-surface hover:text-fg"
         title={email}
       >
         {email.split("@")[0]} · sign out
@@ -67,7 +67,7 @@ export function AuthButton() {
   return (
     <Link
       href="/login"
-      className="ml-1 rounded-control border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
+      className="ml-1 rounded-control px-3 py-1.5 text-small text-fg transition duration-(--dur-fast) ease-out hover:bg-surface"
     >
       Sign in
     </Link>

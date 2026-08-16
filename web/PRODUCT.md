@@ -25,7 +25,7 @@ Turn a story or a raw thought into a defensible opinion the user owns, then rend
 
 The value chain the product is built around: Information → Understanding → Insight → **Opinion** → Content. Every other tool automates the first step and the last. Crux protects the middle.
 
-Success is not posts generated. Success is: a user has a track record of opinions with recorded confidence, scored against what actually happened, that gets more valuable the longer they use it.
+Success is not posts generated. Success is: a user has a Ledger of opinions with recorded confidence, scored against what actually happened, that gets more valuable the longer they use it.
 
 ## Positioning
 
@@ -53,7 +53,7 @@ Three ways out of the middle of the flow, all real product states: save understa
 - Twelve editorial carousel designs, ten narrative formats, ten visual module types.
 - The user picks a *thinking depth* (Speed / Balanced / Deep), never a vendor or a model id. Provider selection is server-side because only the server knows which keys exist.
 - No billing, no teams, no platform OAuth auto-publishing. Deliberate omissions, not backlog.
-- Terminology, used consistently in UI and code: a **take** (a committed opinion) lives in the **track record**; a **breakdown** is the grounded synthesis; **receipts** are the verified quotes; a **deck** is the carousel; **Coach** helps you find a view, **Spar** attacks the one you have.
+- Terminology, used consistently in UI and code: a **take** (a committed opinion) lives in the **Ledger**; a **breakdown** is the grounded synthesis; **receipts** are the verified quotes; a **deck** is the carousel; **Coach** helps you find a view, **Spar** attacks the one you have.
 
 ## Brand Commitments
 
@@ -78,7 +78,7 @@ Real, and safe to cite:
 1. **The opinion is the user's, always.** The AI reads, argues, and designs. It does not conclude. A feature that hands the user a conclusion is off-strategy no matter how well it performs.
 2. **Measured, not asserted.** Any claim the product makes about itself must be backed by something checkable, and the check should be visible in the product, not just the README.
 3. **Reading is free; thinking is the commitment.** Opening or expanding anything costs nothing and calls no model. The user chooses when work happens.
-4. **The track record is the moat.** Prefer whatever makes saved takes accumulate, connect, and get scored over whatever produces more output.
+4. **The Ledger is the moat.** Prefer whatever makes saved takes accumulate, connect, and get scored over whatever produces more output.
 5. **One decision per screen.** Every surface should make it obvious what the single next thing is.
 
 ## Accessibility & Inclusion

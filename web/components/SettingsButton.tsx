@@ -56,7 +56,9 @@ export function SettingsButton() {
         // The visible text is the current tier, which alone doesn't say what it
         // controls — so the accessible name carries the subject as well.
         aria-label={`Thinking depth: ${label}`}
-        className="ml-1 rounded-control border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
+        // Unbordered: §9 puts settings in the secondary group, and a bordered
+        // pill made the quietest control in the header the loudest thing in it.
+        className="ml-1 rounded-control px-3 py-1.5 text-small text-muted transition duration-(--dur-fast) ease-out hover:bg-surface hover:text-fg"
       >
         <span
           className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-success" : "bg-accent"}`}

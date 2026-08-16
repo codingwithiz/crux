@@ -25,7 +25,13 @@ const LABEL: Record<Confidence, string> = { low: "Low", med: "Med", high: "High"
 const PAD_L = 22;
 const PAD_B = 10;
 const SIZE = 100;
-const AXIS_TYPE = 4.5;
+// It was the quietest element on the Ledger scorecard — hairline strokes and
+// axis type effectively ~8.6px next to a 44px accuracy numeral and four
+// bordered stat tiles. §10 calls this "the one picture this product is
+// actually about"; the tiles are gone (LedgerView now gives it its own
+// section) and the drawing itself is heavier: bigger box, thicker lines,
+// larger axis type, a bigger dot.
+const AXIS_TYPE = 5.5;
 const x = (p: number) => PAD_L + p * (SIZE - PAD_L);
 const y = (p: number) => (1 - p) * (SIZE - PAD_B);
 
@@ -46,10 +52,10 @@ export function CalibrationChart({
   return (
     // Chart and finding side by side once there is room: the sentence is the
     // point, and stacked under a square plot it fell below the fold.
-    <figure className="m-0 flex flex-col gap-4 sm:flex-row sm:items-start">
+    <figure className="m-0 flex flex-col gap-5 sm:flex-row sm:items-start">
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        className="h-48 w-48 shrink-0"
+        className="h-56 w-56 shrink-0 sm:h-64 sm:w-64"
         role="img"
         aria-label={
           points.length
@@ -66,13 +72,13 @@ export function CalibrationChart({
           x2={x(1)}
           y2={y(1)}
           stroke="var(--color-line)"
-          strokeWidth="0.6"
-          strokeDasharray="2 2"
+          strokeWidth="0.9"
+          strokeDasharray="2.5 2.5"
         />
         {/* Axis rules, drawn rather than boxed: a full frame would read as a
             panel inside a panel. */}
-        <line x1={x(0)} y1={y(0)} x2={x(1)} y2={y(0)} stroke="var(--color-line)" strokeWidth="0.6" />
-        <line x1={x(0)} y1={y(0)} x2={x(0)} y2={y(1)} stroke="var(--color-line)" strokeWidth="0.6" />
+        <line x1={x(0)} y1={y(0)} x2={x(1)} y2={y(0)} stroke="var(--color-line)" strokeWidth="0.9" />
+        <line x1={x(0)} y1={y(0)} x2={x(0)} y2={y(1)} stroke="var(--color-line)" strokeWidth="0.9" />
 
         {BANDS.map((b) => (
           <text
@@ -111,8 +117,8 @@ export function CalibrationChart({
             x2={x(p.stated)}
             y2={y(p.stated)}
             stroke="var(--color-accent)"
-            strokeWidth="0.6"
-            opacity={0.35}
+            strokeWidth="0.9"
+            opacity={0.4}
           />
         ))}
         {points.map((p) => (
@@ -122,15 +128,15 @@ export function CalibrationChart({
             cy={y(p.actual)}
             // Area, not radius, tracks sample size — a band resolved four times
             // should not look four times as certain.
-            r={2.4 + Math.min(Math.sqrt(p.n), 3)}
+            r={3 + Math.min(Math.sqrt(p.n), 3.6)}
             fill="var(--color-accent)"
             stroke="var(--color-ink)"
-            strokeWidth="0.8"
+            strokeWidth="1"
           />
         ))}
       </svg>
 
-      <figcaption className="text-sm sm:pt-2">
+      <figcaption className="text-small sm:pt-2">
         {verdict ? (
           <>
             <span className="text-fg">{verdictSentence(verdict)}</span>{" "}

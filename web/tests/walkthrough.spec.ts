@@ -256,7 +256,7 @@ test("the whole journey", async ({ page }) => {
   await page.waitForTimeout(1200);
   await shot(page, "gallery", { fullPage: true });
 
-  // ================= TRACK RECORD =================
+  // ================= LEDGER =================
   await page.goto("/ledger", { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
   await shot(page, "ledger-new-take", { fullPage: true });

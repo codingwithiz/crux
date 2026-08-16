@@ -159,7 +159,7 @@ export function VoiceEditor() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-surface border border-line bg-surface/40 p-4 text-sm">
+      <div className="rounded-surface border border-line bg-surface/40 p-4 text-small">
         <p className="font-medium">
           {isDefault ? "Using the built-in default voice" : "Using your saved voice"}
         </p>
@@ -171,14 +171,14 @@ export function VoiceEditor() {
       </div>
 
       <div>
-        <label className="text-sm font-medium">Start from a preset</label>
+        <label className="text-small font-medium">Start from a preset</label>
         <div className="mt-2 flex flex-wrap gap-2">
           {VOICE_PRESETS.map((p) => (
             <button
               key={p.id}
               onClick={() => applyPreset(p)}
               title={p.blurb}
-              className="rounded-control border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+              className="rounded-control border border-line px-3 py-1.5 text-micro text-muted transition hover:bg-surface hover:text-fg"
             >
               {p.name}
             </button>
@@ -188,8 +188,8 @@ export function VoiceEditor() {
 
       <div>
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">Your writing samples</label>
-          <button onClick={addSample} className="text-xs text-accent hover:underline">
+          <label className="text-small font-medium">Your writing samples</label>
+          <button onClick={addSample} className="text-micro text-accent hover:underline">
             + Add sample
           </button>
         </div>
@@ -201,11 +201,11 @@ export function VoiceEditor() {
                 onChange={(e) => setSample(i, e.target.value)}
                 rows={4}
                 placeholder="Paste one of your posts here…"
-                className="w-full resize-y rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+                className="w-full resize-y rounded-control border border-line bg-ink px-3 py-2 text-small outline-none focus:border-accent"
               />
               <button
                 onClick={() => removeSample(i)}
-                className="absolute right-2 top-2 rounded px-2 py-0.5 text-xs text-muted hover:text-danger"
+                className="absolute right-2 top-2 rounded px-2 py-0.5 text-micro text-muted hover:text-danger"
                 title="Remove"
               >
                 ✕
@@ -219,21 +219,21 @@ export function VoiceEditor() {
         <button
           onClick={distill}
           disabled={busy}
-          className="rounded-control border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+          className="rounded-control border border-line px-4 py-2 text-small hover:bg-surface disabled:opacity-50"
         >
           {busy ? "Working…" : "Distill voice guide with AI"}
         </button>
         <button
           onClick={resetToDefault}
-          className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
+          className="text-micro text-muted underline-offset-4 hover:text-fg hover:underline"
         >
           Load the built-in default
         </button>
       </div>
 
       <div>
-        <label className="text-sm font-medium">Topics you follow</label>
-        <p className="text-xs text-muted">
+        <label className="text-small font-medium">Topics you follow</label>
+        <p className="text-micro text-muted">
           Crux goes and fetches these for you — they appear in their own section on Explore and can
           become your daily pick. Saved as soon as you add one.
         </p>
@@ -249,12 +249,12 @@ export function VoiceEditor() {
             }}
             placeholder="agents, evals, robotics…"
             aria-label="Add an interest"
-            className="w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-control border border-line bg-ink px-3 py-2 text-small outline-none focus:border-accent"
           />
           <button
             onClick={addInterest}
             disabled={!interestDraft.trim()}
-            className="shrink-0 rounded-control border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+            className="shrink-0 rounded-control border border-line px-4 py-2 text-small hover:bg-surface disabled:opacity-50"
           >
             Add
           </button>
@@ -266,7 +266,7 @@ export function VoiceEditor() {
                 key={k}
                 onClick={() => void persistInterests(interests.filter((x) => x !== k))}
                 title={`Remove ${k}`}
-                className="rounded-control border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-danger/60 hover:text-danger"
+                className="rounded-control border border-accent bg-accent/10 px-3 py-1.5 text-micro text-fg transition hover:border-danger/60 hover:text-danger"
               >
                 {k} <span aria-hidden>×</span>
               </button>
@@ -276,8 +276,8 @@ export function VoiceEditor() {
       </div>
 
       <div>
-        <label className="text-sm font-medium">Voice guide</label>
-        <p className="text-xs text-muted">
+        <label className="text-small font-medium">Voice guide</label>
+        <p className="text-micro text-muted">
           The distilled style the Expressor follows. Edit freely — this is what actually steers the
           writing.
         </p>
@@ -286,21 +286,21 @@ export function VoiceEditor() {
           onChange={(e) => setGuide(e.target.value)}
           rows={10}
           placeholder="Distill from your samples, or write your own style notes here…"
-          className="mt-2 w-full resize-y rounded-control border border-line bg-ink px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+          className="mt-2 w-full resize-y rounded-control border border-line bg-ink px-3 py-2 font-mono text-micro outline-none focus:border-accent"
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium">Tone (optional)</label>
+          <label className="text-small font-medium">Tone (optional)</label>
           <input
             value={tone}
             onChange={(e) => setTone(e.target.value)}
             placeholder="energetic, concrete, humble-confident"
-            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-small outline-none focus:border-accent"
           />
         </div>
-        <label className="flex cursor-pointer items-center gap-2 self-end pb-2 text-sm">
+        <label className="flex cursor-pointer items-center gap-2 self-end pb-2 text-small">
           <input type="checkbox" checked={emoji} onChange={(e) => setEmoji(e.target.checked)} />
           Allow tasteful emojis
         </label>
@@ -310,11 +310,11 @@ export function VoiceEditor() {
         <button
           onClick={save}
           disabled={busy}
-          className="rounded-control bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+          className="rounded-control bg-accent px-5 py-2.5 text-small font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save"}
         </button>
-        {msg && <span className="text-sm text-cool">{msg}</span>}
+        {msg && <span className="text-small text-cool">{msg}</span>}
       </div>
     </div>
   );

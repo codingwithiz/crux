@@ -19,7 +19,7 @@ export default function NotFound() {
           ["/today", "Today"],
           ["/explore", "Explore"],
           ["/think", "Think"],
-          ["/ledger", "Track record"],
+          ["/ledger", "Ledger"],
           ["/guide", "How it works"],
         ].map(([href, label]) => (
           <Link

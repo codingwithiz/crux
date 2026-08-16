@@ -14,6 +14,7 @@ import { WhyThis } from "@/components/WhyThis";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Plate, PlateLabel } from "@/components/ui/Plate";
+import { Section } from "@/components/ui/Section";
 import { Mark } from "@/components/ui/Ink";
 import type { NewsItem, Thesis } from "@/lib/types";
 
@@ -112,6 +113,12 @@ export function TodayView() {
     return active.length ? active[active.length - 1] : null;
   }, [ledger]);
   const parked = useMemo(() => (ledger ?? []).filter((t) => t.status === "draft"), [ledger]);
+  // Active and never scored — the calibration ledger only compounds once these
+  // get an outcome, so this is what "unresolved" means in §10's phrasing.
+  const unresolved = useMemo(
+    () => (ledger ?? []).filter((t) => t.status === "active" && !t.outcome).length,
+    [ledger],
+  );
 
   function resumeParked(t: Thesis) {
     saveFlow(parkedToFlow(t));
@@ -128,13 +135,15 @@ export function TodayView() {
       <div>
         <button
           onClick={() => setStarted(false)}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"
+          className="mb-4 inline-flex items-center gap-1.5 text-small text-muted hover:text-fg"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Today
         </button>
-        <div className="mb-5 rounded-control border border-line bg-surface/40 p-3">
-          <span className="font-mono text-xs text-accent">{SOURCE_LABELS[pick.source]}</span>
-          <p className="mt-1 text-sm font-medium">{pick.title}</p>
+        <div className="mb-6 border-b border-line pb-4">
+          <span className="font-mono text-micro uppercase tracking-eyebrow text-accent">
+            {SOURCE_LABELS[pick.source]}
+          </span>
+          <p className="mt-1 text-small font-medium text-fg">{pick.title}</p>
         </div>
         <ConvictionFlow
           mode="news"
@@ -153,22 +162,28 @@ export function TodayView() {
   });
 
   return (
-    <div className="space-y-6">
+    <div>
+      {/* Welcome. The one banner on this page that is chrome rather than
+          content — a one-time onboarding nudge, not a record of anything —
+          so it alone keeps the tinted callout box. It used to share the exact
+          border/background recipe with Revisit below, which made an
+          onboarding prompt and a record of your own past thinking read as the
+          same kind of object. */}
       {ledger && stats.total === 0 && (
         <div className="rounded-surface border border-cool/40 bg-cool/5 p-5">
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">Welcome</p>
-          <h2 className="mt-1 text-lg font-semibold">Your first take, in three steps</h2>
+          <p className="font-mono text-micro uppercase tracking-eyebrow text-cool">Welcome</p>
+          <h2 className="mt-1 text-lead font-serif font-semibold">Your first take, in three steps</h2>
           {/* Each step names the button you'll actually press and says what it
               does. The old list used the app's vocabulary as if you already had
               it — and nothing anywhere taught it. */}
-          <ol className="mt-3 space-y-2.5 text-sm">
+          <ol className="mt-3 space-y-2.5 text-small">
             {[
               ["Break it down", "Pick a story or paste a link. Crux reads the real page and tells you what's actually new."],
               ["Talk it through", "Optional. A sparring partner pushes back until your take holds up. It never writes it for you."],
-              ["Save my take", "Your take lands in your track record — and becomes a carousel in your voice."],
+              ["Save my take", "Your take lands in your Ledger — and becomes a carousel in your voice."],
             ].map(([verb, what], i) => (
               <li key={i} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cool/40 bg-cool/10 text-xs font-semibold text-cool">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cool/40 bg-cool/10 text-micro font-semibold text-cool">
                   {i + 1}
                 </span>
                 <span className="text-muted">
@@ -180,11 +195,11 @@ export function TodayView() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/think"
-              className="ce-press inline-flex items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+              className="ce-press inline-flex items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-small font-medium text-accent-fg transition duration-(--dur-fast) ease-out hover:brightness-110"
             >
               Start now
             </Link>
-            <Link href="/guide" className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
+            <Link href="/guide" className="text-small text-muted underline-offset-4 hover:text-fg hover:underline">
               or read the 2-minute guide
             </Link>
           </div>
@@ -192,58 +207,53 @@ export function TodayView() {
       )}
 
       {parked.length > 0 && (
-        <div className="rounded-surface border border-line bg-surface/40 p-5">
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-muted">Continue where you left off</p>
-          <ul className="mt-3 space-y-2">
-            {parked.map((t) => (
+        <Section label="Continue where you left off" className={ledger && stats.total === 0 ? "mt-8" : "border-t-0 pt-0"}>
+          <ul>
+            {parked.map((t, i) => (
               <li
                 key={t.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-line bg-ink/40 px-4 py-3"
+                className={`flex flex-wrap items-center justify-between gap-3 py-3.5 ${i > 0 ? "border-t border-line" : ""}`}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-fg">{t.topic}</p>
-                  <p className="mt-0.5 text-xs text-muted">
+                  <p className="truncate text-small font-medium text-fg">{t.topic}</p>
+                  <p className="mt-0.5 text-micro text-muted">
                     Saved {new Date(t.createdAt).toLocaleDateString()}
                     {t.synthesis?.grounded ? " · grounded in the source" : ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={() => resumeParked(t)}
-                    className="ce-press inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110"
-                  >
+                  <Button size="sm" variant="primary" onClick={() => resumeParked(t)}>
                     <BookOpen className="h-4 w-4" /> Continue
-                  </button>
-                  <button
-                    onClick={() => void discardParked(t)}
-                    className="rounded-control px-3 py-1.5 text-sm text-muted hover:text-fg"
-                  >
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => void discardParked(t)}>
                     Discard
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}
           </ul>
-        </div>
+        </Section>
       )}
 
       {/* Masthead. The streak is a chip beside the date, not a boxed number —
           it was styled as the loudest thing on the page while the one item you
-          came here to read sat fifth, below the fold. */}
-      <div>
+          came here to read sat fifth, below the fold. Given its own top margin
+          rather than riding the page's uniform rhythm, since it opens the page
+          and everything below it is subordinate to the pick. */}
+      <div className={parked.length > 0 || (ledger && stats.total === 0) ? "mt-10" : ""}>
         <div className="flex flex-wrap items-center gap-3">
           {/* Date is formatted in the user's locale/timezone, which the server
               can't match — suppress the expected hydration diff. */}
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-accent" suppressHydrationWarning>
+          <p className="font-mono text-micro uppercase tracking-eyebrow text-accent" suppressHydrationWarning>
             {dateLabel}
           </p>
           {streak > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">
+            <span className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-micro text-muted">
               <Flame className="h-3.5 w-3.5 text-accent" /> {streak}-day streak
             </span>
           )}
           {doneToday && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2.5 py-0.5 text-xs text-success">
+            <span className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2.5 py-0.5 text-micro text-success">
               <Check className="h-3.5 w-3.5" /> saved today
             </span>
           )}
@@ -259,9 +269,11 @@ export function TodayView() {
       {/* Today's pick. The single decision this page exists to put in front of
           you, so it is the one paper object on the screen — everything else is
           ink and steps back. It used to be one accent-tinted card competing with
-          three stat tiles, a revisit card and three equal-weight ghost links. */}
+          three stat tiles, a revisit card and three equal-weight ghost links.
+          A larger gap above it than the page's other seams: this is the one
+          thing the page is for, not another section in a list of sections. */}
       {pick ? (
-        <Plate arrive className="sm:p-8">
+        <Plate arrive className="mt-8 sm:p-8">
           <PlateLabel>
             Today&rsquo;s pick · {SOURCE_LABELS[pick.source]}
             {pick.meta ? ` · ${pick.meta}` : ""}
@@ -270,7 +282,7 @@ export function TodayView() {
             {pick.title}
           </p>
           {pick.detail && (
-            <p className="ce-measure mt-3 text-sm leading-relaxed text-paper-muted">{pick.detail}</p>
+            <p className="ce-measure mt-3 text-small leading-relaxed text-paper-muted">{pick.detail}</p>
           )}
           <WhyThis why={pick.why} related={pick.related} viaInterest={pick.viaInterest} />
           <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -283,87 +295,70 @@ export function TodayView() {
               href={pick.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="ce-press inline-flex items-center rounded-control border border-paper-fg/20 px-4 py-2.5 text-sm text-paper-fg transition hover:bg-paper-fg/5"
+              className="ce-press inline-flex items-center rounded-control border border-paper-fg/20 px-4 py-2.5 text-small text-paper-fg transition duration-(--dur-fast) ease-out hover:bg-paper-fg/5"
             >
               Read source ↗
             </a>
             {candidates.length > 1 && (
               <button
                 onClick={() => setCursor((c) => (c + 1) % candidates.length)}
-                className="text-sm text-paper-muted underline-offset-4 hover:text-paper-fg hover:underline"
+                className="text-small text-paper-muted underline-offset-4 hover:text-paper-fg hover:underline"
               >
                 Show another
               </button>
             )}
           </div>
           {/* One line, once: the primary CTA is a verb nobody has met before. */}
-          <p className="mt-4 text-xs text-paper-muted">
+          <p className="mt-4 text-micro text-paper-muted">
             Breaking it down reads the real page and shows you what&rsquo;s actually new before you
             form a view.
           </p>
         </Plate>
       ) : (
-        <Card tone="accent" feature className="p-5 sm:p-6">
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">
+        <Card tone="accent" feature className="mt-8 p-5 sm:p-6">
+          <p className="font-mono text-micro uppercase tracking-eyebrow text-accent">
             Today&rsquo;s pick
           </p>
-          <p className="mt-2 text-sm text-muted">
-            Scanning sources… or jump straight in via the links below.
-          </p>
+          <p className="mt-2 text-small text-muted">Scanning sources…</p>
         </Card>
       )}
 
-      {/* Below the fold: your numbers, which matter but are not why you opened
-          this page. They used to sit above the pick. */}
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Takes" value={stats.total} />
-        <Stat label="This week" value={stats.thisWeek} accent />
-        <Stat label="Revised" value={stats.updated} />
-      </div>
+      {/* Your thinking. §10: a dashboard KPI row ("3 Takes / 0 This Week / 1
+          Revised") is the anti-pattern this page most directly warns against —
+          three bordered tiles, styled as loud as the pick itself. Editorial
+          language instead: metrics as a sentence supporting the story, not the
+          story. Hidden with nothing to report — the Welcome banner already
+          covers a first-time zero state. */}
+      {stats.total > 0 && (
+        <Section label="Your thinking" className="mt-10">
+          <p className="ce-tabular font-serif text-lead text-fg">
+            {stats.thisWeek} conviction{stats.thisWeek === 1 ? "" : "s"} this week
+          </p>
+          <p className="mt-1 text-small text-muted">
+            {stats.updated} revised · {unresolved} unresolved
+          </p>
+        </Section>
+      )}
 
-      {/* Revisit your thinking */}
+      {/* Revisit your thinking. Shares no chrome with Welcome above — this is a
+          record surfaced from the Ledger, not a nudge, so it reads as content:
+          a rule and a label, the same device the rest of the page uses, rather
+          than a second tinted callout box. */}
       {revisit && (
-        <div className="rounded-surface border border-cool/40 bg-cool/5 p-5">
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">Revisit your thinking</p>
-          <p className="mt-2 text-sm text-fg">{revisit.statement}</p>
-          <p className="mt-1 text-xs text-muted">
+        <Section label="Revisit your thinking" className="mt-10" labelClassName="text-cool">
+          <p className="ce-measure text-fg">{revisit.statement}</p>
+          <p className="mt-1.5 text-micro text-muted">
             Saved {new Date(revisit.createdAt).toLocaleDateString()} ·{" "}
             <span className="uppercase">{revisit.confidence}</span> confidence
           </p>
           <Link
             href="/ledger"
-            className="mt-3 inline-block text-sm text-cool underline-offset-4 hover:underline"
+            className="mt-3 inline-block text-small text-cool underline-offset-4 hover:underline"
           >
-            Does today change it? Update your track record →
+            Does today change it? Update your Ledger →
           </Link>
-        </div>
+        </Section>
       )}
-
-      {/* Quick links */}
-      <div className="flex flex-wrap gap-2 text-sm">
-        {[
-          ["/explore", "Explore what’s happening"],
-          ["/think", "Start from a thought"],
-          ["/ledger", "Your track record"],
-        ].map(([href, label]) => (
-          <Link
-            key={href}
-            href={href}
-            className="rounded-control border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
-          >
-            {label} →
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className="rounded-surface border border-line bg-surface/40 p-3">
-      <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-fg"}`}>{value}</p>
-      <p className="text-xs text-muted">{label}</p>
     </div>
   );
 }

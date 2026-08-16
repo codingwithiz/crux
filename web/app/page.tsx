@@ -27,7 +27,7 @@ const STEPS = [
  *  nothing else in this category has, and it used to be third. */
 const EDGES = [
   {
-    title: "A track record that scores itself",
+    title: "A Ledger that scores itself",
     body: "You say how sure you are, in odds. Later you record what actually happened, and Crux plots your confidence against reality. Every other tool in this category helps you publish; none of them tell you whether you were right.",
   },
   {

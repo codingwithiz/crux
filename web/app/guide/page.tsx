@@ -7,7 +7,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="ce-rule mt-10 pt-6">
       <h2 className="font-serif text-title font-semibold">{title}</h2>
-      <div className="ce-measure mt-3 space-y-3 text-sm leading-relaxed text-muted">{children}</div>
+      <div className="ce-measure mt-3 space-y-3 text-small leading-relaxed text-muted">{children}</div>
     </section>
   );
 }
@@ -29,7 +29,7 @@ const STEPS: [string, string][] = [
 const FAQ: [string, string][] = [
   ["Do I need my own API key?", "No. Every step runs on this deployment's own key — there is nothing to paste."],
   ["Why won't the AI just write my opinion?", "That's the whole point. A tool that hands you a finished take produces laundered slop. This one makes you think, then renders the view you saved."],
-  ["What is my track record?", "Every take you save, with how sure you were and how it turned out. Score enough of them and a chart plots your stated confidence against reality — the answer to \"were you right when you were confident?\""],
+  ["What is my Ledger?", "Every take you save, with how sure you were and how it turned out. Score enough of them and a chart plots your stated confidence against reality — the answer to \"were you right when you were confident?\""],
   ["How grounded is a breakdown?", "Paste a link — or pick a story from the feed — and Crux fetches the real page text and works only from it. Each quote in receipts is checked word-for-word against that text and marked verified or unverified. A badge tells you when a breakdown is grounded in a real page versus drawn from the model's memory."],
   ["Can I redo a carousel I don't like?", "Yes. In the Studio you can rewrite the whole deck in your voice, regenerate a single slide, restyle it across 12 designs, edit any text directly, and reorder or delete slides."],
 ];
@@ -42,7 +42,7 @@ export default function GuidePage() {
         lead="It doesn't write your posts — it walks you from raw information to a defensible opinion you own, then renders it as a carousel."
       />
 
-      <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+      <div className="flex flex-wrap items-center gap-2 font-mono text-micro">
         {["Information", "Understanding", "Insight", "Opinion", "Content"].map((s, i) => (
           <span key={s} className="flex items-center gap-2">
             <span className={`rounded-control px-2 py-1 ${i === 3 ? "bg-accent text-accent-fg" : "bg-surface text-fg"}`}>
@@ -79,8 +79,8 @@ export default function GuidePage() {
           <li><span className="text-fg">Think</span> — start from your own rough opinion, or paste a link.</li>
           <li><span className="text-fg">Studio</span> — the carousel editor: 12 designs, 4 slide layouts, 10 data-visual modules, rewrite in your voice, copy the caption, export PNGs, a ZIP, or a PDF.</li>
           <li><span className="text-fg">Library</span> — your saved decks.</li>
-          <li><span className="text-fg">Track record</span> — every take you&rsquo;ve saved, and the calibration chart that scores them.</li>
-          <li><span className="text-fg">You</span> — the topics you follow, and the voice your carousels are written in.</li>
+          <li><span className="text-fg">Ledger</span> — every take you&rsquo;ve saved, and the calibration chart that scores them.</li>
+          <li><span className="text-fg">Voice</span> — the topics you follow, and the voice your carousels are written in.</li>
         </ul>
       </Section>
 
@@ -98,7 +98,7 @@ export default function GuidePage() {
       <div className="mt-10">
         <Link
           href="/today"
-          className="ce-press inline-flex items-center gap-2 rounded-control bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg shadow-press transition duration-(--dur-fast) ease-out hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+          className="ce-press inline-flex items-center gap-2 rounded-control bg-accent px-5 py-2.5 text-small font-medium text-accent-fg shadow-press transition duration-(--dur-fast) ease-out hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
         >
           Start — write today&rsquo;s take →
         </Link>

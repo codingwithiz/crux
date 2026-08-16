@@ -21,6 +21,7 @@ import { WhyThis } from "@/components/WhyThis";
 import { ProgressSteps } from "./ProgressSteps";
 import { FeedItemSkeleton } from "@/components/Skeleton";
 import { Callout } from "@/components/ui/Callout";
+import { Button } from "@/components/ui/Button";
 import type { BriefPick, NewsItem } from "@/lib/types";
 
 // A 10–20s call that used to report itself as a greyed-out button.
@@ -106,7 +107,7 @@ function FeedItem({
     >
       <button onClick={onToggle} aria-expanded={expanded} className="block w-full p-3 text-left">
         <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 font-mono text-xs text-accent">
+          <span className="inline-flex items-center gap-1.5 font-mono text-micro text-accent">
             {rank !== undefined && (
               <span className={`ce-tabular ${lead ? "text-accent" : "text-muted"}`}>
                 {String(rank).padStart(2, "0")}
@@ -118,39 +119,49 @@ function FeedItem({
             })()}
             {SOURCE_LABELS[item.source]}
           </span>
-          <span className="shrink-0 text-xs text-muted">
+          <span className="shrink-0 text-micro text-muted">
             {[item.meta, age].filter(Boolean).join(" · ")}
           </span>
         </div>
-        <p className={`mt-1 ${lead ? "font-serif text-lg leading-snug" : "text-sm font-medium"}`}>
+        {/* Three tiers, not two. The top three carried the ranking's full
+            weight and everything else — rank 4 and rank 40 alike — was one
+            flat text-sm row, so "ranked" stopped being visible past third
+            place. Ranks 4-10 now step down gradually instead of falling off a
+            cliff. */}
+        <p
+          className={`mt-1 ${
+            lead
+              ? "font-serif text-lg leading-snug"
+              : rank !== undefined && rank <= 10
+                ? "text-small font-medium text-fg"
+                : "text-small font-medium text-muted"
+          }`}
+        >
           {item.title}
         </p>
         {item.detail && !expanded && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted">{item.detail}</p>
+          <p className="mt-1 line-clamp-2 text-micro text-muted">{item.detail}</p>
         )}
         <WhyThis why={item.why} related={item.related} viaInterest={item.viaInterest} />
       </button>
 
       {expanded && (
         <div className="border-t border-line px-3 py-3">
-          {item.detail && <p className="text-sm text-muted">{item.detail}</p>}
+          {item.detail && <p className="text-small text-muted">{item.detail}</p>}
           {children}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              onClick={onSynthesize}
-              className="ce-press rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
-            >
+            <Button size="sm" variant="primary" onClick={onSynthesize}>
               Break it down →
-            </button>
+            </Button>
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-control border border-line px-4 py-2 text-sm text-fg hover:bg-surface"
+              className="ce-press inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-small text-fg transition duration-(--dur-fast) ease-out hover:bg-surface"
             >
               Read source ↗
             </a>
-            <span className="text-xs text-muted">
+            <span className="text-micro text-muted">
               Reading is free. Breaking it down reads the real page and shows what&rsquo;s new.
             </span>
           </div>
@@ -272,17 +283,19 @@ export function BrowseView() {
   if (picked) {
     return (
       <div>
-        <button onClick={() => setPicked(null)} className="mb-4 text-sm text-muted hover:text-fg">
+        <button onClick={() => setPicked(null)} className="mb-4 text-small text-muted hover:text-fg">
           ← Pick another
         </button>
-        <div className="mb-5 rounded-control border border-line bg-surface/40 p-3">
-          <span className="font-mono text-xs text-accent">{SOURCE_LABELS[picked.source]}</span>
-          <p className="mt-1 text-sm font-medium">{picked.title}</p>
+        <div className="mb-6 border-b border-line pb-4">
+          <span className="font-mono text-micro uppercase tracking-eyebrow text-accent">
+            {SOURCE_LABELS[picked.source]}
+          </span>
+          <p className="mt-1 text-small font-medium text-fg">{picked.title}</p>
           <a
             href={picked.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 inline-block text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
+            className="mt-1 inline-block text-micro text-muted underline-offset-4 hover:text-fg hover:underline"
           >
             view source ↗
           </a>
@@ -308,10 +321,10 @@ export function BrowseView() {
           "robotics" or "biotech" changed the page by nothing at all. */}
       {(topicItems.length > 0 || quietTopics.length > 0) && (
         <section>
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">
+          <h2 className="font-mono text-micro uppercase tracking-eyebrow text-cool">
             From the topics you follow
-          </p>
-          <p className="mb-3 text-sm text-muted">
+          </h2>
+          <p className="mb-3 text-small text-muted">
             Fetched because you follow them — not just sorted.{" "}
             <Link href="/voice" className="text-cool underline-offset-4 hover:underline">
               Edit your topics
@@ -333,7 +346,7 @@ export function BrowseView() {
           )}
 
           {quietTopics.length > 0 && (
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-2 text-micro text-muted">
               Nothing on{" "}
               {quietTopics.map((k, i) => (
                 <span key={k}>
@@ -351,18 +364,14 @@ export function BrowseView() {
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Top picks</p>
-            <p className="text-sm text-muted">
+            <h2 className="font-mono text-micro uppercase tracking-eyebrow text-accent">Top picks</h2>
+            <p className="text-small text-muted">
               The 3–5 stories most worth an opinion, weighted to what you&rsquo;ve written.
             </p>
           </div>
-          <button
-            onClick={curate}
-            disabled={curating}
-            className="shrink-0 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
-          >
-            {curating ? "Picking…" : picks ? "Pick again" : "Pick the best for me"}
-          </button>
+          <Button size="sm" variant="primary" onClick={curate} loading={curating} loadingLabel="Picking…" className="shrink-0">
+            {picks ? "Pick again" : "Pick the best for me"}
+          </Button>
         </div>
 
         {curating && (
@@ -372,7 +381,7 @@ export function BrowseView() {
         )}
 
         {curateErr && (
-          <div className="mt-3 rounded-control border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+          <div className="mt-3 rounded-control border border-warning/40 bg-warning/10 px-4 py-2.5 text-small text-warning">
             {curateErr}
           </div>
         )}
@@ -387,10 +396,10 @@ export function BrowseView() {
                 onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
                 onSynthesize={() => setPicked(p)}
               >
-                <p className="mt-2 text-sm text-muted">
+                <p className="mt-2 text-small text-muted">
                   <span className="text-fg">Why it matters:</span> {p.whyItMatters}
                 </p>
-                {p.relevance && <p className="mt-1 text-sm text-cool">For you: {p.relevance}</p>}
+                {p.relevance && <p className="mt-1 text-small text-cool">For you: {p.relevance}</p>}
               </FeedItem>
             ))}
           </div>
@@ -401,9 +410,9 @@ export function BrowseView() {
 
       {/* Full ranked list */}
       <section className="xl:order-1">
-        <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Everything, ranked</p>
+        <h2 className="font-mono text-micro uppercase tracking-eyebrow text-accent">Everything, ranked</h2>
         {/* Was two lines restating the ranking method. The numbers do that now. */}
-        <p className="mb-3 text-sm text-muted">
+        <p className="mb-3 text-small text-muted">
           Attention, blended with how close it sits to what you&rsquo;ve written.
           {scannedAt ? (
             <span className="text-cool"> Scanned {new Date(scannedAt).toLocaleString()}</span>

@@ -28,6 +28,8 @@ const T = {
   accentFg: "#1a1206", // --color-accent-fg
   radiusControl: "8px", // --radius-control
   title: "1.875rem", // --text-title
+  small: "0.875rem", // --text-small
+  micro: "0.6875rem", // --text-micro
 } as const;
 export default function GlobalError({
   error,
@@ -52,7 +54,7 @@ export default function GlobalError({
         }}
       >
         <div style={{ maxWidth: "32rem" }}>
-          <p style={{ fontSize: "0.75rem", letterSpacing: "0.08em", color: T.accent, margin: 0 }}>
+          <p style={{ fontSize: T.micro, letterSpacing: "0.08em", color: T.accent, margin: 0 }}>
             CRUX
           </p>
           <h1 style={{ fontSize: T.title, margin: "0.5rem 0 0", fontWeight: 600 }}>
@@ -72,14 +74,14 @@ export default function GlobalError({
               background: T.accent,
               color: T.accentFg,
               fontWeight: 500,
-              fontSize: "0.875rem",
+              fontSize: T.small,
               cursor: "pointer",
             }}
           >
             Reload
           </button>
           {error.digest && (
-            <p style={{ marginTop: "2rem", fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", color: T.muted, opacity: 0.7 }}>
+            <p style={{ marginTop: "2rem", fontFamily: "ui-monospace, monospace", fontSize: T.micro, color: T.muted, opacity: 0.7 }}>
               Reference: {error.digest}
             </p>
           )}

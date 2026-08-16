@@ -37,9 +37,15 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
 
-  /* Six steps, used deliberately. 85% of all type was text-sm or text-xs, with
-     ten arbitrary values escaping below the scale — so nothing was loud and
-     nothing was quiet, and every screen read as one flat plane. */
+  /* DESIGN.md §4 — the six semantic steps, complete. `body` and `small` were
+     the two missing rungs: with no token for either, 285 of 342 sized elements
+     were reaching for raw `text-sm`/`text-xs`, which is exactly what §4 says to
+     stop doing ("use the existing semantic scale rather than arbitrary Tailwind
+     sizes"). `text-base` — the spec's actual 16px body — was used 9 times in the
+     whole app, so the product read a step and a half smaller than intended.
+
+     Surfaces convert to these as each redesign phase reaches them, not in one
+     sweep: a size change should land with its own design review, not 284 at once. */
   --text-display: 2.75rem;
   --text-display--line-height: 1.05;
   --text-display--letter-spacing: -0.02em;
@@ -48,8 +54,14 @@
   --text-title--letter-spacing: -0.015em;
   --text-lead: 1.25rem;
   --text-lead--line-height: 1.45;
-  /* One step below text-xs, so the ten text-[11px]/text-[10px] escapes have
-     somewhere to land. Nothing in the app should be smaller than this. */
+  /* Normal reading. Long-form prose and anything the user is meant to read
+     rather than scan. */
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  /* Supporting UI — labels, metadata, controls. Not paragraphs. */
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  /* The floor. Eyebrows and metadata; nothing in the app is smaller. */
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1.3;
 

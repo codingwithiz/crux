@@ -19,14 +19,16 @@ test("landing states the value chain and both ways in", async ({ page }) => {
 });
 
 test("every nav surface resolves", async ({ page }) => {
-  // Five intent surfaces plus You — flat, no dropdowns.
+  // Five primary surfaces in loop order, plus the secondary Voice — flat, no
+  // dropdowns. Library also lives in the secondary group but has no heading of
+  // its own until it holds something.
   const surfaces = [
     ["Today", "/today", /take/i],
     ["Explore", "/explore", /Explore/i],
     ["Think", "/think", /Think/i],
+    ["Ledger", "/ledger", /Ledger/i],
     ["Studio", "/studio", /Studio/i],
-    ["Track record", "/ledger", /Track record/i],
-    ["You", "/voice", /You/i],
+    ["Voice", "/voice", /Voice/i],
   ] as const;
 
   for (const [label, href, heading] of surfaces) {
@@ -106,12 +108,12 @@ test("today shows a pick with a way to read it first", async ({ page }) => {
 test("studio without a draft says so instead of showing a stranger's deck", async ({ page }) => {
   await page.goto("/studio");
   await expect(page.getByRole("heading", { name: /Studio/i }).first()).toBeVisible();
-  await expect(page.getByText(/Nothing to edit yet/i)).toBeVisible();
+  await expect(page.getByText(/Nothing to express yet/i)).toBeVisible();
 });
 
-test("you page loads the voice and interests editors", async ({ page }) => {
+test("voice page loads the voice and interests editors", async ({ page }) => {
   await page.goto("/voice");
-  await expect(page.getByRole("heading", { name: "You", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Voice", exact: true })).toBeVisible();
   await expect(page.getByText(/built-in default voice/i)).toBeVisible();
   await expect(page.getByLabel("Add an interest")).toBeVisible();
   await expect(page.getByPlaceholder(/Paste one of your posts/i).first()).toBeVisible();

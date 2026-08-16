@@ -94,13 +94,13 @@ export function CommandPalette() {
               Studio
             </Item>
             <Item icon={BookMarked} onSelect={() => go("/ledger")}>
-              Track record
+              Ledger
             </Item>
             <Item icon={Images} onSelect={() => go("/gallery")}>
               Library
             </Item>
             <Item icon={Mic} onSelect={() => go("/voice")}>
-              You
+              Voice
             </Item>
             <Item icon={HelpCircle} onSelect={() => go("/guide")}>
               How it works

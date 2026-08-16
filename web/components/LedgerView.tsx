@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookMarked, ChevronDown, ExternalLink, MoreHorizontal, Share2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
@@ -11,6 +11,10 @@ import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
 import { ledgerStats, calibration, calibrationVerdict } from "@/lib/ledger-stats";
 import { CalibrationChart } from "@/components/CalibrationChart";
 import { Callout } from "@/components/ui/Callout";
+import { Section } from "@/components/ui/Section";
+import { Button } from "@/components/ui/Button";
+import { Input, Textarea } from "@/components/ui/Field";
+import { CONF_P } from "@/lib/ledger-stats";
 import { saveDraft } from "@/lib/draft";
 import { DEFAULT_SLIDE_SIZE } from "@/lib/carousel/size";
 import { expressSlides } from "@/lib/express-client";
@@ -82,7 +86,7 @@ export function LedgerView() {
     getLedger()
       .then(setItems)
       .catch((e: unknown) => {
-        setLoadError(e instanceof Error ? e.message : "Couldn't load your track record.");
+        setLoadError(e instanceof Error ? e.message : "Couldn't load your Ledger.");
         setItems([]);
       });
   }, []);
@@ -105,14 +109,34 @@ export function LedgerView() {
   }, [items, now]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (items ?? []).filter((t) => {
-      // "All" means all your opinions. Parked drafts aren't opinions yet, so
-      // they live behind their own chip instead of diluting the ledger.
-      if (filter === "all" ? t.status === "draft" : t.status !== filter) return false;
-      if (q && !`${t.topic} ${t.statement}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
+    return (items ?? [])
+      .filter((t) => {
+        // "All" means all your opinions. Parked drafts aren't opinions yet, so
+        // they live behind their own chip instead of diluting the ledger.
+        if (filter === "all" ? t.status === "draft" : t.status !== filter) return false;
+        if (q && !`${t.topic} ${t.statement}`.toLowerCase().includes(q)) return false;
+        return true;
+      })
+      // Newest first, independent of storage order — the timeline reads top
+      // to bottom as "most recent thinking first," and date grouping below
+      // assumes this order.
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [items, filter, query]);
+
+  /** Month headers for the timeline — "August 2026" wherever the month changes
+   *  going down the sorted list. Computed once per `filtered` rather than by
+   *  mutating a variable during render, which the compiler (rightly) rejects
+   *  as an impure render. */
+  const withMonths = useMemo(() => {
+    const monthOf = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    // `filtered` is already newest-first, so each item's header is purely a
+    // function of itself and its predecessor — no running accumulator needed.
+    return filtered.map((t, i) => {
+      const month = monthOf(t.createdAt);
+      const showHeader = i === 0 || month !== monthOf(filtered[i - 1].createdAt);
+      return { thesis: t, month, showHeader };
+    });
+  }, [filtered]);
 
   function resumeParked(t: Thesis) {
     saveFlow(parkedToFlow(t));
@@ -182,107 +206,108 @@ export function LedgerView() {
     return (
       <EmptyState
         icon={BookMarked}
-        title="No takes yet"
-        description="Every take you save lands here. Score them as reality weighs in, and you find out whether you're right when you're confident."
+        title="Your Ledger is quiet."
+        description="Give yourself something worth being wrong about. Score it as reality weighs in, and find out whether you were right when you were confident."
         cta={{ href: "/think", label: "Write your first take" }}
       />
     );
 
   return (
     <div>
-      {/* One scorecard, not five stacked panels. Counts, accuracy and the
-          confidence mix are one thought — "how am I doing" — and they used to be
-          three separate bordered boxes you scrolled past to reach a take. */}
-      <div className="mb-6 rounded-surface border border-line bg-surface/40 p-5 shadow-raised">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Accuracy</p>
-            {/* The number this whole surface exists to produce, at the size that
-                says so. It used to be 11px text at the end of a row. */}
-            <p className="ce-tabular mt-1 font-serif text-display font-semibold leading-none">
-              {cal.resolved > 0 ? (
-                <>
-                  {cal.score}
-                  <span className="text-lead text-muted">/100</span>
-                </>
-              ) : (
-                <span className="text-title text-muted">not scored yet</span>
-              )}
-            </p>
-            {/* A 97 drawn from two scored takes is not a 97. The product's whole
-                claim is that it does not overstate, so the one number that could
-                overstate says how thin it is, at the size it deserves. */}
-            <p className="mt-1 text-xs text-muted">
-              {cal.resolved === 0
-                ? `${stats.total} saved, none scored`
-                : cal.resolved < PROVISIONAL_AT
-                  ? `provisional — from only ${cal.resolved} scored`
-                  : `from ${cal.resolved} scored`}
-            </p>
-          </div>
-
-          <div className="grid flex-1 grid-cols-2 gap-3 sm:max-w-sm sm:grid-cols-4">
-            <Stat label="Takes" value={stats.total} />
-            <Stat label="This week" value={stats.thisWeek} accent />
-            <Stat label="Revised" value={stats.updated} />
-            <Stat label="Abandoned" value={stats.abandoned} />
-          </div>
-        </div>
-
-        {/* The picture the three tiles could not draw. They reported 100% / — /
-            50% with no reference, so a reader had nothing to compare against and
-            no way to tell a good number from a bad one. */}
-        <div className="ce-rule mt-5 pt-4">
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">
-            Were you right when you were confident?
-          </p>
-          <div className="mt-3">
-            <CalibrationChart cal={cal} verdict={verdict} />
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center gap-3 text-xs text-muted">
-          <span className="font-mono uppercase tracking-eyebrow">Confidence mix</span>
-          <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
-        </div>
+      {/* The scorecard, decomposed. It was one bordered card holding roughly a
+          dozen numeric encodings — four nested Stat tiles, an unlabelled
+          three-segment bar, and the calibration chart all competing for the
+          same weight. §12: confidence should read as an editorial judgment,
+          not a KPI panel. Accuracy keeps the page's largest numeral; the chart
+          — "the one picture this product is actually about" — gets its own
+          section and more size than a hairline plot buried under four tiles;
+          the counts and mix are now a sentence, the same device Today uses. */}
+      <div>
+        <p className="font-mono text-micro uppercase tracking-eyebrow text-accent">Accuracy</p>
+        {/* The number this whole surface exists to produce, at the size that
+            says so. It used to be 11px text at the end of a row. */}
+        <p className="ce-tabular mt-1 font-serif text-display font-semibold leading-none">
+          {cal.resolved > 0 ? (
+            <>
+              {cal.score}
+              <span className="text-lead text-muted">/100</span>
+            </>
+          ) : (
+            <span className="text-title text-muted">not scored yet</span>
+          )}
+        </p>
+        {/* A 97 drawn from two scored takes is not a 97. The product's whole
+            claim is that it does not overstate, so the one number that could
+            overstate says how thin it is, at the size it deserves. */}
+        <p className="mt-1 text-small text-muted">
+          {cal.resolved === 0
+            ? `${stats.total} saved, none scored`
+            : cal.resolved < PROVISIONAL_AT
+              ? `provisional — from only ${cal.resolved} scored`
+              : `from ${cal.resolved} scored`}
+        </p>
       </div>
 
+      <Section label="Were you right when you were confident?" className="mt-8">
+        <CalibrationChart cal={cal} verdict={verdict} />
+      </Section>
+
+      <Section label="Your thinking" className="mt-8">
+        <p className="ce-tabular font-serif text-lead text-fg">
+          {stats.total} take{stats.total === 1 ? "" : "s"} saved
+        </p>
+        <p className="mt-1 text-small text-muted">
+          {stats.thisWeek} this week · {stats.updated} revised
+          {stats.abandoned > 0 ? ` · ${stats.abandoned} abandoned` : ""}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
+          <span className="font-mono text-micro text-muted">
+            <span className="text-accent">{stats.byConfidence.high} high</span> ·{" "}
+            <span className="text-cool">{stats.byConfidence.med} med</span> ·{" "}
+            <span>{stats.byConfidence.low} low</span>
+          </span>
+        </div>
+      </Section>
+
       {due.length > 0 && (
-        <div className="mb-5 rounded-surface border border-warning/30 bg-warning/5 p-4">
-          <p className="font-mono text-xs uppercase tracking-eyebrow text-warning">Time to score these</p>
-          <p className="mt-1 text-xs text-muted">
+        <Section label="Time to score these" className="mt-8" labelClassName="text-warning">
+          <p className="text-small text-muted">
             You saved these a while ago. How did they hold up? Scoring keeps your accuracy honest.
           </p>
-          <div className="mt-3 space-y-2">
-            {due.map((t) => (
-              <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-control border border-line bg-ink/40 p-2.5">
-                <span className="min-w-0 flex-1 truncate text-sm text-fg" title={t.statement}>{t.statement}</span>
+          <div className="mt-3">
+            {due.map((t, i) => (
+              <div
+                key={t.id}
+                className={`flex flex-wrap items-center gap-2 py-2.5 ${i > 0 ? "border-t border-line" : ""}`}
+              >
+                <span className="min-w-0 flex-1 truncate text-small text-fg" title={t.statement}>{t.statement}</span>
                 <span className="shrink-0 text-micro text-muted">{daysAgo(t.createdAt)}d ago</span>
                 {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
-                  <button
+                  <Button
                     key={o}
+                    size="sm"
+                    variant="ghost"
                     onClick={() => setOutcome(t, o)}
                     title={`Mark as ${OUTCOME_LABEL[o]}`}
-                    // Scoring a take is the action the whole track record runs
-                    // on, and it was the smallest target in the app at 24px.
-                    className="ce-press min-h-11 shrink-0 rounded-control border border-line px-3 text-xs capitalize text-muted transition duration-(--dur-fast) ease-out hover:bg-surface hover:text-fg"
+                    className="capitalize"
                   >
                     {OUTCOME_LABEL[o]}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
       {/* Filters + search */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mt-8 mb-4 flex flex-wrap items-center gap-2 border-t border-line pt-6">
         {FILTERS.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`rounded-control border px-3 py-1.5 text-xs ${
+            className={`rounded-control border px-3 py-1.5 text-small transition duration-(--dur-fast) ease-out ${
               filter === f.id ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
             }`}
           >
@@ -293,228 +318,252 @@ export function LedgerView() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search topic or text…"
-          className="ml-auto w-44 rounded-control border border-line bg-surface/40 px-3 py-1.5 text-xs outline-none focus:border-accent"
+          className="ml-auto w-44 rounded-control border border-line bg-surface/40 px-3 py-1.5 text-small outline-none focus:border-accent"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <p className="rounded-surface border border-dashed border-line p-6 text-center text-sm text-muted">
+        <p className="border-t border-dashed border-line py-8 text-center text-small text-muted">
           Nothing matches.
         </p>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((t) =>
-            editId === t.id ? (
-              <ReviseCard key={t.id} thesis={t} onSave={saveEdit} onCancel={() => setEditId(null)} />
-            ) : (
-              <div
-                key={t.id}
-                className={`rounded-surface border border-line bg-surface/40 p-4 ${t.status === "abandoned" ? "opacity-60" : ""}`}
-              >
-                <button
-                  onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
-                  aria-expanded={expandedId === t.id}
-                  className="block w-full text-left"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    {/* A parked draft has no statement yet — that's the point of
-                        parking — so lead with the topic instead of a blank line. */}
-                    {/* The committed opinion is the artefact this whole page
-                        exists for — it should not read like table data. */}
-                    <p
-                      className={`font-serif text-lead leading-snug text-fg ${
-                        t.status === "abandoned" ? "line-through" : ""
-                      }`}
-                    >
-                      {t.status === "draft" ? t.topic : t.statement}
-                    </p>
-                    <span className="flex shrink-0 items-center gap-2">
-                      {t.status !== "draft" && (
-                        <span className={`font-mono text-xs uppercase ${CONF_COLOR[t.confidence]}`}>
-                          {t.confidence}
-                        </span>
-                      )}
-                      {/* Nothing used to signal these open — and the outcome
-                          buttons that drive calibration live inside. */}
-                      <ChevronDown
-                        aria-hidden
-                        className={`h-4 w-4 text-muted transition-transform ${
-                          expandedId === t.id ? "rotate-180" : ""
-                        }`}
-                      />
-                    </span>
-                  </div>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <span>
-                      {t.topic} · {new Date(t.createdAt).toLocaleDateString()}
-                      {t.updatedAt ? ` · revised ${new Date(t.updatedAt).toLocaleDateString()}` : ""}
-                    </span>
-                    {STATUS_BADGE[t.status] && (
-                      <span className={`rounded-full border px-2 py-0.5 ${STATUS_BADGE[t.status]}`}>
-                        {t.status === "updated" ? "revised" : t.status === "draft" ? "saved for later" : t.status}
-                      </span>
-                    )}
-                    {t.outcome && (
-                      <span className={`rounded-full border px-2 py-0.5 ${OUTCOME_BADGE[t.outcome]}`}>
-                        {OUTCOME_LABEL[t.outcome]}
-                      </span>
-                    )}
+        /* The timeline spine. §10: "use timeline and provenance patterns more
+           than card grids... a conviction should feel like a record, not a
+           database row." This was a stack of identical bordered cards with no
+           spine, no date grouping and chronology only legible as text inside
+           each card — the list happened to be sorted; nothing on screen said
+           so. The rule on the left plus a month header wherever the month
+           changes is what turns "a list of cards" into "a record over time." */
+        <div className="relative border-l border-line pl-6 sm:pl-8">
+          {withMonths.map(({ thesis: t, month, showHeader }, i) => {
+            return (
+              <Fragment key={t.id}>
+                {showHeader && (
+                  <p
+                    className={`-ml-6 pl-6 font-mono text-micro uppercase tracking-eyebrow text-muted sm:-ml-8 sm:pl-8 ${i > 0 ? "mt-6" : ""}`}
+                  >
+                    {month}
                   </p>
-                  {/* The falsifier the user wrote themselves, on the collapsed
-                      card. It was three levels down — behind a click, under two
-                      other fields — and it is the most valuable line on the
-                      page: the condition under which they would come back and
-                      change this. A track record without it is just a list. */}
-                  {t.changeMyMind && expandedId !== t.id && (
-                    <p className="ce-measure mt-2 border-l border-cool/40 pl-2.5 text-xs text-cool/80">
-                      Changes if: {t.changeMyMind}
-                    </p>
-                  )}
-                  {/* Lineage. The chain source → breakdown → take is all in
-                      storage and was never drawn, so nothing on this page
-                      showed that a take came from anywhere or left anything
-                      behind — which is most of why a list of takes doesn't
-                      feel like it accumulates. */}
-                  {(t.source?.title || receiptCount(t) > 0) && (
-                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-micro text-muted">
-                      {t.source?.title && (
-                        <span className="max-w-full truncate">from {t.source.title}</span>
-                      )}
-                      {receiptCount(t) > 0 && (
-                        <span className="text-success">
-                          <span className="ce-tabular">{receiptCount(t)}</span> verified{" "}
-                          {receiptCount(t) === 1 ? "receipt" : "receipts"}
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </button>
-
-                {expandedId === t.id && (
-                  <div className="mt-3 space-y-2 border-t border-line pt-3 text-sm">
-                    {t.evidenceFor && (
-                      <Detail label="Evidence for">{t.evidenceFor}</Detail>
-                    )}
-                    {t.steelman && <Detail label="The other side's best case">{t.steelman}</Detail>}
-                    {t.changeMyMind && <Detail label="Would change my mind">{t.changeMyMind}</Detail>}
-                    {t.source?.title && (
-                      <Detail label="Source">
-                        {t.source.url ? (
-                          <a
-                            href={t.source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-cool underline-offset-4 hover:underline"
-                          >
-                            {t.source.title} <ExternalLink className="inline h-3 w-3 align-middle" />
-                          </a>
-                        ) : (
-                          t.source.title
-                        )}
-                      </Detail>
-                    )}
-                    {!t.evidenceFor && !t.steelman && !t.changeMyMind && !t.source?.title && (
-                      <p className="text-xs text-muted">No extra detail captured for this take.</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="font-mono text-xs uppercase tracking-eyebrow text-muted">
-                        How did it hold up?
-                      </span>
-                      {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
-                        <button
-                          key={o}
-                          onClick={() => setOutcome(t, o)}
-                          className={`ce-press min-h-11 rounded-control border px-3.5 text-xs capitalize transition duration-(--dur-fast) ease-out ${
-                            t.outcome === o ? OUTCOME_BADGE[o] : "border-line text-muted hover:bg-surface"
+                )}
+                {editId === t.id ? (
+                  <div className="py-3">
+                    <ReviseCard thesis={t} onSave={saveEdit} onCancel={() => setEditId(null)} />
+                  </div>
+                ) : (
+                  <div
+                    className={`relative py-4 ${showHeader ? "" : "border-t border-line"} ${
+                      t.status === "abandoned" ? "opacity-60" : ""
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute top-6 left-[calc(-1.5rem-4px)] h-[7px] w-[7px] rounded-full bg-line sm:left-[calc(-2rem-4px)]"
+                    />
+                    <button
+                      onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                      aria-expanded={expandedId === t.id}
+                      className="block w-full text-left"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        {/* A parked draft has no statement yet — that's the point
+                            of parking — so lead with the topic instead of a blank
+                            line. The committed opinion is the artefact this whole
+                            page exists for — it should not read like table data. */}
+                        <p
+                          className={`font-serif text-lead leading-snug text-fg ${
+                            t.status === "abandoned" ? "line-through" : ""
                           }`}
                         >
-                          {OUTCOME_LABEL[o]}
-                        </button>
-                      ))}
+                          {t.status === "draft" ? t.topic : t.statement}
+                        </p>
+                        <span className="flex shrink-0 items-center gap-2">
+                          {/* Confidence as the forecast it is (§12), not the
+                              11px word it used to be. */}
+                          {t.status !== "draft" && (
+                            <span
+                              className={`ce-tabular font-mono text-small font-semibold ${CONF_COLOR[t.confidence]}`}
+                              title={`${t.confidence} confidence`}
+                            >
+                              {Math.round(CONF_P[t.confidence] * 100)}%
+                            </span>
+                          )}
+                          {/* Nothing used to signal these open — and the outcome
+                              buttons that drive calibration live inside. */}
+                          <ChevronDown
+                            aria-hidden
+                            className={`h-4 w-4 text-muted transition-transform ${
+                              expandedId === t.id ? "rotate-180" : ""
+                            }`}
+                          />
+                        </span>
+                      </div>
+                      <p className="mt-1 flex flex-wrap items-center gap-2 text-micro text-muted">
+                        <span>
+                          {t.topic} · {new Date(t.createdAt).toLocaleDateString()}
+                          {t.updatedAt ? ` · revised ${new Date(t.updatedAt).toLocaleDateString()}` : ""}
+                        </span>
+                        {STATUS_BADGE[t.status] && (
+                          <span className={`rounded-full border px-2 py-0.5 ${STATUS_BADGE[t.status]}`}>
+                            {t.status === "updated" ? "revised" : t.status === "draft" ? "saved for later" : t.status}
+                          </span>
+                        )}
+                        {t.outcome && (
+                          <span className={`rounded-full border px-2 py-0.5 ${OUTCOME_BADGE[t.outcome]}`}>
+                            {OUTCOME_LABEL[t.outcome]}
+                          </span>
+                        )}
+                      </p>
+                      {/* The falsifier the user wrote themselves, on the collapsed
+                          record. It was three levels down — behind a click, under
+                          two other fields — and it is the most valuable line on
+                          the page: the condition under which they would come back
+                          and change this. A ledger without it is just a list. */}
+                      {t.changeMyMind && expandedId !== t.id && (
+                        <p className="ce-measure mt-2 border-l border-cool/40 pl-2.5 text-micro text-cool/80">
+                          Changes if: {t.changeMyMind}
+                        </p>
+                      )}
+                      {/* Provenance, drawn as a chain rather than a plain line.
+                          source → take → receipts is all in storage and was
+                          never connected visually — which is most of why a list
+                          of takes didn't feel like it accumulated into anything. */}
+                      {(t.source?.title || receiptCount(t) > 0) && (
+                        <p className="mt-2 flex flex-wrap items-center gap-1.5 font-mono text-micro text-muted">
+                          {t.source?.title && (
+                            <>
+                              <span className="max-w-[16rem] truncate">{t.source.title}</span>
+                              {receiptCount(t) > 0 && <span aria-hidden>→</span>}
+                            </>
+                          )}
+                          {receiptCount(t) > 0 && (
+                            <span className="text-success">
+                              <span className="ce-tabular">{receiptCount(t)}</span> verified{" "}
+                              {receiptCount(t) === 1 ? "receipt" : "receipts"}
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </button>
+
+                    {expandedId === t.id && (
+                      <div className="mt-3 space-y-2 border-t border-line pt-3 text-small">
+                        {t.evidenceFor && <Detail label="Evidence for">{t.evidenceFor}</Detail>}
+                        {t.steelman && <Detail label="The other side's best case">{t.steelman}</Detail>}
+                        {t.changeMyMind && <Detail label="Would change my mind">{t.changeMyMind}</Detail>}
+                        {t.source?.title && (
+                          <Detail label="Source">
+                            {t.source.url ? (
+                              <a
+                                href={t.source.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-cool underline-offset-4 hover:underline"
+                              >
+                                {t.source.title} <ExternalLink className="inline h-3 w-3 align-middle" />
+                              </a>
+                            ) : (
+                              t.source.title
+                            )}
+                          </Detail>
+                        )}
+                        {!t.evidenceFor && !t.steelman && !t.changeMyMind && !t.source?.title && (
+                          <p className="text-micro text-muted">No extra detail captured for this take.</p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="font-mono text-micro uppercase tracking-eyebrow text-muted">
+                            How did it hold up?
+                          </span>
+                          {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
+                            <button
+                              key={o}
+                              onClick={() => setOutcome(t, o)}
+                              className={`ce-press min-h-11 rounded-control border px-3.5 text-small capitalize transition duration-(--dur-fast) ease-out ${
+                                t.outcome === o ? OUTCOME_BADGE[o] : "border-line text-muted hover:bg-surface"
+                              }`}
+                            >
+                              {OUTCOME_LABEL[o]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {t.status === "draft" ? (
+                        // Parked work has one sensible next move: go back and
+                        // finish thinking. Carousels and repurposing need an
+                        // opinion first.
+                        <>
+                          <Button size="sm" variant="primary" onClick={() => resumeParked(t)}>
+                            Continue
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={confirmDelete === t.id ? "danger" : "ghost"}
+                            onClick={() => del(t.id)}
+                            onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
+                          >
+                            {confirmDelete === t.id ? "Tap again to discard" : "Discard"}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {/* One primary action, then a menu. Five peer buttons
+                              gave Delete the same weight as Make carousel. */}
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => makeCarousel(t)}
+                            loading={busyId === t.id}
+                            loadingLabel="Building…"
+                          >
+                            Make carousel
+                          </Button>
+                          <Button size="sm" onClick={() => setRepTo(t)}>
+                            <Share2 className="h-3.5 w-3.5" /> Reuse
+                          </Button>
+
+                          <details
+                            className="relative"
+                            open={menuFor === t.id}
+                            onToggle={(e) => setMenuFor((e.currentTarget as HTMLDetailsElement).open ? t.id : null)}
+                          >
+                            <summary
+                              aria-label="More actions"
+                              className="ce-press inline-flex h-9 cursor-pointer list-none items-center rounded-control border border-line px-3 text-muted transition duration-(--dur-fast) ease-out hover:bg-surface hover:text-fg"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </summary>
+                            <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-control border border-line bg-surface shadow-2xl">
+                              <MenuItem onClick={() => { setMenuFor(null); setEditId(t.id); }}>Revise</MenuItem>
+                              <MenuItem
+                                onClick={() => { setMenuFor(null); void setStatus(t, t.status === "abandoned" ? "active" : "abandoned"); }}
+                              >
+                                {t.status === "abandoned" ? "Reactivate" : "Abandon"}
+                              </MenuItem>
+                              <MenuItem
+                                danger
+                                onClick={() => void del(t.id)}
+                                onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
+                              >
+                                {confirmDelete === t.id ? "Click again to delete" : "Delete"}
+                              </MenuItem>
+                            </div>
+                          </details>
+                        </>
+                      )}
                     </div>
+
+                    {busyId === t.id && (
+                      <div className="mt-3">
+                        <ProgressSteps steps={CAROUSEL_STEPS} />
+                      </div>
+                    )}
                   </div>
                 )}
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {t.status === "draft" ? (
-                    // Parked work has one sensible next move: go back and finish
-                    // thinking. Carousels and repurposing need an opinion first.
-                    <>
-                      <button
-                        onClick={() => resumeParked(t)}
-                        className="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
-                      >
-                        Continue
-                      </button>
-                      <button
-                        onClick={() => del(t.id)}
-                        onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
-                        className={`rounded-control border px-3 py-1.5 text-xs ${
-                          confirmDelete === t.id
-                            ? "border-danger/60 text-danger"
-                            : "border-line text-muted hover:text-danger"
-                        }`}
-                      >
-                        {confirmDelete === t.id ? "Tap again to discard" : "Discard"}
-                      </button>
-                    </>
-                  ) : (
-                  <>
-                  {/* One primary action, then a menu. Five peer buttons gave
-                      Delete the same weight as Make carousel. */}
-                  <button
-                    onClick={() => makeCarousel(t)}
-                    disabled={busyId === t.id}
-                    className="ce-press rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg shadow-press transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50"
-                  >
-                    {busyId === t.id ? "Building…" : "Make carousel"}
-                  </button>
-                  <button
-                    onClick={() => setRepTo(t)}
-                    className="inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-xs text-fg transition hover:border-accent/50 hover:bg-surface"
-                  >
-                    <Share2 className="h-3.5 w-3.5" /> Reuse
-                  </button>
-
-                  <details
-                    className="relative"
-                    open={menuFor === t.id}
-                    onToggle={(e) => setMenuFor((e.currentTarget as HTMLDetailsElement).open ? t.id : null)}
-                  >
-                    <summary
-                      aria-label="More actions"
-                      className="ce-press inline-flex cursor-pointer list-none items-center rounded-control border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
-                    >
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                    </summary>
-                    <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-control border border-line bg-surface shadow-2xl">
-                      <MenuItem onClick={() => { setMenuFor(null); setEditId(t.id); }}>Revise</MenuItem>
-                      <MenuItem
-                        onClick={() => { setMenuFor(null); void setStatus(t, t.status === "abandoned" ? "active" : "abandoned"); }}
-                      >
-                        {t.status === "abandoned" ? "Reactivate" : "Abandon"}
-                      </MenuItem>
-                      <MenuItem
-                        danger
-                        onClick={() => void del(t.id)}
-                        onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
-                      >
-                        {confirmDelete === t.id ? "Click again to delete" : "Delete"}
-                      </MenuItem>
-                    </div>
-                  </details>
-                  </>
-                  )}
-                </div>
-
-                {busyId === t.id && (
-                  <div className="mt-3">
-                    <ProgressSteps steps={CAROUSEL_STEPS} />
-                  </div>
-                )}
-              </div>
-            ),
-          )}
+              </Fragment>
+            );
+          })}
         </div>
       )}
 
@@ -538,7 +587,7 @@ function MenuItem({
     <button
       onClick={onClick}
       onBlur={onBlur}
-      className={`block w-full px-3 py-2 text-left text-xs transition hover:bg-ink ${
+      className={`block w-full px-3 py-2 text-left text-small transition duration-(--dur-fast) ease-out hover:bg-ink ${
         danger ? "text-danger" : "text-fg"
       }`}
     >
@@ -551,19 +600,10 @@ function daysAgo(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 }
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className="rounded-surface border border-line bg-surface/40 p-3">
-      <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-fg"}`}>{value}</p>
-      <p className="text-xs text-muted">{label}</p>
-    </div>
-  );
-}
-
 function ConfBar({ low, med, high }: { low: number; med: number; high: number }) {
   const total = Math.max(1, low + med + high);
   return (
-    <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-surface">
+    <div className="flex h-2 w-32 overflow-hidden rounded-full bg-surface" aria-hidden>
       <div style={{ width: `${(high / total) * 100}%` }} className="bg-accent" />
       <div style={{ width: `${(med / total) * 100}%` }} className="bg-cool" />
       <div style={{ width: `${(low / total) * 100}%` }} className="bg-line" />
@@ -573,8 +613,8 @@ function ConfBar({ low, med, high }: { low: number; med: number; high: number })
 
 function Detail({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <p className="text-sm text-fg">
-      <span className="text-xs uppercase tracking-wide text-muted">{label}: </span>
+    <p className="text-small text-fg">
+      <span className="text-micro uppercase tracking-wide text-muted">{label}: </span>
       {children}
     </p>
   );
@@ -595,19 +635,14 @@ function ReviseCard({
 
   return (
     <div className="rounded-surface border border-cool/40 bg-cool/5 p-4">
-      <p className="mb-2 text-xs font-medium text-cool">Revise — new evidence changed your view?</p>
-      <textarea
-        value={statement}
-        onChange={(e) => setStatement(e.target.value)}
-        rows={2}
-        className="w-full resize-none rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
-      />
+      <p className="mb-2 text-small font-medium text-cool">Revise — new evidence changed your view?</p>
+      <Textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={2} />
       <div className="mt-2 flex items-center gap-2">
         {(["low", "med", "high"] as Confidence[]).map((c) => (
           <button
             key={c}
             onClick={() => setConfidence(c)}
-            className={`rounded-control border px-3 py-1 text-xs capitalize ${
+            className={`rounded-control border px-3 py-1 text-small capitalize transition duration-(--dur-fast) ease-out ${
               confidence === c ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
             }`}
           >
@@ -615,24 +650,25 @@ function ReviseCard({
           </button>
         ))}
       </div>
-      <input
+      <Input
         value={changeMyMind}
         onChange={(e) => setChangeMyMind(e.target.value)}
         placeholder="What would change your mind now?"
-        className="mt-2 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+        className="mt-2"
       />
       <div className="mt-3 flex gap-2">
-        <button
+        <Button
+          size="sm"
+          variant="primary"
           onClick={() =>
             onSave({ ...thesis, statement: statement.trim() || thesis.statement, confidence, changeMyMind: changeMyMind.trim() || undefined })
           }
-          className="rounded-control bg-accent px-4 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
         >
           Save revision
-        </button>
-        <button onClick={onCancel} className="rounded-control px-3 py-1.5 text-xs text-muted hover:text-fg">
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
