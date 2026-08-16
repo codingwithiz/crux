@@ -12,7 +12,7 @@ import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
  * in the Studio a one-way trip.
  */
 const BASE =
-  "w-full rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none transition focus:border-accent sm:text-sm";
+  "w-full rounded-control border border-line bg-ink px-3 py-2 text-base outline-none transition focus:border-accent sm:text-sm";
 
 export function Input({ className = "", ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...rest} className={`${BASE} ${className}`} />;

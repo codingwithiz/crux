@@ -27,7 +27,9 @@ export function WhyThis({
   if (!followed.length && !touches.length) return null;
 
   return (
-    <p className={`mt-2 text-xs text-cool ${className}`}>
+    // `text-cool` on ink, paper ink on paper: the recall blue is tuned for a
+    // near-black ground and reads as a stray link on warm stock.
+    <p className={`mt-2 text-xs text-cool [.ce-plate_&]:text-paper-muted ${className}`}>
       {followed.length ? "Because you follow " : "Related to what you've written about "}
       <Terms words={followed.length ? followed : touches} />
     </p>

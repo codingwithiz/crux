@@ -43,7 +43,12 @@ export function ProgressSteps({ steps, intervalMs = 1600 }: { steps: string[]; i
   return (
     <div role="status" aria-live="polite" className="flex items-center gap-3 text-sm">
       <span className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-line border-t-accent" />
-      <span className="text-fg">{slow ? "Still working — this one's taking a while" : `${steps[i]}…`}</span>
+      {/* Keyed so React remounts the span and the crossfade replays. The label
+          used to hard-swap every 1600ms, which read as a glitch rather than as
+          the same process moving on. */}
+      <span key={slow ? "slow" : i} className="ce-crossfade text-fg">
+        {slow ? "Still working — this one's taking a while" : `${steps[i]}…`}
+      </span>
     </div>
   );
 }

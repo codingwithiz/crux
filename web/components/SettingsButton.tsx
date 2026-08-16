@@ -56,7 +56,7 @@ export function SettingsButton() {
         // The visible text is the current tier, which alone doesn't say what it
         // controls — so the accessible name carries the subject as well.
         aria-label={`Thinking depth: ${label}`}
-        className="ml-1 rounded-md border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
+        className="ml-1 rounded-control border border-line px-3 py-1.5 text-sm text-fg transition hover:bg-surface"
       >
         <span
           className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${ready ? "bg-success" : "bg-accent"}`}
@@ -79,7 +79,7 @@ export function SettingsButton() {
                 key={t.id}
                 onClick={() => choose(t.id)}
                 aria-pressed={tier === t.id}
-                className={`flex w-full flex-col items-start rounded-lg border px-4 py-3 text-left transition ${
+                className={`flex w-full flex-col items-start rounded-control border px-4 py-3 text-left transition ${
                   tier === t.id ? "border-accent bg-accent/5" : "border-line hover:bg-surface"
                 }`}
               >
@@ -89,7 +89,7 @@ export function SettingsButton() {
             ))}
           </div>
 
-          <p className="mt-4 rounded-lg border border-line bg-ink/40 p-3 text-xs text-muted">
+          <p className="mt-4 rounded-control border border-line bg-ink/40 p-3 text-xs text-muted">
             {ready ? (
               <>
                 Runs on this deployment&rsquo;s own key
@@ -104,7 +104,7 @@ export function SettingsButton() {
         <div className="flex justify-end border-t border-line p-4">
           <button
             onClick={() => setOpen(false)}
-            className="rounded-lg px-4 py-2 text-sm text-muted hover:text-fg"
+            className="rounded-control px-4 py-2 text-sm text-muted hover:text-fg"
           >
             Close
           </button>

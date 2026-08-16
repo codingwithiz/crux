@@ -100,7 +100,7 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
-        className={`ce-fade-up my-auto flex max-h-[88dvh] w-full flex-col rounded-xl border border-line bg-surface shadow-2xl ${className}`}
+        className={`ce-fade-up my-auto flex max-h-[88dvh] w-full flex-col rounded-surface border border-line bg-surface shadow-2xl ${className}`}
       >
         {/* Present for assistive tech even when the design shows its own header. */}
         <h2 id={titleId} className="sr-only">

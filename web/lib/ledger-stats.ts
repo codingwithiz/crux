@@ -74,7 +74,9 @@ export function dailyStreak(all: Thesis[]): number {
 
 // Representative probability for each stated confidence, and the realised value
 // of each outcome — used for a Brier-style calibration score.
-const CONF_P: Record<Confidence, number> = { low: 0.3, med: 0.6, high: 0.85 };
+// Exported because the calibration chart plots against these exact values; a
+// second copy in the view would let the picture drift from the score.
+export const CONF_P: Record<Confidence, number> = { low: 0.3, med: 0.6, high: 0.85 };
 const OUT_V: Record<Outcome, number> = { held: 1, mixed: 0.5, broke: 0 };
 
 export interface Calibration {
@@ -121,4 +123,41 @@ export function calibration(items: Thesis[]): Calibration {
     score: brier === null ? null : Math.round((1 - brier) * 100),
     byConfidence,
   };
+}
+
+/** How far a stated confidence may sit from its realised rate before it's worth
+ *  saying out loud. Below this, the honest answer is "you're calibrated". */
+const VERDICT_GAP = 0.15;
+
+export interface CalibrationVerdict {
+  band: Confidence;
+  kind: "over" | "under" | "calibrated";
+  /** What you said, and what actually happened, as probabilities. */
+  stated: number;
+  actual: number;
+  resolved: number;
+}
+
+/**
+ * The sentence the score cannot say.
+ *
+ * `score: 97` is a number nobody can act on. "Your high-confidence calls held
+ * every time" and "you're overconfident above 0.7" are the same data with the
+ * finding attached — and the finding is the entire reason the ledger exists.
+ *
+ * Reports the band that is furthest from its stated probability, because that is
+ * the one worth changing. Null until something has been scored.
+ */
+export function calibrationVerdict(cal: Calibration): CalibrationVerdict | null {
+  let worst: CalibrationVerdict | null = null;
+  for (const band of ["low", "med", "high"] as Confidence[]) {
+    const { resolved, hitRate } = cal.byConfidence[band];
+    if (!resolved || hitRate === null) continue;
+    const stated = CONF_P[band];
+    const gap = hitRate - stated;
+    const kind = Math.abs(gap) <= VERDICT_GAP ? "calibrated" : gap < 0 ? "over" : "under";
+    const candidate: CalibrationVerdict = { band, kind, stated, actual: hitRate, resolved };
+    if (!worst || Math.abs(gap) > Math.abs(worst.actual - worst.stated)) worst = candidate;
+  }
+  return worst;
 }

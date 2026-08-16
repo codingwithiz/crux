@@ -18,7 +18,7 @@ export function BrandPicker({ value, onChange }: { value: Brand; onChange: (v: B
 
   if (value?.name) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-ink px-3 py-2">
+      <div className="flex items-center gap-2 rounded-control border border-line bg-ink px-3 py-2">
         {value.slug && (
           <span className="inline-flex h-5 items-center">
             <BrandMark slug={value.slug} size={20} />
@@ -44,7 +44,7 @@ export function BrandPicker({ value, onChange }: { value: Brand; onChange: (v: B
 
   return (
     <div>
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-ink px-3">
+      <div className="flex items-center gap-2 rounded-control border border-line bg-ink px-3">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
           value={query}
@@ -54,7 +54,7 @@ export function BrandPicker({ value, onChange }: { value: Brand; onChange: (v: B
         />
       </div>
       {query.trim() && (
-        <div className="mt-1.5 max-h-44 overflow-y-auto rounded-lg border border-line bg-surface p-1">
+        <div className="mt-1.5 max-h-44 overflow-y-auto rounded-control border border-line bg-surface p-1">
           {results.map((b) => (
             <button
               key={b.slug}
@@ -62,7 +62,7 @@ export function BrandPicker({ value, onChange }: { value: Brand; onChange: (v: B
                 onChange({ name: b.name, slug: b.slug });
                 setQuery("");
               }}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm text-fg hover:bg-ink"
+              className="flex w-full items-center gap-2.5 rounded-control px-2.5 py-1.5 text-left text-sm text-fg hover:bg-ink"
             >
               <span className="inline-flex h-5 w-5 items-center justify-center">
                 <BrandMark slug={b.slug} size={20} />
@@ -75,7 +75,7 @@ export function BrandPicker({ value, onChange }: { value: Brand; onChange: (v: B
               onChange({ name: query.trim(), slug: undefined });
               setQuery("");
             }}
-            className="block w-full rounded-md px-2.5 py-1.5 text-left text-sm text-muted hover:bg-ink"
+            className="block w-full rounded-control px-2.5 py-1.5 text-left text-sm text-muted hover:bg-ink"
           >
             Use “{query.trim()}” as the name only (no logo)
           </button>

@@ -73,7 +73,7 @@ export function SectionHead({
   return (
     <div className={`${rule ? "ce-rule pt-4" : ""} ${className}`}>
       {eyebrow && (
-        <p className={`font-mono text-xs uppercase tracking-[0.14em] ${toneClass}`}>{eyebrow}</p>
+        <p className={`font-mono text-xs uppercase tracking-eyebrow ${toneClass}`}>{eyebrow}</p>
       )}
       {(title || children) && (
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">

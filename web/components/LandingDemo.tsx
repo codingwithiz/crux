@@ -53,7 +53,7 @@ export function LandingDemo({ width = 300 }: { width?: number }) {
       className="flex flex-col items-center gap-3"
     >
       <div
-        className="overflow-hidden rounded-xl ring-1 ring-line shadow-[0_30px_60px_-30px_rgba(0,0,0,0.9)]"
+        className="overflow-hidden rounded-surface ring-1 ring-line shadow-[0_30px_60px_-30px_rgba(0,0,0,0.9)]"
         style={{ width, height: dims.h * scale }}
       >
         {/* The fade lives on a wrapper, never on the scaled element: ce-fade-up

@@ -38,7 +38,7 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
           <button
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 rounded-md p-1 text-muted hover:bg-ink hover:text-fg"
+            className="shrink-0 rounded-control p-1 text-muted hover:bg-ink hover:text-fg"
           >
             <X className="h-4 w-4" />
           </button>
@@ -60,7 +60,7 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
 
         <div className="max-h-[58vh] overflow-y-auto p-4">
           {err ? (
-            <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">{err}</p>
+            <p className="rounded-control border border-warning/40 bg-warning/10 p-3 text-sm text-warning">{err}</p>
           ) : !data ? (
             <div className="flex items-center gap-2 py-10 text-sm text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Rewriting it in your voice…
@@ -70,13 +70,13 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
               <div className="flex justify-end">
                 <button
                   onClick={() => copy(data.thread.join("\n\n"), "Copied the thread")}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:bg-ink hover:text-fg"
+                  className="inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-xs text-muted hover:bg-ink hover:text-fg"
                 >
                   <Copy className="h-3 w-3" /> Copy all
                 </button>
               </div>
               {data.thread.map((p, i) => (
-                <div key={i} className="rounded-lg border border-line bg-ink/40 p-3">
+                <div key={i} className="rounded-control border border-line bg-ink/40 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="whitespace-pre-wrap text-sm text-fg">{p}</p>
                     <button
@@ -87,7 +87,7 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <p className="mt-1 text-[11px] text-muted">
+                  <p className="mt-1 text-micro text-muted">
                     {p.length} chars · {i + 1}/{data.thread.length}
                   </p>
                 </div>
@@ -98,12 +98,12 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
               <div className="flex justify-end">
                 <button
                   onClick={() => copy(data.linkedin, "Copied the post")}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:bg-ink hover:text-fg"
+                  className="inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-xs text-muted hover:bg-ink hover:text-fg"
                 >
                   <Copy className="h-3 w-3" /> Copy
                 </button>
               </div>
-              <div className="rounded-lg border border-line bg-ink/40 p-3">
+              <div className="rounded-control border border-line bg-ink/40 p-3">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-fg">{data.linkedin}</p>
               </div>
             </div>
@@ -111,7 +111,7 @@ export function RepurposeModal({ thesis, onClose }: { thesis: Thesis; onClose: (
         </div>
 
         <div className="border-t border-line px-4 py-2.5">
-          <p className="text-[11px] text-muted">Same opinion, your voice — nothing invented. Edit before posting.</p>
+          <p className="text-micro text-muted">Same opinion, your voice — nothing invented. Edit before posting.</p>
         </div>
     </Dialog>
   );

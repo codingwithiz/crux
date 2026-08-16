@@ -24,7 +24,7 @@ export default function Error({
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-start px-5 py-24">
-      <p className="font-mono text-xs uppercase tracking-wide text-accent">Something broke</p>
+      <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Something broke</p>
       <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">
         That didn&rsquo;t work.
       </h1>
@@ -36,7 +36,7 @@ export default function Error({
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button
           onClick={reset}
-          className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
+          className="ce-press rounded-control bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110"
         >
           Try again
         </button>

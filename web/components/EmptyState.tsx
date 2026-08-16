@@ -14,8 +14,8 @@ export function EmptyState({
   cta?: { href: string; label: string };
 }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-dashed border-line bg-surface/30 px-6 py-14 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-surface text-accent">
+    <div className="flex flex-col items-center rounded-surface border border-dashed border-line bg-surface/30 px-6 py-14 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-control border border-line bg-surface text-accent">
         <Icon className="h-6 w-6" />
       </div>
       <h3 className="mt-4 text-base font-semibold text-fg">{title}</h3>
@@ -23,7 +23,10 @@ export function EmptyState({
       {cta && (
         <Link
           href={cta.href}
-          className="ce-press mt-5 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+          // Matches Button's primary variant, including the printed-ink press —
+          // the empty-state CTA is the one action on the screen and used to be
+          // the only primary in the app that sat flat.
+          className="ce-press mt-5 inline-flex items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg shadow-press transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
         >
           {cta.label}
         </Link>

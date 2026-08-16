@@ -13,6 +13,7 @@ import { getBrandKit } from "@/lib/brand-kit";
 import { INSPIRATION } from "@/lib/inspiration";
 import { findRelated, type RelatedThesis } from "@/lib/related";
 import { asCitations } from "@/lib/citations";
+import { CONF_P } from "@/lib/ledger-stats";
 import { parseInput } from "@/lib/parse-input";
 import { saveFlow, loadFlow, clearFlow, flowMatches } from "@/lib/flow-session";
 import { Markdown } from "./Markdown";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { Callout } from "@/components/ui/Callout";
 import { Underline } from "@/components/ui/Ink";
+import { Plate, PlateLabel } from "@/components/ui/Plate";
 import { Check, AlertTriangle, Lightbulb, Sparkles, Copy, ExternalLink, Square, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import type { Confidence, Settings, Synthesis, Thesis } from "@/lib/types";
@@ -59,6 +61,15 @@ const FOLLOWUPS = [
   { label: "My evidence", text: "My evidence is: " },
 ];
 
+/** What each confidence actually claims, in the terms it is scored on. Written
+ *  as a frequency rather than a probability because "8 times out of 10" is a
+ *  thing people can check themselves against and "0.85" is not. */
+const CONF_MEANING: Record<Confidence, string> = {
+  low: "A hunch. If you made ten calls like this, you'd expect about three to hold up.",
+  med: "You lean this way. About six in ten should hold up.",
+  high: "You'd argue this in public. About eight or nine in ten should hold up.",
+};
+
 const SYNTH_ROWS: { key: keyof Synthesis; label: string }[] = [
   { key: "happened", label: "What happened" },
   { key: "newVsRepackaged", label: "New vs. repackaged" },
@@ -85,6 +96,9 @@ export function ConvictionFlow({
   // Tolerates the legacy bare-string shape from theses committed before quotes
   // carried a verification result.
   const citations = useMemo(() => asCitations(synthesis?.citations), [synthesis]);
+  // Stated as a count, not a badge: "3 of 3 matched" is the claim the eval
+  // harness makes, and it is the one number here nobody has to trust a model for.
+  const verifiedCount = useMemo(() => citations.filter((c) => c.verified).length, [citations]);
   const [related, setRelated] = useState<RelatedThesis[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -550,15 +564,20 @@ export function ConvictionFlow({
       <div className="mb-6 flex items-center gap-2 text-xs">
         {STEPS.map((s, i) => (
           <div key={s.id} className="flex items-center gap-2">
+            {/* Done, here, and not yet — three states that have to be legible at
+                a glance. Completed used to be bg-surface against bg-surface/50
+                for upcoming, a difference of nothing, so the rail showed where
+                you were but never how far you had come. */}
             <span
-              className={`rounded px-2 py-1 font-mono ${
+              className={`inline-flex items-center gap-1 rounded-control px-2 py-1 font-mono ${
                 i === activeIdx
                   ? "bg-accent text-accent-fg"
                   : i < activeIdx
-                    ? "bg-surface text-fg"
-                    : "bg-surface/50 text-muted"
+                    ? "border border-success/40 bg-success/10 text-success"
+                    : "border border-line text-muted"
               }`}
             >
+              {i < activeIdx && <Check aria-hidden className="h-3 w-3" />}
               {s.label}
             </span>
             {i < STEPS.length - 1 && <span className="text-muted">→</span>}
@@ -597,30 +616,40 @@ export function ConvictionFlow({
             onChange={(e) => setInput(e.target.value)}
             rows={4}
             placeholder="e.g. AI agents will make most SaaS dashboards obsolete within two years.&#10;or: https://example.com/article — I think the author is too optimistic."
-            className="mt-2 w-full resize-none rounded-xl border border-line bg-surface/40 px-4 py-3 text-base outline-none focus:border-accent"
+            className="mt-2 w-full resize-none rounded-surface border border-line bg-surface/40 px-4 py-3 text-base outline-none focus:border-accent"
           />
           <div className="mt-2">
             <MicButton onText={(t) => setInput((p) => (p ? `${p} ${t}` : t))} />
           </div>
-          <button
+          {/* The page's only action, and until now the page opened with it
+              rendered as amber at 50% — a muddy olive that still reads as a
+              filled button you can press. Through Button, an unavailable
+              primary recedes to an outline and a loading one keeps its fill. */}
+          <Button
+            variant="primary"
+            className="mt-4"
             onClick={() => runSynthesis(input)}
-            disabled={loading || !input.trim()}
-            className="mt-4 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+            disabled={!input.trim()}
+            loading={loading}
+            loadingLabel="Breaking it down…"
           >
-            {loading ? "Breaking it down…" : "Break it down →"}
-          </button>
+            Break it down →
+          </Button>
 
           <div className="mt-5 border-t border-line pt-4">
             <p className="text-xs text-muted">Blank page? Start from a spark — then make it your own:</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {INSPIRATION.slice(0, 6).map((s) => (
+            {/* Three whole sentences, not six cut at 52 characters. Every spark
+                was truncated, so the row read as six near-identical stubs and
+                you had to click one to find out what it said. */}
+            <div className="mt-2 flex flex-col items-start gap-1.5">
+              {INSPIRATION.slice(0, 3).map((s) => (
                 <button
                   key={s}
                   onClick={() => setInput(s)}
-                  className="rounded-full border border-line px-3 py-1 text-xs text-muted transition hover:border-cool/50 hover:bg-surface hover:text-fg"
+                  className="ce-measure rounded-full border border-line px-3 py-1 text-left text-xs text-muted transition hover:border-cool/50 hover:bg-surface hover:text-fg"
                   title="Use as a starting point — edit it into your own words"
                 >
-                  {s.length > 52 ? s.slice(0, 50) + "…" : s}
+                  {s}
                 </button>
               ))}
             </div>
@@ -658,18 +687,18 @@ export function ConvictionFlow({
                   </a>
                 )}
               </div>
-              <div className="space-y-3">
-                {synthesis.plainEnglish && (
-                  <div className="rounded-xl border border-accent/40 bg-accent/5 p-5 shadow-[0_1px_0_0_var(--color-line),0_18px_40px_-28px_rgba(0,0,0,0.8)]">
-                    <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
-                      In plain English
-                    </p>
-                    <p className="mt-2 font-serif text-lead leading-relaxed text-fg">
-                      {synthesis.plainEnglish}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* The synthesis is the thing the user came for, so it is the one
+                  paper artifact on this screen — set in serif, on stock, at a
+                  readable measure. It used to be an amber-tinted panel in a
+                  stack of same-weight amber-tinted panels. */}
+              {synthesis.plainEnglish && (
+                <Plate arrive>
+                  <PlateLabel>In plain English</PlateLabel>
+                  <p className="ce-measure mt-3 font-serif text-lead leading-relaxed">
+                    {synthesis.plainEnglish}
+                  </p>
+                </Plate>
+              )}
 
               {/* Everything below is the evidence behind that summary. Useful,
                   but not required to form a gut reaction — and as a flat stack
@@ -686,15 +715,15 @@ export function ConvictionFlow({
                   <div
                     key={r.key}
                     style={{ "--i": i } as React.CSSProperties}
-                    className="ce-stagger rounded-xl border border-line bg-surface/40 p-4"
+                    className="ce-stagger rounded-surface border border-line bg-surface/40 p-4"
                   >
-                    <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">{r.label}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-fg">{synthesis[r.key] as string}</p>
+                    <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">{r.label}</p>
+                    <p className="ce-measure mt-1 text-sm leading-relaxed text-fg">{synthesis[r.key] as string}</p>
                   </div>
                 ))}
                 {synthesis.questions?.length > 0 && (
-                  <div className="rounded-xl border border-line bg-surface/40 p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-accent">
+                  <div className="rounded-surface border border-line bg-surface/40 p-4">
+                    <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">
                       Answer these before you have an opinion
                     </p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
@@ -704,52 +733,77 @@ export function ConvictionFlow({
                     </ul>
                   </div>
                 )}
-                {citations.length > 0 && (
-                  <div className="rounded-xl border border-success/30 bg-success/5 p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-success">
-                      Receipts — quotes from the source
-                    </p>
-                    <ul className="mt-2 space-y-2">
-                      {citations.map((c, i) => (
-                        <li key={i} className="border-l-2 border-success/40 pl-3 text-sm italic text-muted">
+                </div>
+              </details>
+
+              {/* Receipts sat at the bottom of the collapsed breakdown, as grey
+                  italics behind a coloured left border — the product's single
+                  most checkable claim, rendered as its least considered element.
+                  Out of the fold, quotes in the editorial face, and the check
+                  stamps in per quote so the verification reads as something that
+                  happened rather than a label that was always there. */}
+              {citations.length > 0 && (
+                <section className="mt-5">
+                  <p className="font-mono text-xs uppercase tracking-eyebrow text-success">
+                    Receipts — <span className="ce-tabular">{verifiedCount}</span> of{" "}
+                    <span className="ce-tabular">{citations.length}</span> matched word-for-word
+                  </p>
+                  <ul className="mt-2.5 space-y-2.5">
+                    {citations.map((c, i) => (
+                      <li
+                        key={i}
+                        className={`rounded-surface border p-3.5 ${
+                          c.verified ? "border-line bg-surface/40" : "border-warning/40 bg-warning/5"
+                        }`}
+                      >
+                        <p className="ce-measure font-serif leading-relaxed text-fg">
                           &ldquo;{c.quote}&rdquo;
+                        </p>
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
                           {c.verified ? (
                             <span
-                              title="Found word-for-word in the source"
-                              className="ml-2 not-italic text-xs text-success"
+                              title="Found word-for-word in the source text"
+                              style={{ animationDelay: `calc(${i} * 90ms)` }}
+                              className="ce-stamp inline-flex items-center gap-1 rounded-control border border-success/40 bg-success/10 px-2 py-0.5 font-mono text-micro uppercase tracking-eyebrow text-success"
                             >
-                              <Check className="inline h-3 w-3" /> verified
+                              <Check className="h-3 w-3" /> verified
                             </span>
                           ) : (
                             <span
                               title="We could not match this quote to the source text — treat it with suspicion"
-                              className="ml-2 not-italic text-xs text-warning"
+                              className="inline-flex items-center gap-1 rounded-control border border-warning/50 bg-warning/10 px-2 py-0.5 font-mono text-micro uppercase tracking-eyebrow text-warning"
                             >
-                              <AlertTriangle className="inline h-3 w-3" /> unverified
+                              <AlertTriangle className="h-3 w-3" /> not found in source
                             </span>
                           )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                </div>
-              </details>
+                          {c.sourceTitle && (
+                            <span className="font-mono text-micro text-muted">{c.sourceTitle}</span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
               {related.length > 0 && (
-                <div className="mt-4 rounded-xl border border-cool/40 bg-cool/5 p-4">
-                  <p className="font-mono text-xs uppercase tracking-wide text-cool">
+                <div className="mt-4 rounded-surface border border-cool/40 bg-cool/5 p-4">
+                  <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">
                     Related to your past thinking
                   </p>
                   <ul className="mt-2 space-y-2">
                     {related.map((r) => (
-                      <li key={r.id} className="text-sm text-fg">
+                      <li key={r.id} className="ce-measure text-sm text-fg">
                         {r.statement}
-                        <span className="ml-2 text-xs text-muted">({r.confidence})</span>
+                        {/* Tinted from the surface's own hue. Neutral grey on a
+                            coloured panel reads as a rendering fault. */}
+                        <span className="ml-2 font-mono text-micro uppercase tracking-eyebrow text-cool/70">
+                          {r.confidence}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-2 text-xs text-muted">Does today change any of these?</p>
+                  <p className="mt-2 text-xs text-cool/70">Does today change any of these?</p>
                 </div>
               )}
 
@@ -757,7 +811,7 @@ export function ConvictionFlow({
                   ~1,200px of reading and two competing exits — the one field
                   this whole step exists to fill. It now sits directly under the
                   plain-English summary, with the detail available on demand. */}
-              <div className="mt-4 rounded-xl border border-accent/40 bg-accent/5 p-4">
+              <div className="mt-4 rounded-surface border border-accent/40 bg-accent/5 p-4">
                 <label htmlFor="gut-take" className="block text-sm font-medium">
                   What&rsquo;s <span className="text-accent">your</span> take? One sentence.
                 </label>
@@ -791,7 +845,7 @@ export function ConvictionFlow({
                       <button
                         key={i}
                         onClick={() => setTake(d)}
-                        className="block w-full rounded-lg border border-line bg-ink/60 px-3 py-2 text-left text-sm text-fg transition hover:border-cool/50 hover:bg-surface"
+                        className="block w-full rounded-control border border-line bg-ink/60 px-3 py-2 text-left text-sm text-fg transition hover:border-cool/50 hover:bg-surface"
                         title="Use as a starting point — then edit it into your own words"
                       >
                         {d}
@@ -804,12 +858,15 @@ export function ConvictionFlow({
                   <Button onClick={startAdversary} variant="primary" disabled={!take.trim()}>
                     Talk it through →
                   </Button>
+                  {/* "Skip" never said what was being skipped, and sat next to
+                      "Save for later", which saves something entirely different.
+                      Every exit now names its own outcome. */}
                   <button
                     onClick={goCommit}
                     disabled={!take.trim()}
                     className="text-sm text-muted underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-40 disabled:hover:no-underline"
                   >
-                    Skip and save my take
+                    Save it without arguing
                   </button>
                 </div>
               </div>
@@ -818,21 +875,21 @@ export function ConvictionFlow({
                   They used to get a full card each — more space than the primary
                   path — in three different visual treatments. */}
               <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
-                <span>No take yet?</span>
+                <span>Or:</span>
                 <button
                   onClick={() => void makeExplainer()}
                   disabled={explaining}
                   className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-50"
                 >
                   <BookOpen className="h-4 w-4" />
-                  {explaining ? "Building…" : "Just explain it"}
+                  {explaining ? "Building…" : "Make an explainer deck"}
                 </button>
                 <button
                   onClick={() => void parkSynthesis()}
                   disabled={parking}
                   className="underline-offset-4 transition hover:text-fg hover:underline disabled:opacity-50"
                 >
-                  {parking ? "Saving…" : "Save for later"}
+                  {parking ? "Saving…" : "Park it — no take yet"}
                 </button>
               </div>
               {explaining && (
@@ -847,21 +904,43 @@ export function ConvictionFlow({
 
       {step === "adversary" && (
         <div className="ce-fade-up">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-muted">Mode</span>
-            {(["coach", "spar"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setAdversaryMode(m)}
-                className={`rounded-full border px-3 py-1 transition ${adversaryMode === m ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
-                title={m === "coach" ? "Supportive — helps you find your take" : "Tough — stress-tests your take"}
-              >
-                {m === "coach" ? "Coach" : "Spar"}
-              </button>
-            ))}
-            <span className="text-muted">{adversaryMode === "coach" ? "· gentle, helps you find it" : "· tough, stress-tests it"}</span>
+          {/* Coach and Spar are opposite intents and used to be two identical
+              pills with a trailing grey fragment, so which one you were talking
+              to was the least legible thing on the screen. A segmented control
+              with the active side filled, and the difference stated as a whole
+              sentence rather than "· tough, stress-tests it". */}
+          <div className="mb-3">
+            <div
+              role="radiogroup"
+              aria-label="Sparring mode"
+              className="inline-flex rounded-control border border-line p-0.5"
+            >
+              {(["coach", "spar"] as const).map((m) => (
+                <button
+                  key={m}
+                  role="radio"
+                  aria-checked={adversaryMode === m}
+                  onClick={() => setAdversaryMode(m)}
+                  className={`ce-press rounded-control px-3.5 py-1 text-xs font-medium transition duration-(--dur-fast) ease-out ${
+                    adversaryMode === m
+                      ? "bg-accent text-accent-fg"
+                      : "text-muted hover:text-fg"
+                  }`}
+                >
+                  {m === "coach" ? "Coach" : "Spar"}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted">
+              {adversaryMode === "coach"
+                ? "Coach is on your side. It asks what you actually think until you can say it."
+                : "Spar is against you. It takes the strongest case for the other view."}
+            </p>
           </div>
-          <div ref={transcript} className="flex max-h-[55vh] min-h-[320px] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface/40 p-4">
+          {/* Heights to its content with a small floor. A fixed 320px meant two
+              messages sat above ~250px of empty ink, which reads as broken
+              rather than as waiting for you. */}
+          <div ref={transcript} className="flex max-h-[55vh] min-h-32 flex-col gap-3 overflow-y-auto overscroll-contain rounded-surface border border-line bg-surface/40 p-4">
             {messages.length === 0 && (
               <p className="flex items-center gap-2 text-sm text-muted">
                 <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent" />
@@ -871,10 +950,12 @@ export function ConvictionFlow({
             {messages.map((m) => (
               <div
                 key={m.id}
-                className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-sm ${
+                // Blurs in on mount rather than snapping into place. Keyed by
+                // message id, so it plays once per turn and not per token.
+                className={`ce-stream-in max-w-[88%] rounded-surface px-4 py-2.5 text-sm ${
                   m.role === "user"
                     ? "self-end bg-accent/15 text-fg"
-                    : "self-start border border-line bg-ink text-fg"
+                    : "ce-measure self-start border border-line bg-ink text-fg"
                 }`}
               >
                 {m.role === "user" ? (
@@ -883,19 +964,19 @@ export function ConvictionFlow({
                   <>
                     <Markdown>{msgText(m)}</Markdown>
                     {streaming && m.id === messages[messages.length - 1]?.id && (
-                      <span className="ml-0.5 inline-block h-3.5 w-[3px] animate-pulse rounded-sm bg-accent align-middle" />
+                      <span className="ml-0.5 inline-block h-3.5 w-[3px] animate-pulse rounded-control bg-accent align-middle" />
                     )}
                   </>
                 )}
               </div>
             ))}
             {awaiting && (
-              <div className="self-start rounded-2xl border border-line bg-ink px-4 py-2.5">
+              <div className="self-start rounded-surface border border-line bg-ink px-4 py-2.5">
                 <ProgressSteps steps={ADVERSARY_THINKING_STEPS} />
               </div>
             )}
             {chatError && (
-              <div className="self-start rounded-2xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+              <div className="self-start rounded-surface border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
 Your sparring partner hit an error: {chatError.message}. Try sending again.
               </div>
             )}
@@ -906,14 +987,14 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
               {streaming ? (
                 <button
                   onClick={() => stop()}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                  className="inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
                 >
                   <Square className="h-3 w-3" /> Stop
                 </button>
               ) : (
                 <button
                   onClick={copyLastReply}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                  className="inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
                 >
                   <Copy className="h-3 w-3" /> Copy reply
                 </button>
@@ -925,7 +1006,7 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
             <button
               onClick={() => void getHints()}
               disabled={hinting || thinking || messages.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-control border border-cool/40 bg-cool/10 px-3 py-1.5 text-xs font-medium text-cool transition hover:bg-cool/20 disabled:opacity-50"
               title="Suggest angles to help you answer — in your own words"
             >
               <Lightbulb className="h-3.5 w-3.5" /> {hinting ? "Thinking…" : "Stuck? Get hints"}
@@ -940,6 +1021,12 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
                 {h}
               </button>
             ))}
+            {/* The stems sit beside a button that spends a model call and takes
+                a few seconds; they cost nothing and fill the box instantly. Same
+                row, opposite consequence, so the row says which is which. */}
+            {hints.length === 0 && !thinking && messages.some((m) => m.role === "assistant") && (
+              <span className="ml-1 text-xs text-muted">Start a reply:</span>
+            )}
             {hints.length === 0 &&
               !thinking &&
               messages.some((m) => m.role === "assistant") &&
@@ -970,12 +1057,12 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Defend, revise, or push back…"
-              className="flex-1 rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+              className="flex-1 rounded-control border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <button
               type="submit"
               disabled={thinking || !chatInput.trim()}
-              className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+              className="rounded-control border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
             >
               Send
             </button>
@@ -988,7 +1075,7 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
             <button
               onClick={finishConversation}
               disabled={suggesting}
-              className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+              className="shrink-0 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
             >
               {suggesting ? "Writing it up…" : "Write up my take →"}
             </button>
@@ -1000,8 +1087,8 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
           be acknowledged by a toast sliding into a corner. */}
       {stamped && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm" role="status">
-          <div className="ce-stamp rounded-xl border-2 border-accent bg-ink px-8 py-6 text-center shadow-[6px_6px_0_0_var(--color-accent)]">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Saved</p>
+          <div className="ce-stamp rounded-surface border-2 border-accent bg-ink px-8 py-6 text-center shadow-[6px_6px_0_0_var(--color-accent)]">
+            <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Saved</p>
             <p className="mt-2 font-serif text-title font-semibold">
               <Underline draw>That&rsquo;s your take.</Underline>
             </p>
@@ -1012,7 +1099,7 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
 
       {step === "commit" && (
         <div className="ce-fade-up space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-cool/30 bg-cool/5 px-4 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-cool/30 bg-cool/5 px-4 py-2.5">
             <p className="text-xs text-muted">
               Only <span className="text-fg">your take</span> and{" "}
               <span className="text-fg">how sure you are</span> are required. Let AI organize the rest
@@ -1021,49 +1108,67 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
             <button
               onClick={draftFromDiscussion}
               disabled={suggesting}
-              className="shrink-0 rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
+              className="shrink-0 rounded-control bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50"
             >
               {suggesting ? "Drafting…" : <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Draft from what I argued</span>}
             </button>
           </div>
 
-          <div>
-            <label htmlFor="final-take" className="block text-sm font-medium">
-              Your take, in one sentence <span className="text-accent">*</span>
-            </label>
+          {/* The take, on paper.
+              This is the moment the product exists for, and it was the sixth
+              identical bordered textarea on a settings-shaped screen. On stock,
+              set in the editorial face, it reads as the thing you are about to
+              put your name to. */}
+          <Plate className="p-5 sm:p-6">
+            <PlateLabel>Your take, in one sentence</PlateLabel>
             {/* This reads as a second, different question unless we say plainly
                 that it is the take they already wrote. It is prefilled from it
                 (goCommit/finishConversation) — the ask is to sharpen, not to
                 start over. */}
-            <p className="mt-1 text-xs text-muted">
+            <label htmlFor="final-take" className="mt-1 block text-xs text-paper-muted">
               Carried over from what you wrote — edit it until it says exactly what you believe.
-            </p>
+            </label>
             <textarea
               id="final-take"
               value={statement}
               onChange={(e) => setStatement(e.target.value)}
               rows={2}
-              className="mt-1.5 w-full resize-none rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+              className="ce-measure mt-3 w-full resize-none border-0 border-b border-paper-fg/20 bg-transparent px-0 pb-1.5 font-serif text-lead leading-snug text-paper-fg outline-none placeholder:text-paper-muted focus:border-paper-fg/50"
+              placeholder="The one sentence you'd defend."
             />
-          </div>
+          </Plate>
 
           <div>
             <label className="block text-sm font-medium">
               How sure are you? <span className="text-accent">*</span>
             </label>
-            <div className="mt-2 flex gap-2">
+            {/* The number, on the control.
+                These three words are scored as 0.3 / 0.6 / 0.85 in
+                lib/ledger-stats and a Brier score is computed against them — so
+                the user was making a probabilistic claim, and being marked on
+                it, without ever being shown the scale. Naming the odds is what
+                makes the calibration chart mean anything later, and it is the
+                difference between a vibe and a forecast. */}
+            <div className="mt-2 flex flex-wrap gap-2">
               {(["low", "med", "high"] as Confidence[]).map((c) => (
                 <button
                   key={c}
                   onClick={() => setConfidence(c)}
-                  className={`rounded-lg border px-4 py-1.5 text-sm capitalize ${
-                    confidence === c ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
+                  aria-pressed={confidence === c}
+                  className={`ce-press min-h-11 rounded-control border px-4 py-2 text-left transition duration-(--dur-fast) ease-out ${
+                    confidence === c
+                      ? "border-accent bg-accent/10 text-fg"
+                      : "border-line text-muted hover:bg-surface hover:text-fg"
                   }`}
                 >
-                  {c}
+                  <span className="block text-sm font-medium capitalize">{c}</span>
+                  <span className="ce-tabular block font-mono text-micro opacity-80">
+                    ~{Math.round(CONF_P[c] * 100)}%
+                  </span>
                 </button>
               ))}
             </div>
+            <p className="mt-2 text-xs text-muted">{CONF_MEANING[confidence]}</p>
           </div>
 
           {showDepth ? (
@@ -1086,14 +1191,14 @@ Your sparring partner hit an error: {chatError.message}. Try sending again.
             <button
               onClick={commit}
               disabled={loading || !statement.trim()}
-              className="ce-press rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+              className="ce-press rounded-control bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
             >
               {loading ? "Working…" : "Save + make carousel →"}
             </button>
             <button
               onClick={commitOnly}
               disabled={loading || !statement.trim()}
-              className="ce-press rounded-lg border border-line px-4 py-2.5 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
+              className="ce-press rounded-control border border-line px-4 py-2.5 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
               title="Save it to your track record without making a carousel"
             >
               Just save my take
@@ -1125,14 +1230,14 @@ function Field({
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+          className="mt-1 w-full rounded-control border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
         />
       ) : (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={2}
-          className="mt-1 w-full resize-none rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+          className="mt-1 w-full resize-none rounded-control border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
         />
       )}
     </div>

@@ -7,7 +7,7 @@ export const metadata = { title: "Not found — Crux" };
 export default function NotFound() {
   return (
     <div className="mx-auto flex max-w-lg flex-col items-start px-5 py-24">
-      <p className="font-mono text-xs uppercase tracking-wide text-accent">404</p>
+      <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">404</p>
       <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">
         There&rsquo;s nothing here.
       </h1>
@@ -25,7 +25,7 @@ export default function NotFound() {
           <Link
             key={href}
             href={href}
-            className="rounded-lg border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
+            className="rounded-control border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
           >
             {label} →
           </Link>

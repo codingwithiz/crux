@@ -125,7 +125,7 @@ function Item({
     <Command.Item
       value={children}
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-fg data-[selected=true]:bg-ink"
+      className="flex cursor-pointer items-center gap-2.5 rounded-control px-3 py-2 text-sm text-fg data-[selected=true]:bg-ink"
     >
       <Icon className="h-4 w-4 text-muted" />
       {children}

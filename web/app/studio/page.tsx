@@ -1,4 +1,5 @@
 import { CarouselStudio } from "@/components/CarouselStudio";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export const metadata = { title: "Studio — Crux" };
 
@@ -11,10 +12,7 @@ export default async function StudioPage({
   return (
     <div>
       <div className="mx-auto max-w-6xl px-5 pt-8">
-        <h1 className="font-serif text-3xl font-semibold tracking-tight">Studio</h1>
-        <p className="mt-1 text-muted">
-          Fine-tune the copy, layout, and style, then export as PNGs, a .zip, or a PDF for LinkedIn.
-        </p>
+        <PageHeader title="Studio" lead="Fine-tune it, then export PNGs, a .zip, or a LinkedIn PDF." />
       </div>
       {/* No sample deck: the Studio used to open on a stranger's fully-written
           opinion about open-weight models, presented as if it were your draft.

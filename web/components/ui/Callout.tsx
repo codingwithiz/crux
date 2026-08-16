@@ -27,7 +27,7 @@ export function Callout({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border px-4 py-2.5 text-sm ${TONES[tone]} ${className}`}>
+    <div className={`rounded-control border px-4 py-2.5 text-sm ${TONES[tone]} ${className}`}>
       {children}
     </div>
   );

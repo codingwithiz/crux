@@ -159,7 +159,7 @@ export function VoiceEditor() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-line bg-surface/40 p-4 text-sm">
+      <div className="rounded-surface border border-line bg-surface/40 p-4 text-sm">
         <p className="font-medium">
           {isDefault ? "Using the built-in default voice" : "Using your saved voice"}
         </p>
@@ -178,7 +178,7 @@ export function VoiceEditor() {
               key={p.id}
               onClick={() => applyPreset(p)}
               title={p.blurb}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+              className="rounded-control border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
             >
               {p.name}
             </button>
@@ -201,7 +201,7 @@ export function VoiceEditor() {
                 onChange={(e) => setSample(i, e.target.value)}
                 rows={4}
                 placeholder="Paste one of your posts here…"
-                className="w-full resize-y rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+                className="w-full resize-y rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
               />
               <button
                 onClick={() => removeSample(i)}
@@ -219,7 +219,7 @@ export function VoiceEditor() {
         <button
           onClick={distill}
           disabled={busy}
-          className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+          className="rounded-control border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
         >
           {busy ? "Working…" : "Distill voice guide with AI"}
         </button>
@@ -249,12 +249,12 @@ export function VoiceEditor() {
             }}
             placeholder="agents, evals, robotics…"
             aria-label="Add an interest"
-            className="w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <button
             onClick={addInterest}
             disabled={!interestDraft.trim()}
-            className="shrink-0 rounded-lg border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
+            className="shrink-0 rounded-control border border-line px-4 py-2 text-sm hover:bg-surface disabled:opacity-50"
           >
             Add
           </button>
@@ -266,7 +266,7 @@ export function VoiceEditor() {
                 key={k}
                 onClick={() => void persistInterests(interests.filter((x) => x !== k))}
                 title={`Remove ${k}`}
-                className="rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-danger/60 hover:text-danger"
+                className="rounded-control border border-accent bg-accent/10 px-3 py-1.5 text-xs text-fg transition hover:border-danger/60 hover:text-danger"
               >
                 {k} <span aria-hidden>×</span>
               </button>
@@ -286,7 +286,7 @@ export function VoiceEditor() {
           onChange={(e) => setGuide(e.target.value)}
           rows={10}
           placeholder="Distill from your samples, or write your own style notes here…"
-          className="mt-2 w-full resize-y rounded-lg border border-line bg-ink px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+          className="mt-2 w-full resize-y rounded-control border border-line bg-ink px-3 py-2 font-mono text-xs outline-none focus:border-accent"
         />
       </div>
 
@@ -297,7 +297,7 @@ export function VoiceEditor() {
             value={tone}
             onChange={(e) => setTone(e.target.value)}
             placeholder="energetic, concrete, humble-confident"
-            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
         <label className="flex cursor-pointer items-center gap-2 self-end pb-2 text-sm">
@@ -310,7 +310,7 @@ export function VoiceEditor() {
         <button
           onClick={save}
           disabled={busy}
-          className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+          className="rounded-control bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save"}
         </button>

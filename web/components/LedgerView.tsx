@@ -8,12 +8,15 @@ import { RepurposeModal } from "@/components/RepurposeModal";
 import { Skeleton } from "@/components/Skeleton";
 import { ProgressSteps } from "@/components/ProgressSteps";
 import { getLedger, removeThesis, updateThesis } from "@/lib/ledger";
-import { ledgerStats, calibration } from "@/lib/ledger-stats";
+import { ledgerStats, calibration, calibrationVerdict } from "@/lib/ledger-stats";
+import { CalibrationChart } from "@/components/CalibrationChart";
+import { Callout } from "@/components/ui/Callout";
 import { saveDraft } from "@/lib/draft";
 import { DEFAULT_SLIDE_SIZE } from "@/lib/carousel/size";
 import { expressSlides } from "@/lib/express-client";
 import { getBrandKit } from "@/lib/brand-kit";
 import { saveFlow, parkedToFlow } from "@/lib/flow-session";
+import { asCitations } from "@/lib/citations";
 import type { Confidence, Outcome, Thesis } from "@/lib/types";
 
 const CONF_COLOR: Record<Confidence, string> = {
@@ -30,6 +33,16 @@ const STATUS_BADGE: Record<Thesis["status"], string | null> = {
 };
 
 const OUTCOME_LABEL: Record<Outcome, string> = { held: "held up", mixed: "mixed", broke: "broke" };
+
+/** Below this many scored takes, the accuracy number says so rather than
+ *  presenting two data points with the confidence of twenty. */
+const PROVISIONAL_AT = 5;
+
+/** Quotes on this take that were matched word-for-word against the source. The
+ *  legacy bare-string citation shape carries no verification, so it counts zero
+ *  rather than being assumed good. */
+const receiptCount = (t: Thesis) =>
+  asCitations(t.synthesis?.citations).filter((c) => c.verified).length;
 const OUTCOME_BADGE: Record<Outcome, string> = {
   held: "border-success/40 bg-success/10 text-success",
   mixed: "border-warning/40 bg-warning/10 text-warning",
@@ -61,12 +74,22 @@ export function LedgerView() {
   /** Which card's overflow menu is open — one at a time. */
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
-    getLedger().then(setItems);
+    // Without the catch, a store failure left four skeletons pulsing forever —
+    // the one screen holding work you cannot regenerate, silently stuck.
+    getLedger()
+      .then(setItems)
+      .catch((e: unknown) => {
+        setLoadError(e instanceof Error ? e.message : "Couldn't load your track record.");
+        setItems([]);
+      });
   }, []);
 
   const stats = useMemo(() => ledgerStats(items ?? []), [items]);
   const cal = useMemo(() => calibration(items ?? []), [items]);
+  const verdict = useMemo(() => calibrationVerdict(cal), [cal]);
   // Re-surface convictions committed a while ago that still have no recorded
   // outcome — the nudge that closes the calibration loop.
   // `now` is read once per mount rather than inside the memo: calling Date.now()
@@ -149,6 +172,12 @@ export function LedgerView() {
         ))}
       </div>
     );
+  if (loadError)
+    return (
+      <Callout tone="danger">
+        {loadError} Your takes are safe — this is a read failure. Reload to try again.
+      </Callout>
+    );
   if (!items.length)
     return (
       <EmptyState
@@ -164,13 +193,13 @@ export function LedgerView() {
       {/* One scorecard, not five stacked panels. Counts, accuracy and the
           confidence mix are one thought — "how am I doing" — and they used to be
           three separate bordered boxes you scrolled past to reach a take. */}
-      <div className="mb-6 rounded-xl border border-line bg-surface/40 p-5 shadow-[0_1px_0_0_var(--color-line),0_18px_40px_-28px_rgba(0,0,0,0.8)]">
+      <div className="mb-6 rounded-surface border border-line bg-surface/40 p-5 shadow-raised">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">Accuracy</p>
+            <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Accuracy</p>
             {/* The number this whole surface exists to produce, at the size that
                 says so. It used to be 11px text at the end of a row. */}
-            <p className="mt-1 font-serif text-display font-semibold leading-none tabular-nums">
+            <p className="ce-tabular mt-1 font-serif text-display font-semibold leading-none">
               {cal.resolved > 0 ? (
                 <>
                   {cal.score}
@@ -180,8 +209,15 @@ export function LedgerView() {
                 <span className="text-title text-muted">not scored yet</span>
               )}
             </p>
+            {/* A 97 drawn from two scored takes is not a 97. The product's whole
+                claim is that it does not overstate, so the one number that could
+                overstate says how thin it is, at the size it deserves. */}
             <p className="mt-1 text-xs text-muted">
-              {cal.resolved > 0 ? `from ${cal.resolved} scored` : `${stats.total} saved, none scored`}
+              {cal.resolved === 0
+                ? `${stats.total} saved, none scored`
+                : cal.resolved < PROVISIONAL_AT
+                  ? `provisional — from only ${cal.resolved} scored`
+                  : `from ${cal.resolved} scored`}
             </p>
           </div>
 
@@ -193,53 +229,43 @@ export function LedgerView() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-          {(["high", "med", "low"] as Confidence[]).map((c) => (
-            <div key={c} className="rounded-lg border border-line bg-ink/40 p-2">
-              <p className="text-sm font-bold tabular-nums text-fg">
-                {cal.byConfidence[c].hitRate === null
-                  ? "—"
-                  : `${Math.round((cal.byConfidence[c].hitRate as number) * 100)}%`}
-              </p>
-              <p className="text-xs capitalize text-muted">
-                {c} held ({cal.byConfidence[c].resolved})
-              </p>
-            </div>
-          ))}
+        {/* The picture the three tiles could not draw. They reported 100% / — /
+            50% with no reference, so a reader had nothing to compare against and
+            no way to tell a good number from a bad one. */}
+        <div className="ce-rule mt-5 pt-4">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">
+            Were you right when you were confident?
+          </p>
+          <div className="mt-3">
+            <CalibrationChart cal={cal} verdict={verdict} />
+          </div>
         </div>
 
         <div className="mt-4 flex items-center gap-3 text-xs text-muted">
-          <span className="font-mono uppercase tracking-[0.14em]">Confidence</span>
+          <span className="font-mono uppercase tracking-eyebrow">Confidence mix</span>
           <ConfBar low={stats.byConfidence.low} med={stats.byConfidence.med} high={stats.byConfidence.high} />
         </div>
-
-        {/* Shown from zero. This score is what makes a track record worth
-            keeping, and it used to be invisible until you'd already scored
-            something — as did the only text explaining how to score anything. */}
-        <p className="mt-3 text-xs text-muted">
-          {cal.resolved > 0
-            ? "Were you right when you were confident?"
-            : "Once reality has weighed in, open a take and say whether it held up. Do that a few times and this becomes a real measure of whether your confidence is worth trusting."}
-        </p>
       </div>
 
       {due.length > 0 && (
-        <div className="mb-5 rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <p className="font-mono text-xs uppercase tracking-wide text-warning">Time to score these</p>
+        <div className="mb-5 rounded-surface border border-warning/30 bg-warning/5 p-4">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-warning">Time to score these</p>
           <p className="mt-1 text-xs text-muted">
             You saved these a while ago. How did they hold up? Scoring keeps your accuracy honest.
           </p>
           <div className="mt-3 space-y-2">
             {due.map((t) => (
-              <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-ink/40 p-2.5">
+              <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-control border border-line bg-ink/40 p-2.5">
                 <span className="min-w-0 flex-1 truncate text-sm text-fg" title={t.statement}>{t.statement}</span>
-                <span className="shrink-0 text-[11px] text-muted">{daysAgo(t.createdAt)}d ago</span>
+                <span className="shrink-0 text-micro text-muted">{daysAgo(t.createdAt)}d ago</span>
                 {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
                   <button
                     key={o}
                     onClick={() => setOutcome(t, o)}
                     title={`Mark as ${OUTCOME_LABEL[o]}`}
-                    className="shrink-0 rounded-md border border-line px-2 py-1 text-[11px] capitalize text-muted hover:bg-surface hover:text-fg"
+                    // Scoring a take is the action the whole track record runs
+                    // on, and it was the smallest target in the app at 24px.
+                    className="ce-press min-h-11 shrink-0 rounded-control border border-line px-3 text-xs capitalize text-muted transition duration-(--dur-fast) ease-out hover:bg-surface hover:text-fg"
                   >
                     {OUTCOME_LABEL[o]}
                   </button>
@@ -256,7 +282,7 @@ export function LedgerView() {
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`rounded-lg border px-3 py-1.5 text-xs ${
+            className={`rounded-control border px-3 py-1.5 text-xs ${
               filter === f.id ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
             }`}
           >
@@ -267,12 +293,12 @@ export function LedgerView() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search topic or text…"
-          className="ml-auto w-44 rounded-lg border border-line bg-surface/40 px-3 py-1.5 text-xs outline-none focus:border-accent"
+          className="ml-auto w-44 rounded-control border border-line bg-surface/40 px-3 py-1.5 text-xs outline-none focus:border-accent"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+        <p className="rounded-surface border border-dashed border-line p-6 text-center text-sm text-muted">
           Nothing matches.
         </p>
       ) : (
@@ -283,7 +309,7 @@ export function LedgerView() {
             ) : (
               <div
                 key={t.id}
-                className={`rounded-xl border border-line bg-surface/40 p-4 ${t.status === "abandoned" ? "opacity-60" : ""}`}
+                className={`rounded-surface border border-line bg-surface/40 p-4 ${t.status === "abandoned" ? "opacity-60" : ""}`}
               >
                 <button
                   onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
@@ -296,7 +322,7 @@ export function LedgerView() {
                     {/* The committed opinion is the artefact this whole page
                         exists for — it should not read like table data. */}
                     <p
-                      className={`font-serif text-[1.0625rem] leading-snug text-fg ${
+                      className={`font-serif text-lead leading-snug text-fg ${
                         t.status === "abandoned" ? "line-through" : ""
                       }`}
                     >
@@ -334,6 +360,34 @@ export function LedgerView() {
                       </span>
                     )}
                   </p>
+                  {/* The falsifier the user wrote themselves, on the collapsed
+                      card. It was three levels down — behind a click, under two
+                      other fields — and it is the most valuable line on the
+                      page: the condition under which they would come back and
+                      change this. A track record without it is just a list. */}
+                  {t.changeMyMind && expandedId !== t.id && (
+                    <p className="ce-measure mt-2 border-l border-cool/40 pl-2.5 text-xs text-cool/80">
+                      Changes if: {t.changeMyMind}
+                    </p>
+                  )}
+                  {/* Lineage. The chain source → breakdown → take is all in
+                      storage and was never drawn, so nothing on this page
+                      showed that a take came from anywhere or left anything
+                      behind — which is most of why a list of takes doesn't
+                      feel like it accumulates. */}
+                  {(t.source?.title || receiptCount(t) > 0) && (
+                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-micro text-muted">
+                      {t.source?.title && (
+                        <span className="max-w-full truncate">from {t.source.title}</span>
+                      )}
+                      {receiptCount(t) > 0 && (
+                        <span className="text-success">
+                          <span className="ce-tabular">{receiptCount(t)}</span> verified{" "}
+                          {receiptCount(t) === 1 ? "receipt" : "receipts"}
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </button>
 
                 {expandedId === t.id && (
@@ -363,12 +417,14 @@ export function LedgerView() {
                       <p className="text-xs text-muted">No extra detail captured for this take.</p>
                     )}
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-xs uppercase tracking-wide text-muted">How did it hold up?</span>
+                      <span className="font-mono text-xs uppercase tracking-eyebrow text-muted">
+                        How did it hold up?
+                      </span>
                       {(["held", "mixed", "broke"] as Outcome[]).map((o) => (
                         <button
                           key={o}
                           onClick={() => setOutcome(t, o)}
-                          className={`rounded-lg border px-2.5 py-1 text-xs capitalize ${
+                          className={`ce-press min-h-11 rounded-control border px-3.5 text-xs capitalize transition duration-(--dur-fast) ease-out ${
                             t.outcome === o ? OUTCOME_BADGE[o] : "border-line text-muted hover:bg-surface"
                           }`}
                         >
@@ -386,14 +442,14 @@ export function LedgerView() {
                     <>
                       <button
                         onClick={() => resumeParked(t)}
-                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
+                        className="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
                       >
                         Continue
                       </button>
                       <button
                         onClick={() => del(t.id)}
                         onBlur={() => confirmDelete === t.id && setConfirmDelete(null)}
-                        className={`rounded-lg border px-3 py-1.5 text-xs ${
+                        className={`rounded-control border px-3 py-1.5 text-xs ${
                           confirmDelete === t.id
                             ? "border-danger/60 text-danger"
                             : "border-line text-muted hover:text-danger"
@@ -409,13 +465,13 @@ export function LedgerView() {
                   <button
                     onClick={() => makeCarousel(t)}
                     disabled={busyId === t.id}
-                    className="ce-press rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg shadow-[2px_2px_0_0_var(--color-accent-fg)] transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50"
+                    className="ce-press rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg shadow-press transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50"
                   >
                     {busyId === t.id ? "Building…" : "Make carousel"}
                   </button>
                   <button
                     onClick={() => setRepTo(t)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-fg transition hover:border-accent/50 hover:bg-surface"
+                    className="inline-flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-xs text-fg transition hover:border-accent/50 hover:bg-surface"
                   >
                     <Share2 className="h-3.5 w-3.5" /> Reuse
                   </button>
@@ -427,11 +483,11 @@ export function LedgerView() {
                   >
                     <summary
                       aria-label="More actions"
-                      className="ce-press inline-flex cursor-pointer list-none items-center rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
+                      className="ce-press inline-flex cursor-pointer list-none items-center rounded-control border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-surface hover:text-fg"
                     >
                       <MoreHorizontal className="h-3.5 w-3.5" />
                     </summary>
-                    <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+                    <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-control border border-line bg-surface shadow-2xl">
                       <MenuItem onClick={() => { setMenuFor(null); setEditId(t.id); }}>Revise</MenuItem>
                       <MenuItem
                         onClick={() => { setMenuFor(null); void setStatus(t, t.status === "abandoned" ? "active" : "abandoned"); }}
@@ -497,7 +553,7 @@ function daysAgo(iso: string): number {
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className="rounded-xl border border-line bg-surface/40 p-3">
+    <div className="rounded-surface border border-line bg-surface/40 p-3">
       <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-fg"}`}>{value}</p>
       <p className="text-xs text-muted">{label}</p>
     </div>
@@ -538,20 +594,20 @@ function ReviseCard({
   const [changeMyMind, setChangeMyMind] = useState(thesis.changeMyMind ?? "");
 
   return (
-    <div className="rounded-xl border border-cool/40 bg-cool/5 p-4">
+    <div className="rounded-surface border border-cool/40 bg-cool/5 p-4">
       <p className="mb-2 text-xs font-medium text-cool">Revise — new evidence changed your view?</p>
       <textarea
         value={statement}
         onChange={(e) => setStatement(e.target.value)}
         rows={2}
-        className="w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+        className="w-full resize-none rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
       />
       <div className="mt-2 flex items-center gap-2">
         {(["low", "med", "high"] as Confidence[]).map((c) => (
           <button
             key={c}
             onClick={() => setConfidence(c)}
-            className={`rounded-lg border px-3 py-1 text-xs capitalize ${
+            className={`rounded-control border px-3 py-1 text-xs capitalize ${
               confidence === c ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"
             }`}
           >
@@ -563,18 +619,18 @@ function ReviseCard({
         value={changeMyMind}
         onChange={(e) => setChangeMyMind(e.target.value)}
         placeholder="What would change your mind now?"
-        className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+        className="mt-2 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
       />
       <div className="mt-3 flex gap-2">
         <button
           onClick={() =>
             onSave({ ...thesis, statement: statement.trim() || thesis.statement, confidence, changeMyMind: changeMyMind.trim() || undefined })
           }
-          className="rounded-lg bg-accent px-4 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
+          className="rounded-control bg-accent px-4 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110"
         >
           Save revision
         </button>
-        <button onClick={onCancel} className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-fg">
+        <button onClick={onCancel} className="rounded-control px-3 py-1.5 text-xs text-muted hover:text-fg">
           Cancel
         </button>
       </div>

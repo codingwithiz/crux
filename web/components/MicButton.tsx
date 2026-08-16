@@ -92,7 +92,7 @@ export function MicButton({ onText }: { onText: (t: string) => void }) {
       onClick={toggle}
       aria-label={listening ? "Stop dictation" : "Dictate"}
       title="Dictate (speech to text)"
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition ${
+      className={`inline-flex items-center gap-1.5 rounded-control border px-3 py-1.5 text-xs transition ${
         listening ? "border-accent bg-accent/10 text-accent" : "border-line text-muted hover:bg-surface hover:text-fg"
       }`}
     >

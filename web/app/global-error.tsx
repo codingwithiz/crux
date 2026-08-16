@@ -9,6 +9,26 @@
  * which is why the styles here are inline rather than themed. It should be
  * unreachable; when it isn't, it needs to work with nothing.
  */
+
+/**
+ * The tokens, copied because there is no stylesheet to read them from.
+ *
+ * These were approximations — #f0b429 for an accent that is #f4b740, #0b0b0c
+ * for an ink that is #0a0b0e — so the one screen a user sees when everything
+ * has gone wrong was also the one screen in a different brand. Copied exactly
+ * and named, so the next person greps `--color-accent`, finds this, and updates
+ * both. ponytail: two places, kept in sync by hand; a build-time export of the
+ * theme would be the fix if this list ever grows.
+ */
+const T = {
+  ink: "#0a0b0e", // --color-ink
+  fg: "#f3f4f6", // --color-fg
+  muted: "#9499a6", // --color-muted
+  accent: "#f4b740", // --color-accent
+  accentFg: "#1a1206", // --color-accent-fg
+  radiusControl: "8px", // --radius-control
+  title: "1.875rem", // --text-title
+} as const;
 export default function GlobalError({
   error,
   reset,
@@ -25,20 +45,20 @@ export default function GlobalError({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0b0b0c",
-          color: "#f5f5f4",
+          background: T.ink,
+          color: T.fg,
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
           padding: "2rem",
         }}
       >
         <div style={{ maxWidth: "32rem" }}>
-          <p style={{ fontSize: "0.75rem", letterSpacing: "0.08em", color: "#f0b429", margin: 0 }}>
+          <p style={{ fontSize: "0.75rem", letterSpacing: "0.08em", color: T.accent, margin: 0 }}>
             CRUX
           </p>
-          <h1 style={{ fontSize: "1.75rem", margin: "0.5rem 0 0", fontWeight: 600 }}>
+          <h1 style={{ fontSize: T.title, margin: "0.5rem 0 0", fontWeight: 600 }}>
             Crux failed to start.
           </h1>
-          <p style={{ color: "#a1a1aa", lineHeight: 1.6 }}>
+          <p style={{ color: T.muted, lineHeight: 1.6 }}>
             Something went wrong before the app could load. Reloading usually fixes it; your saved
             work is stored separately and is unaffected.
           </p>
@@ -47,10 +67,10 @@ export default function GlobalError({
             style={{
               marginTop: "1.5rem",
               padding: "0.65rem 1.25rem",
-              borderRadius: "0.5rem",
+              borderRadius: T.radiusControl,
               border: "none",
-              background: "#f0b429",
-              color: "#1c1917",
+              background: T.accent,
+              color: T.accentFg,
               fontWeight: 500,
               fontSize: "0.875rem",
               cursor: "pointer",
@@ -59,7 +79,7 @@ export default function GlobalError({
             Reload
           </button>
           {error.digest && (
-            <p style={{ marginTop: "2rem", fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", color: "#71717a" }}>
+            <p style={{ marginTop: "2rem", fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", color: T.muted, opacity: 0.7 }}>
               Reference: {error.digest}
             </p>
           )}

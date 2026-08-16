@@ -38,8 +38,8 @@
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
 
   /* Six steps, used deliberately. 85% of all type was text-sm or text-xs, with
-     text-[11px] and text-[10px] escaping below the scale — so nothing was loud
-     and nothing was quiet, and every screen read as one flat plane. */
+     ten arbitrary values escaping below the scale — so nothing was loud and
+     nothing was quiet, and every screen read as one flat plane. */
   --text-display: 2.75rem;
   --text-display--line-height: 1.05;
   --text-display--letter-spacing: -0.02em;
@@ -48,10 +48,70 @@
   --text-title--letter-spacing: -0.015em;
   --text-lead: 1.25rem;
   --text-lead--line-height: 1.45;
+  /* One step below text-xs, so the ten text-[11px]/text-[10px] escapes have
+     somewhere to land. Nothing in the app should be smaller than this. */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.3;
+
+  /* The eyebrow shipped with two tracking values for the same pattern (0.14em
+     in Ink.tsx, 0.2em on the landing page). One value, named. */
+  --tracking-eyebrow: 0.16em;
+
+  /* ── Paper ─────────────────────────────────────────────────────────────────
+     Lifted verbatim from the `paper` design in lib/carousel/design.ts, so the
+     app chrome and the thing it exports are literally the same values. Ink is
+     for chrome; paper is for artifacts — a take, a synthesis, a receipt, a
+     deck. Two materials, not one grey ramp. */
+  --color-paper: #f4f0e8;
+  --color-paper-2: #fbf9f3;
+  --color-paper-fg: #1b1714;
+  --color-paper-muted: #736c61;
+  --color-paper-line: rgba(27, 23, 20, 0.1);
+
+  /* ── Radii ─────────────────────────────────────────────────────────────────
+     Three, by role. Seven were in active use, four of them across four sibling
+     primitives: Nav rounded-md, Button rounded-lg, Card rounded-xl, EmptyState
+     rounded-2xl. */
+  --radius-control: 8px; /* buttons, inputs, chips */
+  --radius-surface: 14px; /* cards, panels, dialogs */
+  --radius-plate: 20px; /* paper artifacts */
+
+  /* ── Elevation ─────────────────────────────────────────────────────────────
+     The feature-card shadow was copy-pasted verbatim into three files. */
+  --shadow-raised: 0 1px 0 0 var(--color-line), 0 18px 40px -28px rgba(0, 0, 0, 0.8);
+  --shadow-hover: 0 14px 34px -16px rgba(0, 0, 0, 0.55);
+  /* Paper sits ON the ink and casts a real shadow — that contact is what makes
+     it read as an object rather than another panel. */
+  --shadow-plate: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 48px -20px rgba(0, 0, 0, 0.75);
+  /* The printed-ink press on primary buttons. Was 2px in Button and 3px on the
+     landing hero — the same idea at two sizes. */
+  --shadow-press: 2px 2px 0 0 var(--color-accent-fg);
+
+  /* ── Motion ────────────────────────────────────────────────────────────────
+     There were no motion tokens at all: `duration-` and `ease-` appeared zero
+     times repo-wide, so all 53 transitions ran at Tailwind's default 150ms.
+     --ease-out deliberately overrides Tailwind's default (nothing used it). */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-emphasized: cubic-bezier(0.5, 0, 0.2, 1);
+  /* The stamp's overshoot lives in its own keyframes (scale 1.35 → 0.94 → 1).
+     Running an elastic *curve* underneath them bounced the bounce, and spring
+     easing by reflex reads dated. Exponential deceleration instead. */
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-instant: 110ms; /* immediate feedback: press, toggle */
+  --dur-fast: 160ms; /* hover, focus */
+  --dur-base: 260ms; /* routine state change */
+  --dur-slow: 420ms; /* layout, overlay, arrival */
+  --dur-deliberate: 700ms; /* one authored moment per surface */
 }
 
 html {
   color-scheme: dark;
+}
+
+:root {
+  /* Tiled SVG turbulence. One definition, used by both the app ground and every
+     paper plate, so chrome and artifact share a single grain. */
+  --ce-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 body {
@@ -82,12 +142,28 @@ body::before {
   pointer-events: none;
   opacity: 0.035;
   mix-blend-mode: screen;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: var(--ce-grain);
 }
 
 ::selection {
   background: var(--color-accent);
   color: var(--color-accent-fg);
+}
+
+/* The surfaces the browser draws for you still belong to the design system.
+   Selection and scrollbars were already themed; the caret and the numerals
+   were not, and both show up constantly — the caret in every textarea on
+   /think, the numerals in a track record built entirely out of figures. */
+html {
+  caret-color: var(--color-accent);
+}
+
+/* Proportional digits make a column of numbers shuffle as it updates: a score
+   moving 97 → 100 shifts every character beside it. Apply to figures that sit
+   in a column or change in place, not to body copy. */
+.ce-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 * {
@@ -109,6 +185,10 @@ body::before {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* Without this, .ce-stagger's calc(var(--i) * 60ms) still ran: items faded
+       in instantly but arrived up to a second apart, which is the sequencing
+       the setting asks us to drop, not the fade. */
+    animation-delay: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
@@ -120,11 +200,13 @@ body::before {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-surface-2);
-  border-radius: 6px;
+  /* Fully round, matching .ce-strip's thumb. It was 6px, which is a radius the
+     system does not otherwise have and which nobody chose. */
+  border-radius: 999px;
   border: 2px solid var(--color-ink);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2f3340;
+  background: var(--color-surface-3);
 }
 
 @keyframes ce-fade-up {
@@ -138,25 +220,25 @@ body::before {
   }
 }
 .ce-fade-up {
-  animation: ce-fade-up 0.4s ease both;
+  animation: ce-fade-up var(--dur-slow) var(--ease-out) both;
 }
 
 /* Interaction micro-utilities (reduced-motion is disabled globally above). */
 .ce-lift {
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease,
-    background-color 0.18s ease;
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
 }
 .ce-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-hover);
 }
 .ce-press {
   transition:
-    transform 0.12s ease,
-    filter 0.12s ease;
+    transform var(--dur-instant) var(--ease-out),
+    filter var(--dur-instant) var(--ease-out);
 }
 .ce-press:active {
   transform: scale(0.97);
@@ -195,25 +277,81 @@ body::before {
   border-top: 2px solid var(--color-line);
 }
 
-/* The hand-drawn underline, as a background so any inline text can carry it. */
+:root {
+  /* The squiggle, as a shape. Black stroke because it is used as an alpha mask
+     — the colour comes from --ce-underline-color. */
+  --ce-squiggle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M1 6 Q 10 1, 20 6 T 40 6 T 60 6 T 80 6 T 100 6 T 119 6' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ── Paper ───────────────────────────────────────────────────────────────────
+   The material the user's own work is made of. Chrome is ink and recedes; a
+   take, a synthesis, a receipt, a deck are paper and have weight.
+
+   The gradient is the same one SlideCanvas paints on a real slide, so a take on
+   screen and the deck it becomes are made of the same thing. Everything used to
+   be one grey ramp, which is why nothing in the app read as an object. */
+.ce-plate {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--radius-plate);
+  background-image: linear-gradient(160deg, var(--color-paper-2) 0%, var(--color-paper) 70%);
+  color: var(--color-paper-fg);
+  box-shadow: var(--shadow-plate);
+  /* Paper is light, so the accent language has to re-point at ink. */
+  --ce-underline-color: var(--color-paper-fg);
+  caret-color: var(--color-paper-fg);
+}
+.ce-plate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.35;
+  /* Multiply, not screen: on light stock the grain has to darken. */
+  mix-blend-mode: multiply;
+  background-image: var(--ce-grain);
+}
+/* On paper, the marker sits over dark text — the ink/text relationship inverts
+   from the dark chrome, where .ce-marker sets its own dark foreground. */
+.ce-plate .ce-marker {
+  color: var(--color-paper-fg);
+}
+
+/* The hand-drawn underline.
+   Drawn on a pseudo-element and coloured by a token, not painted into the SVG.
+   The squiggle used to be a background-image whose stroke was the literal hex
+   `%23f4b740`, so changing --color-accent moved every accent in the app except
+   this one — and the Studio is meant to tint its chrome to the deck being
+   edited. As a mask the shape is the shape and the colour is a variable.
+   ponytail: the ::after is positioned against the first line box, so this is
+   for short phrases. Wrap it around a paragraph and only line one gets a line. */
 .ce-underline {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M1 6 Q 10 1, 20 6 T 40 6 T 60 6 T 80 6 T 100 6 T 119 6' fill='none' stroke='%23f4b740' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  background-size: 100% 0.34em;
+  --ce-underline-color: var(--color-accent);
+  position: relative;
   padding-bottom: 0.22em;
+}
+.ce-underline::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 0.34em;
+  background-color: var(--ce-underline-color);
+  -webkit-mask: var(--ce-squiggle) no-repeat 0 100% / 100% 100%;
+  mask: var(--ce-squiggle) no-repeat 0 100% / 100% 100%;
 }
 /* Draws itself when it appears — used once, on the moment a take is saved. */
 @keyframes ce-draw {
   from {
-    background-size: 0 0.34em;
+    clip-path: inset(0 100% 0 0);
   }
   to {
-    background-size: 100% 0.34em;
+    clip-path: inset(0 0 0 0);
   }
 }
-.ce-underline-draw {
-  animation: ce-draw 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+.ce-underline-draw::after {
+  animation: ce-draw var(--dur-deliberate) var(--ease-out) both;
 }
 
 /* ── Signature motion ────────────────────────────────────────────────────────
@@ -237,14 +375,134 @@ body::before {
   }
 }
 .ce-stamp {
-  animation: ce-stamp 0.42s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  animation: ce-stamp var(--dur-slow) var(--ease-settle) both;
 }
 
 /* Breakdown cards arrive in sequence rather than all at once, so the eye has an
    order to follow. Depth is set per item as --i. */
 .ce-stagger {
-  animation: ce-fade-up 0.42s ease both;
+  animation: ce-fade-up var(--dur-slow) var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* ── Working motion ──────────────────────────────────────────────────────────
+   The utilities the app was missing. Nothing here animated before: route
+   changes, list loads, accordions, filter swaps and skeletons were all instant
+   or a solid pulse. All of it is covered by the reduced-motion block above. */
+
+/* Route change. Applied to a wrapper keyed on pathname, so it re-runs per
+   navigation. Deliberately smaller than .ce-fade-up — a page arriving should
+   settle, not perform. */
+@keyframes ce-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ce-route-enter {
+  animation: ce-route-enter var(--dur-base) var(--ease-out) both;
+}
+
+/* Height animation without measuring anything in JS. The child must be a single
+   element; overflow lives on it, not on the grid, or the content clips early. */
+.ce-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-base) var(--ease-emphasized);
+}
+.ce-collapse > * {
+  overflow: hidden;
+  min-height: 0;
+}
+.ce-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+/* Loading. A sweep across the placeholder rather than a block fading in and
+   out — pulse says "something is here"; a sweep says "something is coming". */
+@keyframes ce-shimmer {
+  from {
+    background-position: -150% 0;
+  }
+  to {
+    background-position: 250% 0;
+  }
+}
+.ce-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-fg) 7%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 60% 100%;
+  background-repeat: no-repeat;
+  animation: ce-shimmer 1.6s var(--ease-emphasized) infinite;
+}
+
+/* Streamed text. One fragment at a time as the model produces it, so the
+   arrival reads as speech rather than as a repaint. */
+@keyframes ce-stream-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.ce-stream-in {
+  animation: ce-stream-in var(--dur-base) var(--ease-out) both;
+}
+
+/* Paper landing on ink: the shadow blooms as the plate settles, which is the
+   whole reason it reads as an object and not another panel. */
+@keyframes ce-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: var(--shadow-plate);
+  }
+}
+.ce-arrive {
+  animation: ce-arrive var(--dur-slow) var(--ease-out) both;
+}
+
+/* Body measure. Prose ran past 90ch at 1440, which is why the pages read as
+   documentation; 65-75ch is the readable band. On a container, not a token,
+   because it applies to the text block rather than to a type step. */
+.ce-measure {
+  max-width: 68ch;
+}
+
+/* Held by Reveal between arming and intersection. Applied from JS only, so
+   content is visible to a crawler, to a reader with JS off, and to anyone whose
+   observer never fires. */
+.ce-reveal-armed {
+  opacity: 0;
+}
+
+/* Swapping one label for another in place (ProgressSteps hard-swaps today). */
+@keyframes ce-crossfade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.ce-crossfade {
+  animation: ce-crossfade var(--dur-base) var(--ease-out) both;
 }
 
 /* Horizontally scrolling strips (the Studio's slide thumbnails).

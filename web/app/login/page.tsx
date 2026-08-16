@@ -59,7 +59,7 @@ export default function LoginPage() {
       </p>
 
       {!configured ? (
-        <div className="mt-8 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+        <div className="mt-8 rounded-surface border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
           Accounts aren&rsquo;t set up on this deployment yet, so your work stays in this browser.
           Everything still works — it just won&rsquo;t follow you to another device.
         </div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={google}
-          className="mt-8 flex w-full items-center justify-center gap-3 rounded-lg border border-line bg-surface/40 px-5 py-2.5 text-sm font-medium text-fg transition hover:bg-surface"
+          className="mt-8 flex w-full items-center justify-center gap-3 rounded-control border border-line bg-surface/40 px-5 py-2.5 text-sm font-medium text-fg transition hover:bg-surface"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.56c2.08-1.92 3.28-4.74 3.28-8.09Z" />
@@ -88,7 +88,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
-            className="w-full rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-control border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <input
             type="password"
@@ -97,12 +97,12 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="password (min 6 chars)"
-            className="w-full rounded-lg border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-control border border-line bg-surface/40 px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+            className="w-full rounded-control bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
           >
             {busy ? "…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>

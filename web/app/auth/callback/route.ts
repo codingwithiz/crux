@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase, supabaseConfiguredServer } from "@/lib/supabase/server";
+import { publicOrigin } from "@/lib/auth-paths";
 
 /**
  * OAuth callback (Google sign-in via Supabase, PKCE). Exchanges the `code` for a
  * session (sets auth cookies), then redirects to /today. Supabase must have the
- * Google provider enabled and this URL in its allowed redirect list.
+ * Google provider enabled and this URL in its allowed redirect list — including
+ * `http://localhost:3000/auth/callback` for local development.
  *
- * Uses x-forwarded-host on Vercel because request.url origin can be an internal
- * hostname rather than the public domain.
+ * The origin rule lives in lib/auth-paths so it can be asserted directly; see
+ * publicOrigin for why the scheme is derived from the host.
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
 
-  // On Vercel the public host comes via x-forwarded-host; fall back to origin.
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const host = forwardedHost ? `https://${forwardedHost}` : origin;
+  const host = publicOrigin(request.headers.get("x-forwarded-host"), request.url);
 
   if (code && supabaseConfiguredServer()) {
     const supabase = await createServerSupabase();

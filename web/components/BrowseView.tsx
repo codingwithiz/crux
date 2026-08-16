@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { WhyThis } from "@/components/WhyThis";
 import { ProgressSteps } from "./ProgressSteps";
-import { Skeleton } from "@/components/Skeleton";
+import { FeedItemSkeleton } from "@/components/Skeleton";
 import { Callout } from "@/components/ui/Callout";
 import type { BriefPick, NewsItem } from "@/lib/types";
 
@@ -82,24 +82,36 @@ function FeedItem({
   expanded,
   onToggle,
   onSynthesize,
+  rank,
   children,
 }: {
   item: RankedItem;
   expanded: boolean;
   onToggle: () => void;
   onSynthesize: () => void;
+  /** 1-based position in the ranked list. Omitted in sections that aren't ranked. */
+  rank?: number;
   children?: React.ReactNode;
 }) {
   const age = itemAge(item);
+  // The section is headed "Everything, ranked" and every row looked identical,
+  // which makes the ranking a claim rather than something you can see. The top
+  // three carry the weight the ordering already assigned them.
+  const lead = rank !== undefined && rank <= 3;
   return (
     <div
-      className={`rounded-lg border bg-surface/40 transition ${
+      className={`rounded-control border bg-surface/40 transition duration-(--dur-fast) ease-out ${
         expanded ? "border-accent" : "border-line hover:border-accent/60 hover:bg-surface"
       }`}
     >
       <button onClick={onToggle} aria-expanded={expanded} className="block w-full p-3 text-left">
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 font-mono text-xs text-accent">
+            {rank !== undefined && (
+              <span className={`ce-tabular ${lead ? "text-accent" : "text-muted"}`}>
+                {String(rank).padStart(2, "0")}
+              </span>
+            )}
             {(() => {
               const Icon = SOURCE_ICON[item.source];
               return <Icon className="h-3.5 w-3.5" aria-hidden />;
@@ -110,7 +122,9 @@ function FeedItem({
             {[item.meta, age].filter(Boolean).join(" · ")}
           </span>
         </div>
-        <p className="mt-1 text-sm font-medium">{item.title}</p>
+        <p className={`mt-1 ${lead ? "font-serif text-lg leading-snug" : "text-sm font-medium"}`}>
+          {item.title}
+        </p>
         {item.detail && !expanded && (
           <p className="mt-1 line-clamp-2 text-xs text-muted">{item.detail}</p>
         )}
@@ -124,7 +138,7 @@ function FeedItem({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={onSynthesize}
-              className="ce-press rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+              className="ce-press rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
             >
               Break it down →
             </button>
@@ -132,7 +146,7 @@ function FeedItem({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-sm text-fg hover:bg-surface"
+              className="inline-flex items-center gap-1.5 rounded-control border border-line px-4 py-2 text-sm text-fg hover:bg-surface"
             >
               Read source ↗
             </a>
@@ -261,7 +275,7 @@ export function BrowseView() {
         <button onClick={() => setPicked(null)} className="mb-4 text-sm text-muted hover:text-fg">
           ← Pick another
         </button>
-        <div className="mb-5 rounded-lg border border-line bg-surface/40 p-3">
+        <div className="mb-5 rounded-control border border-line bg-surface/40 p-3">
           <span className="font-mono text-xs text-accent">{SOURCE_LABELS[picked.source]}</span>
           <p className="mt-1 text-sm font-medium">{picked.title}</p>
           <a
@@ -284,13 +298,17 @@ export function BrowseView() {
   }
 
   return (
-    <div className="space-y-8">
+    // Two panes from xl. A single centred column left roughly two thirds of a
+    // 1920px screen as empty ink while the personal sections pushed the ranked
+    // feed — the reason to be on this page — below the fold.
+    <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="space-y-8 xl:sticky xl:top-20 xl:order-2">
       {/* Fetched for the topics you follow. Before this existed, following a
           topic could only re-sort a fixed list of AI outlets — so following
           "robotics" or "biotech" changed the page by nothing at all. */}
       {(topicItems.length > 0 || quietTopics.length > 0) && (
         <section>
-          <p className="font-mono text-xs uppercase tracking-wide text-cool">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">
             From the topics you follow
           </p>
           <p className="mb-3 text-sm text-muted">
@@ -331,18 +349,17 @@ export function BrowseView() {
 
       {/* Curated picks (AI) */}
       <section>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-wide text-accent">Top picks</p>
+            <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Top picks</p>
             <p className="text-sm text-muted">
-              Crux reads today&rsquo;s feed and picks the 3–5 stories most worth an opinion, weighted
-              to what you&rsquo;ve already written about.
+              The 3–5 stories most worth an opinion, weighted to what you&rsquo;ve written.
             </p>
           </div>
           <button
             onClick={curate}
             disabled={curating}
-            className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
+            className="shrink-0 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110 disabled:opacity-50"
           >
             {curating ? "Picking…" : picks ? "Pick again" : "Pick the best for me"}
           </button>
@@ -355,7 +372,7 @@ export function BrowseView() {
         )}
 
         {curateErr && (
-          <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+          <div className="mt-3 rounded-control border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
             {curateErr}
           </div>
         )}
@@ -380,14 +397,16 @@ export function BrowseView() {
         )}
       </section>
 
+      </div>
+
       {/* Full ranked list */}
-      <section>
-        <p className="font-mono text-xs uppercase tracking-wide text-accent">Everything, ranked</p>
+      <section className="xl:order-1">
+        <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">Everything, ranked</p>
+        {/* Was two lines restating the ranking method. The numbers do that now. */}
         <p className="mb-3 text-sm text-muted">
-          Ranked by how much attention an item is getting, blended with how close it sits to what
-          you&rsquo;ve already written about.
+          Attention, blended with how close it sits to what you&rsquo;ve written.
           {scannedAt ? (
-            <span className="text-cool"> Auto-scanned daily · last update {new Date(scannedAt).toLocaleString()}</span>
+            <span className="text-cool"> Scanned {new Date(scannedAt).toLocaleString()}</span>
           ) : (
             <span> Live scan.</span>
           )}
@@ -408,7 +427,7 @@ export function BrowseView() {
         {!items && !err && (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-20" />
+              <FeedItemSkeleton key={i} />
             ))}
           </div>
         )}
@@ -416,10 +435,11 @@ export function BrowseView() {
 
         {items && items.length > 0 && (
           <div className="space-y-2">
-            {items.map((it) => (
+            {items.map((it, i) => (
               <FeedItem
                 key={it.id}
                 item={it}
+                rank={i + 1}
                 expanded={expandedId === it.id}
                 onToggle={() => setExpandedId(expandedId === it.id ? null : it.id)}
                 onSynthesize={() => setPicked(it)}

@@ -1,17 +1,15 @@
 import { GalleryView } from "@/components/GalleryView";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function GalleryPage() {
   return (
-    <div className="mx-auto max-w-3xl px-5 py-10">
-      <p className="font-mono text-xs text-accent">your work</p>
-      <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">Library</h1>
-      <p className="mt-2 text-muted">
-        Saved carousels, ready to reopen, edit, or re-export. Synced to your account when signed in;
-        stored in this browser otherwise.
-      </p>
-      <div className="mt-8">
-        <GalleryView />
-      </div>
+    <div className="mx-auto max-w-5xl px-5 py-10">
+      {/* No "your work" eyebrow: it said the same thing as the heading. */}
+      <PageHeader
+        title="Library"
+        lead="Saved carousels, ready to reopen, edit, or re-export."
+      />
+      <GalleryView />
     </div>
   );
 }

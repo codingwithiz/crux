@@ -29,7 +29,7 @@ export function BrandKitEditor() {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface/40 p-5">
+    <div className="rounded-surface border border-line bg-surface/40 p-5">
       <div className="flex items-center gap-2">
         <AtSign className="h-4 w-4 text-accent" />
         <h2 className="text-base font-semibold">Brand kit</h2>
@@ -44,7 +44,7 @@ export function BrandKitEditor() {
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
             placeholder="@yourname"
-            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </label>
         <label className="block">
@@ -53,13 +53,13 @@ export function BrandKitEditor() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your Name"
-            className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </label>
       </div>
       <button
         onClick={save}
-        className="ce-press mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+        className="ce-press mt-4 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
       >
         Save brand kit
       </button>

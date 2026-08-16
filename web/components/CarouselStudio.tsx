@@ -5,6 +5,7 @@ import Link from "next/link";
 import JSZip from "jszip";
 import { SlideCanvas } from "@/components/carousel/SlideCanvas";
 import { BrandPicker } from "@/components/carousel/BrandPicker";
+import { DesignSwatch } from "@/components/carousel/DesignSwatch";
 import {
   DESIGNS,
   getDesign,
@@ -26,6 +27,7 @@ import { getVoice, effectiveVoice } from "@/lib/voice";
 import { fillModule, expressVariants, type Variant } from "@/lib/express-client";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
+import { Button } from "@/components/ui/Button";
 import { PenLine, ChevronDown } from "lucide-react";
 
 const LAYOUTS: SlideLayout[] = ["hero", "explainer", "statement", "cta"];
@@ -546,23 +548,23 @@ export function CarouselStudio({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Carousel title"
             aria-label="Carousel title"
-            className="w-full min-w-0 basis-full rounded-lg border border-line bg-surface/40 px-3 py-2 font-serif text-lead outline-none focus:border-accent sm:basis-0 sm:flex-1"
+            className="w-full min-w-0 basis-full rounded-control border border-line bg-surface/40 px-3 py-2 font-serif text-lead outline-none focus:border-accent sm:basis-0 sm:flex-1"
           />
           <button
             onClick={undo}
             disabled={histLen === 0}
             title="Undo last change"
             aria-label="Undo last change"
-            className="ce-press rounded-lg border border-line px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-40"
+            className="ce-press rounded-control border border-line px-3 py-1.5 text-sm transition hover:bg-surface disabled:opacity-40"
           >
             ↶ Undo
           </button>
 
           <details className="relative" open={exportOpen} onToggle={(e) => setExportOpen((e.currentTarget as HTMLDetailsElement).open)}>
-            <summary className="ce-press inline-flex cursor-pointer list-none items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-sm transition hover:bg-surface">
+            <summary className="ce-press inline-flex cursor-pointer list-none items-center gap-1 rounded-control border border-line px-3 py-1.5 text-sm transition hover:bg-surface">
               Export <ChevronDown className="h-3.5 w-3.5" />
             </summary>
-            <div className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+            <div className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-control border border-line bg-surface shadow-2xl">
               <button
                 onClick={() => { setExportOpen(false); void downloadAll(); }}
                 disabled={busy}
@@ -587,13 +589,21 @@ export function CarouselStudio({
             </div>
           </details>
 
-          <button
+          {/* Save is the one primary here, so it uses the shared Button rather
+              than a private copy of its class string. `loading` and `disabled`
+              are separate on purpose: mid-save it keeps its fill and gains a
+              spinner, but while some *other* export is running it is merely
+              unavailable and recedes to an outline. */}
+          <Button
+            variant="primary"
+            size="sm"
             onClick={save}
             disabled={busy}
-            className="ce-press rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg shadow-[2px_2px_0_0_var(--color-accent-fg)] transition hover:brightness-110 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50"
+            loading={job === "save"}
+            loadingLabel="Saving…"
           >
-            {job === "save" ? "Saving…" : carouselId ? "Update" : "Save"}
-          </button>
+            {carouselId ? "Update" : "Save"}
+          </Button>
         </div>
         {saveMsg && (
           <p className="mb-3 text-xs text-muted">
@@ -604,24 +614,27 @@ export function CarouselStudio({
           </p>
         )}
 
-        {/* Design picker */}
+        {/* Design picker. A scrolling strip rather than a wrapping grid: twelve
+            labelled swatches wrap to four rows and push the canvas off screen,
+            which is the thing you are actually trying to look at. */}
+        <div className="mb-3">
+          <span className="font-mono text-xs uppercase tracking-eyebrow text-muted">Style</span>
+          <div className="ce-strip mt-1.5 flex gap-2 overflow-x-auto pb-2">
+            {DESIGNS.map((d) => (
+              <DesignSwatch
+                key={d.id}
+                design={d}
+                selected={designId === d.id}
+                onClick={() => pickDesign(d.id)}
+              />
+            ))}
+          </div>
+        </div>
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted">Style</span>
-          {DESIGNS.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => pickDesign(d.id)}
-              title={d.name}
-              className={`h-9 w-9 rounded-full border-2 sm:h-7 sm:w-7 ${designId === d.id ? "border-fg" : "border-line"}`}
-              style={{ background: d.bg }}
-            >
-              <span className="block h-full w-full rounded-full" style={{ boxShadow: `inset 0 0 0 3px ${d.accent}` }} />
-            </button>
-          ))}
           {/* Deck shape. Square is the safe universal — Instagram, LinkedIn
               documents and X all take it uncropped; 4:5 is the taller of the two
               ratios Instagram allows, so it occupies more of the feed. */}
-          <span className="ml-1 inline-flex overflow-hidden rounded-lg border border-line">
+          <span className="ml-1 inline-flex overflow-hidden rounded-control border border-line">
             {(Object.keys(SLIDE_SIZES) as SlideSize[]).map((k) => (
               <button
                 key={k}
@@ -639,14 +652,14 @@ export function CarouselStudio({
           <button
             onClick={toggleLock}
             title="Pin this style for all your carousels (brand-lock)"
-            className={`ml-1 rounded-lg border px-2.5 py-1 text-xs transition ${brandLock ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
+            className={`ml-1 rounded-control border px-2.5 py-1 text-xs transition ${brandLock ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
           >
             {brandLock ? "🔒 Style locked" : "Lock style"}
           </button>
         </div>
 
         {/* Big preview */}
-        <div ref={previewWrap} className="flex justify-center rounded-2xl border border-line bg-surface/40 p-3 sm:p-6">
+        <div ref={previewWrap} className="flex justify-center rounded-surface border border-line bg-surface/40 p-3 sm:p-6">
           <div className="shadow-2xl" style={{ width: dims.w * big, height: dims.h * big, overflow: "hidden", borderRadius: 14 }}>
             <div style={{ width: dims.w, height: dims.h, transform: `scale(${big})`, transformOrigin: "top left" }}>
               <SlideCanvas slide={current} design={designFor(current)} index={idx} total={total} handle={handle} size={size} />
@@ -656,7 +669,7 @@ export function CarouselStudio({
 
         {/* Not good enough? Say what to change. The deck is one roll of the dice
             otherwise — you could edit every word by hand or start over. */}
-        <div className="mt-4 rounded-xl border border-line bg-surface/40 p-3">
+        <div className="mt-4 rounded-surface border border-line bg-surface/40 p-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -670,12 +683,12 @@ export function CarouselStudio({
               maxLength={300}
               aria-label="Say how to change this deck"
               placeholder="Redo it, but… punchier / simpler / less hype"
-              className="min-w-0 flex-1 basis-full rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:basis-0 sm:text-sm"
+              className="min-w-0 flex-1 basis-full rounded-control border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:basis-0 sm:text-sm"
             />
             <button
               type="submit"
               disabled={!direction.trim() || revising !== null}
-              className="ce-press shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:brightness-110 disabled:opacity-50"
+              className="ce-press shrink-0 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:brightness-110 disabled:opacity-50"
             >
               {revising === "deck" ? "Rewriting…" : "Redo the deck"}
             </button>
@@ -684,7 +697,7 @@ export function CarouselStudio({
               onClick={() => direction.trim() && void rewrite({ direction: direction.trim(), only: idx })}
               disabled={!direction.trim() || revising !== null}
               title="Apply this direction to the slide you're on"
-              className="shrink-0 rounded-lg border border-line px-4 py-2 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
+              className="shrink-0 rounded-control border border-line px-4 py-2 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
             >
               {revising === "slide" ? "Rewriting…" : "This slide only"}
             </button>
@@ -720,7 +733,7 @@ export function CarouselStudio({
               }}
               onDragEnd={() => setDragFrom(null)}
               title="Drag to reorder"
-              className={`shrink-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
+              className={`shrink-0 cursor-grab overflow-hidden rounded-control active:cursor-grabbing ${
                 i === idx ? "ring-2 ring-accent" : "ring-1 ring-line"
               } ${dragFrom === i ? "opacity-40" : ""}`}
               style={{ width: dims.w * thumb, height: thumbH }}
@@ -737,7 +750,7 @@ export function CarouselStudio({
         {context && (
           <div className="mt-3">
             {variants ? (
-              <div className="rounded-xl border border-cool/40 bg-cool/5 p-4">
+              <div className="rounded-surface border border-cool/40 bg-cool/5 p-4">
                 <p className="text-sm font-medium">Pick a version</p>
                 <p className="mt-0.5 text-xs text-muted">
                   Same take, different structure and style. Whatever you pick, the one you had is
@@ -771,7 +784,7 @@ export function CarouselStudio({
               /* After swapping, the deck you replaced stays on screen. Undo
                  already restored it, but undo is invisible and one-shot — you
                  could not look at the old one and then decide. */
-              <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-surface/40 p-4">
+              <div className="flex flex-wrap items-center gap-4 rounded-surface border border-line bg-surface/40 p-4">
                 <VariantCard
                   label="Your previous version"
                   cta="switch back"
@@ -798,13 +811,13 @@ export function CarouselStudio({
                     <button
                       onClick={() => void tryVariants()}
                       disabled={variantJob}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:bg-surface disabled:opacity-50"
+                      className="rounded-control border border-line px-3 py-1.5 text-xs transition hover:bg-surface disabled:opacity-50"
                     >
                       {variantJob ? "Building…" : "Try 2 more"}
                     </button>
                     <button
                       onClick={() => setPrevious(null)}
-                      className="rounded-lg px-3 py-1.5 text-xs text-muted transition hover:text-fg"
+                      className="rounded-control px-3 py-1.5 text-xs text-muted transition hover:text-fg"
                     >
                       Discard it
                     </button>
@@ -816,7 +829,7 @@ export function CarouselStudio({
                 onClick={() => void tryVariants()}
                 disabled={variantJob}
                 title="Generates 2 alternative decks from the same take"
-                className="rounded-lg border border-line px-4 py-2 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
+                className="rounded-control border border-line px-4 py-2 text-sm text-fg transition hover:bg-surface disabled:opacity-50"
               >
                 {variantJob ? "Building 2 more versions…" : "Try 2 more versions"}
               </button>
@@ -826,20 +839,20 @@ export function CarouselStudio({
       </div>
 
       {/* Editor */}
-      <aside className="h-fit min-w-0 rounded-2xl border border-line bg-surface/40 p-5">
+      <aside className="h-fit min-w-0 rounded-surface border border-line bg-surface/40 p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Slide {idx + 1} / {total}</h2>
           <div className="flex gap-1">
-            <button onClick={() => move(idx, -1)} aria-label="Move slide left" className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface" title="Move left">←</button>
-            <button onClick={() => move(idx, 1)} aria-label="Move slide right" className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface" title="Move right">→</button>
-            <button onClick={() => void downloadOne(idx)} disabled={busy} aria-label="Download this slide" className="rounded-md px-3 py-2 text-sm text-muted hover:bg-surface disabled:opacity-40" title="Download this slide PNG">↓</button>
+            <button onClick={() => move(idx, -1)} aria-label="Move slide left" className="rounded-control px-3 py-2 text-sm text-muted hover:bg-surface" title="Move left">←</button>
+            <button onClick={() => move(idx, 1)} aria-label="Move slide right" className="rounded-control px-3 py-2 text-sm text-muted hover:bg-surface" title="Move right">→</button>
+            <button onClick={() => void downloadOne(idx)} disabled={busy} aria-label="Download this slide" className="rounded-control px-3 py-2 text-sm text-muted hover:bg-surface disabled:opacity-40" title="Download this slide PNG">↓</button>
             {/* Separated and confirmed: at 24px beside the download arrow this
                 deleted a slide on a mis-tap, with nothing to undo it on mobile. */}
             <button
               onClick={() => (confirmRemove === idx ? remove(idx) : setConfirmRemove(idx))}
               onBlur={() => confirmRemove === idx && setConfirmRemove(null)}
               aria-label="Delete slide"
-              className={`ml-2 rounded-md px-3 py-2 text-sm hover:bg-surface ${confirmRemove === idx ? "bg-danger/15 text-danger" : "text-danger"}`}
+              className={`ml-2 rounded-control px-3 py-2 text-sm hover:bg-surface ${confirmRemove === idx ? "bg-danger/15 text-danger" : "text-danger"}`}
               title="Delete slide"
             >
               {confirmRemove === idx ? "Delete?" : "✕"}
@@ -848,17 +861,17 @@ export function CarouselStudio({
         </div>
 
         <div className="mt-3 flex items-center gap-2">
-          <button onClick={() => void rewrite()} disabled={revoicing} className="rounded-lg bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50">
+          <button onClick={() => void rewrite()} disabled={revoicing} className="rounded-control bg-cool/15 px-3 py-1.5 text-xs font-medium text-cool ring-1 ring-cool/40 transition hover:bg-cool/25 disabled:opacity-50">
             {revoicing ? "Rewriting…" : "✶ Rewrite in my voice"}
           </button>
-          <a href="/voice" className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline">edit voice →</a>
+          <Link href="/voice" className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline">edit voice →</Link>
         </div>
         {revoiceMsg && <p className="mt-1 text-xs text-cool">{revoiceMsg}</p>}
 
         <Label>Layout</Label>
         <div className="mt-1 flex flex-wrap gap-1">
           {LAYOUTS.map((l) => (
-            <button key={l} onClick={() => patchTracked({ layout: l })} className={`rounded-md border px-2 py-1 text-xs capitalize ${(current.layout ?? "explainer") === l ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}>{l}</button>
+            <button key={l} onClick={() => patchTracked({ layout: l })} className={`rounded-control border px-2 py-1 text-xs capitalize ${(current.layout ?? "explainer") === l ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}>{l}</button>
           ))}
         </div>
 
@@ -868,20 +881,18 @@ export function CarouselStudio({
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => patchTracked({ designId: undefined })}
-            className={`rounded-md border px-2 py-1 text-xs ${!current.designId ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
+            className={`rounded-control border px-2 py-1 text-xs ${!current.designId ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}
           >
             Same as deck
           </button>
           {DESIGNS.map((d) => (
-            <button
+            <DesignSwatch
               key={d.id}
+              design={d}
+              showName={false}
+              selected={current.designId === d.id}
               onClick={() => patchTracked({ designId: d.id })}
-              title={d.name}
-              className={`h-7 w-7 rounded-full border-2 ${current.designId === d.id ? "border-fg" : "border-line"}`}
-              style={{ background: d.bg }}
-            >
-              <span className="block h-full w-full rounded-full" style={{ boxShadow: `inset 0 0 0 3px ${d.accent}` }} />
-            </button>
+            />
           ))}
         </div>
 
@@ -898,7 +909,7 @@ export function CarouselStudio({
         <Input value={current.highlight ?? ""} onChange={(v) => patch({ highlight: v || undefined })} />
         <div className="mt-1 flex gap-1">
           {(["yellow", "pink"] as const).map((t) => (
-            <button key={t} onClick={() => patch({ highlightTone: t })} className={`rounded-md border px-2 py-0.5 text-[11px] capitalize ${current.highlightTone === t ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}>{t}</button>
+            <button key={t} onClick={() => patch({ highlightTone: t })} className={`rounded-control border px-2 py-0.5 text-micro capitalize ${current.highlightTone === t ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:bg-surface"}`}>{t}</button>
           ))}
         </div>
 
@@ -912,12 +923,12 @@ export function CarouselStudio({
         <select
           value={current.module?.type ?? "none"}
           onChange={(e) => void switchModule(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-base sm:text-sm"
+          className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-base sm:text-sm"
         >
           <option value="none">None (text only)</option>
           {MODULE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        {fillingModule && <p className="mt-1 text-[11px] text-cool">Generating relevant data for this module…</p>}
+        {fillingModule && <p className="mt-1 text-micro text-cool">Generating relevant data for this module…</p>}
 
         {current.module?.type === "callout" && (
           <ModuleEdit>
@@ -980,12 +991,12 @@ export function CarouselStudio({
           </ModuleEdit>
         )}
         {(current.module?.type === "barChart" || current.module?.type === "lineChart") && (
-          <p className="mt-2 text-[11px] text-muted">
+          <p className="mt-2 text-micro text-muted">
             <span className="font-mono text-fg">{current.module.type}</span> uses real numbers — regenerate or revoice to refine its data.
           </p>
         )}
 
-        <button onClick={add} className="mt-4 w-full rounded-lg border border-dashed border-line py-2 text-sm text-muted hover:bg-surface hover:text-fg">+ Add slide</button>
+        <button onClick={add} className="mt-4 w-full rounded-control border border-dashed border-line py-2 text-sm text-muted hover:bg-surface hover:text-fg">+ Add slide</button>
 
         <Label>Handle</Label>
         <Input value={handle} onChange={setHandle} />
@@ -1018,7 +1029,7 @@ function VariantCard({
   return (
     <button onClick={onPick} className="group text-left">
       <div
-        className="overflow-hidden rounded-md ring-1 ring-line transition group-hover:ring-2 group-hover:ring-accent"
+        className="overflow-hidden rounded-control ring-1 ring-line transition group-hover:ring-2 group-hover:ring-accent"
         style={{ width: d.w * s, height: d.h * s }}
       >
         <div style={{ width: d.w, height: d.h, transform: `scale(${s})`, transformOrigin: "top left" }}>
@@ -1035,11 +1046,11 @@ function Label({ children }: { children: React.ReactNode }) {
   return <label className="mt-4 block text-xs font-medium text-muted">{children}</label>;
 }
 function Input({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:text-sm" />;
+  return <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-control border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:text-sm" />;
 }
 function Area({ value, onChange, rows }: { value: string; onChange: (v: string) => void; rows: number }) {
-  return <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:text-sm" />;
+  return <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full resize-none rounded-control border border-line bg-ink px-3 py-2 text-base outline-none focus:border-accent sm:text-sm" />;
 }
 function ModuleEdit({ children }: { children: React.ReactNode }) {
-  return <div className="mt-2 rounded-lg border border-line bg-ink/40 p-3">{children}</div>;
+  return <div className="mt-2 rounded-control border border-line bg-ink/40 p-3">{children}</div>;
 }

@@ -1,0 +1,10 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "web/components/carousel/SlideCanvas.tsx",
+      "web/lib/carousel/logos.tsx"
+    ],
+    "ignoreValues": []
+  }
+}

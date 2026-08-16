@@ -8,6 +8,9 @@ type Tone = "default" | "accent" | "cool" | "muted";
  * There were 24 distinct border/background/radius combinations doing this job,
  * with four different radii applied to the same conceptual card — sometimes
  * within one screen. Two radii and four tones cover every real use.
+ *
+ * A panel is chrome. For the user's own work — a take, a synthesis, a receipt,
+ * a deck — reach for `Plate` instead: artifacts are paper, chrome is ink.
  */
 const TONES: Record<Tone, string> = {
   default: "border-line bg-surface/40",
@@ -18,7 +21,7 @@ const TONES: Record<Tone, string> = {
 
 /** `feature` reads as a pulled-out panel rather than another row in a stack —
  *  for the one thing on a screen that deserves the eye first. */
-const FEATURE = "shadow-[0_1px_0_0_var(--color-line),0_18px_40px_-28px_rgba(0,0,0,0.8)]";
+const FEATURE = "shadow-raised";
 
 export function Card({
   tone = "default",
@@ -33,7 +36,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border p-4 ${TONES[tone]} ${feature ? FEATURE : ""} ${className}`}
+      className={`rounded-surface border p-4 ${TONES[tone]} ${feature ? FEATURE : ""} ${className}`}
     >
       {children}
     </div>

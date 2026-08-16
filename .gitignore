@@ -33,3 +33,30 @@ Thumbs.db
 .playwright-mcp/
 /*.png
 CAROUSEL_SYNTHESIS_FIX.md
+
+# Claude Code: settings.json is the shared project config; settings.local.json
+# is per-machine permission/hook grants (and can carry paths and entries from
+# unrelated local sessions), so it stays out of the repo like .env.local does.
+.claude/settings.local.json
+
+# impeccable-live-ignore-start
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/config.local.json
+.impeccable/live/server.json
+.impeccable/live/roots.json
+.impeccable/live/app-root.json
+.impeccable/live/inject-journal.json
+.impeccable/live/sessions/
+.impeccable/live/previews/
+.impeccable/live/annotations/
+.impeccable/live/artifacts/
+.impeccable/live/accept-receipts/
+.impeccable/live/locks/
+.impeccable/live/cache/
+.impeccable/live/manual-edit-apply-transaction.json
+.impeccable/live/manual-edit-events.jsonl
+.impeccable/live/manual-edit-evidence/
+.impeccable/live/pending-manual-edits.json
+.impeccable/live/deferred-svelte-component-accepts.json
+# impeccable-live-ignore-end

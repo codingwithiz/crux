@@ -13,6 +13,7 @@ import { getVoice } from "@/lib/voice";
 import { WhyThis } from "@/components/WhyThis";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Plate, PlateLabel } from "@/components/ui/Plate";
 import { Mark } from "@/components/ui/Ink";
 import type { NewsItem, Thesis } from "@/lib/types";
 
@@ -131,7 +132,7 @@ export function TodayView() {
         >
           <ArrowLeft className="h-4 w-4" /> Back to Today
         </button>
-        <div className="mb-5 rounded-lg border border-line bg-surface/40 p-3">
+        <div className="mb-5 rounded-control border border-line bg-surface/40 p-3">
           <span className="font-mono text-xs text-accent">{SOURCE_LABELS[pick.source]}</span>
           <p className="mt-1 text-sm font-medium">{pick.title}</p>
         </div>
@@ -154,8 +155,8 @@ export function TodayView() {
   return (
     <div className="space-y-6">
       {ledger && stats.total === 0 && (
-        <div className="rounded-2xl border border-cool/40 bg-cool/5 p-5">
-          <p className="font-mono text-xs uppercase tracking-wide text-cool">Welcome</p>
+        <div className="rounded-surface border border-cool/40 bg-cool/5 p-5">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">Welcome</p>
           <h2 className="mt-1 text-lg font-semibold">Your first take, in three steps</h2>
           {/* Each step names the button you'll actually press and says what it
               does. The old list used the app's vocabulary as if you already had
@@ -179,7 +180,7 @@ export function TodayView() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/think"
-              className="ce-press inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
+              className="ce-press inline-flex items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:brightness-110"
             >
               Start now
             </Link>
@@ -191,13 +192,13 @@ export function TodayView() {
       )}
 
       {parked.length > 0 && (
-        <div className="rounded-2xl border border-line bg-surface/40 p-5">
-          <p className="font-mono text-xs uppercase tracking-wide text-muted">Continue where you left off</p>
+        <div className="rounded-surface border border-line bg-surface/40 p-5">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-muted">Continue where you left off</p>
           <ul className="mt-3 space-y-2">
             {parked.map((t) => (
               <li
                 key={t.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-ink/40 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-surface border border-line bg-ink/40 px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-fg">{t.topic}</p>
@@ -209,13 +210,13 @@ export function TodayView() {
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     onClick={() => resumeParked(t)}
-                    className="ce-press inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110"
+                    className="ce-press inline-flex items-center gap-1.5 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:brightness-110"
                   >
                     <BookOpen className="h-4 w-4" /> Continue
                   </button>
                   <button
                     onClick={() => void discardParked(t)}
-                    className="rounded-lg px-3 py-1.5 text-sm text-muted hover:text-fg"
+                    className="rounded-control px-3 py-1.5 text-sm text-muted hover:text-fg"
                   >
                     Discard
                   </button>
@@ -233,7 +234,7 @@ export function TodayView() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Date is formatted in the user's locale/timezone, which the server
               can't match — suppress the expected hydration diff. */}
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent" suppressHydrationWarning>
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-accent" suppressHydrationWarning>
             {dateLabel}
           </p>
           {streak > 0 && (
@@ -255,53 +256,62 @@ export function TodayView() {
         </p>
       </div>
 
-      {/* Today's pick — first, and the biggest thing on the page. */}
-      <Card tone="accent" feature className="p-5 sm:p-6">
-        <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">Today&rsquo;s pick</p>
-        {pick ? (
-          <>
-            <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
-              <span className="font-mono">{SOURCE_LABELS[pick.source]}</span>
-              {pick.meta && <span>{pick.meta}</span>}
-            </div>
-            <p className="mt-2 font-serif text-title font-semibold leading-tight">{pick.title}</p>
-            {pick.detail && <p className="mt-2 text-sm leading-relaxed text-muted">{pick.detail}</p>}
-            <WhyThis why={pick.why} related={pick.related} viaInterest={pick.viaInterest} />
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              <Button variant="primary" onClick={() => setStarted(true)}>
-                {doneToday ? "Break down another →" : "Break it down →"}
-              </Button>
-              {/* The source was previously unreachable from here — you were asked
-                  to spend a synthesis on an item you couldn't read first. */}
-              <a
-                href={pick.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ce-press inline-flex items-center rounded-lg border border-line px-4 py-2.5 text-sm text-fg transition hover:border-accent/50 hover:bg-surface"
+      {/* Today's pick. The single decision this page exists to put in front of
+          you, so it is the one paper object on the screen — everything else is
+          ink and steps back. It used to be one accent-tinted card competing with
+          three stat tiles, a revisit card and three equal-weight ghost links. */}
+      {pick ? (
+        <Plate arrive className="sm:p-8">
+          <PlateLabel>
+            Today&rsquo;s pick · {SOURCE_LABELS[pick.source]}
+            {pick.meta ? ` · ${pick.meta}` : ""}
+          </PlateLabel>
+          <p className="ce-measure mt-3 font-serif text-title font-semibold leading-tight">
+            {pick.title}
+          </p>
+          {pick.detail && (
+            <p className="ce-measure mt-3 text-sm leading-relaxed text-paper-muted">{pick.detail}</p>
+          )}
+          <WhyThis why={pick.why} related={pick.related} viaInterest={pick.viaInterest} />
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <Button variant="primary" onClick={() => setStarted(true)}>
+              {doneToday ? "Break down another →" : "Break it down →"}
+            </Button>
+            {/* The source was previously unreachable from here — you were asked
+                to spend a synthesis on an item you couldn't read first. */}
+            <a
+              href={pick.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ce-press inline-flex items-center rounded-control border border-paper-fg/20 px-4 py-2.5 text-sm text-paper-fg transition hover:bg-paper-fg/5"
+            >
+              Read source ↗
+            </a>
+            {candidates.length > 1 && (
+              <button
+                onClick={() => setCursor((c) => (c + 1) % candidates.length)}
+                className="text-sm text-paper-muted underline-offset-4 hover:text-paper-fg hover:underline"
               >
-                Read source ↗
-              </a>
-              {candidates.length > 1 && (
-                <button
-                  onClick={() => setCursor((c) => (c + 1) % candidates.length)}
-                  className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
-                >
-                  Show another
-                </button>
-              )}
-            </div>
-            {/* One line, once: the primary CTA is a verb nobody has met before. */}
-            <p className="mt-3 text-xs text-muted">
-              Breaking it down reads the real page and shows you what&rsquo;s actually new before you
-              form a view.
-            </p>
-          </>
-        ) : (
+                Show another
+              </button>
+            )}
+          </div>
+          {/* One line, once: the primary CTA is a verb nobody has met before. */}
+          <p className="mt-4 text-xs text-paper-muted">
+            Breaking it down reads the real page and shows you what&rsquo;s actually new before you
+            form a view.
+          </p>
+        </Plate>
+      ) : (
+        <Card tone="accent" feature className="p-5 sm:p-6">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-accent">
+            Today&rsquo;s pick
+          </p>
           <p className="mt-2 text-sm text-muted">
             Scanning sources… or jump straight in via the links below.
           </p>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Below the fold: your numbers, which matter but are not why you opened
           this page. They used to sit above the pick. */}
@@ -313,8 +323,8 @@ export function TodayView() {
 
       {/* Revisit your thinking */}
       {revisit && (
-        <div className="rounded-2xl border border-cool/40 bg-cool/5 p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.14em] text-cool">Revisit your thinking</p>
+        <div className="rounded-surface border border-cool/40 bg-cool/5 p-5">
+          <p className="font-mono text-xs uppercase tracking-eyebrow text-cool">Revisit your thinking</p>
           <p className="mt-2 text-sm text-fg">{revisit.statement}</p>
           <p className="mt-1 text-xs text-muted">
             Saved {new Date(revisit.createdAt).toLocaleDateString()} ·{" "}
@@ -339,7 +349,7 @@ export function TodayView() {
           <Link
             key={href}
             href={href}
-            className="rounded-lg border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
+            className="rounded-control border border-line px-3 py-1.5 text-muted transition hover:bg-surface hover:text-fg"
           >
             {label} →
           </Link>
@@ -351,7 +361,7 @@ export function TodayView() {
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className="rounded-xl border border-line bg-surface/40 p-3">
+    <div className="rounded-surface border border-line bg-surface/40 p-3">
       <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-fg"}`}>{value}</p>
       <p className="text-xs text-muted">{label}</p>
     </div>

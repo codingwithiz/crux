@@ -103,7 +103,7 @@ export function GalleryView() {
     );
   if (err)
     return (
-      <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+      <div className="rounded-surface border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
         Couldn&rsquo;t load your carousels. Anything saved on this device is still safe — try
         reloading, or sign in again if the problem sticks.
       </div>
@@ -143,9 +143,9 @@ export function GalleryView() {
       {items.map((c) => {
         const first = c.slides[0];
         return (
-          <div key={c.id} className="rounded-xl border border-line bg-surface/40 p-3">
+          <div key={c.id} className="rounded-surface border border-line bg-surface/40 p-3">
             <div className="flex gap-3">
-              <div className="shrink-0 overflow-hidden rounded-md ring-1 ring-line" style={{ width: dimsOf(c).w * s, height: dimsOf(c).h * s }}>
+              <div className="shrink-0 overflow-hidden rounded-control ring-1 ring-line" style={{ width: dimsOf(c).w * s, height: dimsOf(c).h * s }}>
                 {c.imageUrls?.[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={c.imageUrls[0]} alt={c.title || "carousel"} width={dimsOf(c).w * s} height={dimsOf(c).h * s} />
@@ -161,12 +161,12 @@ export function GalleryView() {
                   {c.slides.length} slides · {new Date(c.createdAt).toLocaleDateString()}
                 </p>
                 <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                  <Link href={`/studio?c=${c.id}`} className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110">Open</Link>
-                  <button onClick={() => downloadZip(c)} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50">.zip</button>
+                  <Link href={`/studio?c=${c.id}`} className="rounded-control bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:brightness-110">Open</Link>
+                  <button onClick={() => downloadZip(c)} disabled={busy} className="rounded-control border border-line px-3 py-1.5 text-xs hover:bg-surface disabled:opacity-50">.zip</button>
                   <button
                     onClick={() => void del(c.id)}
                     onBlur={() => confirmDelete === c.id && setConfirmDelete(null)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                    className={`rounded-control border px-3 py-1.5 text-xs transition ${
                       confirmDelete === c.id
                         ? "border-danger/60 text-danger"
                         : "border-line text-muted hover:text-danger"
@@ -179,14 +179,14 @@ export function GalleryView() {
                     here from the Queue, whose scheduling stored a date nothing
                     ever read. */}
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-line pt-2">
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                  <span className="inline-flex items-center gap-1 text-micro text-muted">
                     <Send className="h-3 w-3" /> Post to
                   </span>
                   {PLATFORMS.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => publish(c, p.id)}
-                      className="rounded-full border border-line px-2.5 py-0.5 text-[11px] text-muted transition hover:bg-surface hover:text-fg"
+                      className="rounded-full border border-line px-2.5 py-0.5 text-micro text-muted transition hover:bg-surface hover:text-fg"
                     >
                       {p.label}
                     </button>

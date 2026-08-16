@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { CommandPalette } from "@/components/CommandPalette";
+import { RouteTransition } from "@/components/RouteTransition";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -36,12 +37,14 @@ export default function RootLayout({
             anything. Visible only when focused. */}
         <a
           href="#main"
-          className="sr-only rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+          className="sr-only rounded-control bg-accent px-4 py-2 text-sm font-medium text-accent-fg focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
         >
           Skip to content
         </a>
         <Nav />
-        <main id="main" className="flex-1">{children}</main>
+        <main id="main" className="flex-1">
+          <RouteTransition>{children}</RouteTransition>
+        </main>
         <CommandPalette />
         <Toaster
           theme="dark"

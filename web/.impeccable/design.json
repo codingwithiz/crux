@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-16T12:00:00.000Z",
+  "title": "Design System: Crux",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(15.2% 0.008 264)",
+        "tonalRamp": ["#050609", "#0a0b0e", "#14151b", "#1c1e26", "#242732", "#2a2e3a", "#3a3f4d", "#9499a6"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Crux Amber",
+        "canonical": "oklch(80.6% 0.135 82)",
+        "tonalRamp": ["#2a1d06", "#4a340b", "#6d4c11", "#916418", "#b57e1f", "#d99b2c", "#f4b740", "#fbdf9c"]
+      },
+      "cool": {
+        "role": "secondary",
+        "displayName": "Recall Blue",
+        "canonical": "oklch(71.6% 0.115 274)",
+        "tonalRamp": ["#131829", "#1d2540", "#2a3559", "#3b4a75", "#4f6193", "#687bb4", "#8aa2ff", "#c3cfff"]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Editorial Paper",
+        "canonical": "oklch(95.2% 0.014 84)",
+        "tonalRamp": ["#1b1714", "#3b342d", "#5a5148", "#736c61", "#9d9689", "#c8c2b6", "#f4f0e8", "#fbf9f3"]
+      },
+      "marker": {
+        "role": "accent",
+        "displayName": "Highlighter",
+        "canonical": "oklch(91.4% 0.148 98)",
+        "tonalRamp": ["#332c07", "#55490c", "#786712", "#9c8618", "#c1a71f", "#e2c53a", "#fbe36b", "#fdf1b5"]
+      },
+      "success": { "role": "functional", "displayName": "Held", "canonical": "oklch(78.1% 0.145 163)", "tonalRamp": ["#062018", "#0a3a2b", "#0f5540", "#147156", "#1b8d6d", "#25ab85", "#34d399", "#8fecca"] },
+      "warning": { "role": "functional", "displayName": "Mixed", "canonical": "oklch(82.2% 0.147 79)", "tonalRamp": ["#2a1a02", "#4a2e05", "#6b430a", "#8d5910", "#b07118", "#d38f22", "#fbbf24", "#fddf95"] },
+      "danger": { "role": "functional", "displayName": "Broke", "canonical": "oklch(70.4% 0.163 22)", "tonalRamp": ["#2a0a0a", "#4a1414", "#6b1f1f", "#8d2c2c", "#b03d3d", "#d35353", "#f87171", "#fbb4b4"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "One per page. Newsreader serif — the page's own title or a hero headline." },
+      "title": { "displayName": "Title", "purpose": "Section heads, and the headline on a paper plate." },
+      "lead": { "displayName": "Lead", "purpose": "The single sentence under a page title. Not every paragraph." },
+      "body": { "displayName": "Body", "purpose": "Everything else. Bounded to a 65-75 character measure." },
+      "label": { "displayName": "Label", "purpose": "Mono, uppercase. Eyebrows that name a metric, a card type or a date — and data labels. Never texture." },
+      "micro": { "displayName": "Micro", "purpose": "The floor. Nothing in the app is smaller than this." }
+    },
+    "shadows": [
+      { "name": "raised", "value": "0 1px 0 0 #2a2e3a, 0 18px 40px -28px rgba(0,0,0,0.8)", "purpose": "A chrome panel pulled out of a stack — the one thing on a screen to see first." },
+      { "name": "hover", "value": "0 14px 34px -16px rgba(0,0,0,0.55)", "purpose": "Hover lift on an interactive card." },
+      { "name": "plate", "value": "0 1px 2px rgba(0,0,0,0.5), 0 24px 48px -20px rgba(0,0,0,0.75)", "purpose": "Paper resting on ink: a tight contact shadow plus a wide soft one. This pairing is what makes an artifact read as an object." },
+      { "name": "press", "value": "2px 2px 0 0 #1a1206", "purpose": "Letterpress. The page-level primary only — one control per screen. Collapses on :active." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Exponential deceleration. The default for every arrival and state change." },
+      { "name": "ease-emphasized", "value": "cubic-bezier(0.5, 0, 0.2, 1)", "purpose": "In-and-out, for height and collapse transitions." },
+      { "name": "ease-settle", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The stamp. Its overshoot lives in the keyframes, so the curve must not bounce it a second time." },
+      { "name": "dur-instant", "value": "110ms", "purpose": "Immediate feedback: press, toggle." },
+      { "name": "dur-fast", "value": "160ms", "purpose": "Hover and focus." },
+      { "name": "dur-base", "value": "260ms", "purpose": "Routine state change." },
+      { "name": "dur-slow", "value": "420ms", "purpose": "Layout, overlay, arrival." },
+      { "name": "dur-deliberate", "value": "700ms", "purpose": "The one authored moment per surface." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action on a screen. Carries the letterpress; nothing else does.",
+      "html": "<button class=\"ds-btn-primary\">Break it down →</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: var(--color-accent, #f4b740); color: var(--color-accent-fg, #1a1206); border: none; border-radius: var(--radius-control, 8px); padding: 10px 20px; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-weight: 500; box-shadow: 2px 2px 0 0 var(--color-accent-fg, #1a1206); transition: filter 160ms cubic-bezier(0.16,1,0.3,1), transform 110ms cubic-bezier(0.16,1,0.3,1); cursor: pointer; } .ds-btn-primary:hover { filter: brightness(1.1); } .ds-btn-primary:active { box-shadow: none; transform: translate(2px, 2px) scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-ring, #8aa2ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button — Unavailable",
+      "kind": "button",
+      "refersTo": "button-primary-inert",
+      "description": "A disabled primary drops to an outline. It never dims to muddy amber, which still reads as pressable.",
+      "html": "<button class=\"ds-btn-inert\" disabled>Break it down →</button>",
+      "css": ".ds-btn-inert { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--color-muted, #9499a6); border-radius: var(--radius-control, 8px); padding: 10px 20px; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--color-line, #2a2e3a); border: none; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A hairline outline. Row actions and anything that is not the screen's one decision.",
+      "html": "<button class=\"ds-btn-secondary\">Read source ↗</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--color-fg, #f3f4f6); border: 1px solid var(--color-line, #2a2e3a); border-radius: var(--radius-control, 8px); padding: 10px 20px; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-weight: 500; transition: border-color 160ms cubic-bezier(0.16,1,0.3,1), background 160ms cubic-bezier(0.16,1,0.3,1); cursor: pointer; } .ds-btn-secondary:hover { border-color: rgba(244,183,64,0.5); background: var(--color-surface, #14151b); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-ring, #8aa2ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Chrome. A panel the product puts around something. Never nested.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-label\">Today's pick</p><h3 class=\"ds-card-title\">A cheaper mixture-of-experts router</h3><p class=\"ds-card-body\">The router selects two of sixty-four experts per token.</p></div>",
+      "css": ".ds-card { background: rgba(20,21,27,0.4); color: var(--color-fg, #f3f4f6); border: 1px solid var(--color-line, #2a2e3a); border-radius: var(--radius-surface, 14px); padding: 16px; } .ds-card-label { margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--color-accent, #f4b740); } .ds-card-title { margin: 8px 0 0; font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 600; line-height: 1.15; letter-spacing: -0.015em; } .ds-card-body { margin: 8px 0 0; font-family: Geist, system-ui, sans-serif; font-size: 14px; line-height: 1.6; color: var(--color-muted, #9499a6); }"
+    },
+    {
+      "name": "Plate",
+      "kind": "custom",
+      "refersTo": "plate",
+      "description": "Paper. The user's own work — a take, a breakdown, a receipt, a deck. One per viewport.",
+      "html": "<div class=\"ds-plate\"><p class=\"ds-plate-label\">Your take · 2 Aug</p><h3 class=\"ds-plate-title\">Agents will <span class=\"ds-mark\">eat the dashboard</span>, not the database</h3><p class=\"ds-plate-body\">Every SaaS product is a table with opinions bolted on.</p></div>",
+      "css": ".ds-plate { position: relative; isolation: isolate; background-image: linear-gradient(160deg, #fbf9f3 0%, #f4f0e8 70%); color: #1b1714; border-radius: var(--radius-plate, 20px); padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 24px 48px -20px rgba(0,0,0,0.75); } .ds-plate-label { margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: #736c61; } .ds-plate-title { margin: 8px 0 0; font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 600; line-height: 1.15; letter-spacing: -0.015em; } .ds-plate-body { margin: 8px 0 0; font-family: Geist, system-ui, sans-serif; font-size: 14px; line-height: 1.6; color: #736c61; } .ds-mark { display: inline; background-image: linear-gradient(to bottom, transparent 10%, #fbe36b 10%, #fbe36b 92%, transparent 92%); background-repeat: no-repeat; color: #1b1714; padding-inline: 0.14em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "16px base dropping to 14px at sm and up — anything smaller triggers iOS zoom on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"you@email.com\" />",
+      "css": ".ds-input { width: 100%; background: var(--color-ink, #0a0b0e); color: var(--color-fg, #f3f4f6); border: 1px solid var(--color-line, #2a2e3a); border-radius: var(--radius-control, 8px); padding: 8px 12px; font-family: Geist, system-ui, sans-serif; font-size: 16px; outline: none; caret-color: var(--color-accent, #f4b740); transition: border-color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-input::placeholder { color: var(--color-muted, #9499a6); } .ds-input:focus { border-color: var(--color-accent, #f4b740); } @media (min-width: 640px) { .ds-input { font-size: 14px; } }"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Sticky, 56px, ink at 80% with a backdrop blur and one hairline beneath. The active item is a filled pill.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-mark\"></span><a class=\"ds-nav-link ds-nav-active\" href=\"#\">Today</a><a class=\"ds-nav-link\" href=\"#\">Explore</a><a class=\"ds-nav-link\" href=\"#\">Think</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 20px; background: rgba(10,11,14,0.8); backdrop-filter: blur(8px); border-bottom: 1px solid var(--color-line, #2a2e3a); } .ds-nav-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--color-accent, #f4b740); } .ds-nav-link { border-radius: var(--radius-control, 8px); padding: 6px 12px; font-family: Geist, system-ui, sans-serif; font-size: 14px; color: var(--color-muted, #9499a6); text-decoration: none; transition: background 160ms cubic-bezier(0.16,1,0.3,1), color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-nav-link:hover { background: var(--color-surface, #14151b); color: var(--color-fg, #f3f4f6); } .ds-nav-active { background: var(--color-surface, #14151b); color: var(--color-fg, #f3f4f6); } .ds-nav-link:focus-visible { outline: 2px solid var(--color-ring, #8aa2ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": null,
+      "description": "Filters and starters. Pill radius is the one exception to the three-radius rule.",
+      "html": "<button class=\"ds-chip ds-chip-on\">All</button><button class=\"ds-chip\">Revised</button>",
+      "css": ".ds-chip { border: 1px solid var(--color-line, #2a2e3a); background: transparent; border-radius: 999px; padding: 4px 12px; margin-right: 6px; font-family: Geist, system-ui, sans-serif; font-size: 12px; color: var(--color-muted, #9499a6); cursor: pointer; transition: border-color 160ms cubic-bezier(0.16,1,0.3,1), color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-chip:hover { border-color: rgba(138,162,255,0.5); color: var(--color-fg, #f3f4f6); } .ds-chip-on { background: var(--color-surface, #14151b); color: var(--color-fg, #f3f4f6); border-color: var(--color-line, #2a2e3a); } .ds-chip:focus-visible { outline: 2px solid var(--color-ring, #8aa2ff); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Ink and Paper",
+    "overview": "Crux exports genuinely editorial carousels — warm paper stock, grain, oversized serif headlines, marker highlights, hand-drawn underlines and arrows. For most of its life the application around that looked like every other dark AI dashboard, so the one thing that was distinctly its own lived only inside the artifact it produced.\n\nThe system has two materials and they are not a lightness ramp. Ink is chrome: navigation, forms, controls, panels. It is near-black, cool, flat, and it recedes — you should be able to stop seeing it. Paper is the user's own work: a take, a breakdown, a verified quote, a deck. It is warm, grained, raised, and it casts a real shadow. The values are lifted verbatim from lib/carousel/design.ts, so a take on screen and the slide it becomes are made of the same stock.\n\nThis is defensible because it is built from an asset only Crux has. A competitor can copy a gradient; they cannot copy the carousel engine. Restraint is what keeps it premium: one paper plate per viewport. Warmth everywhere reads as cosy, and a page of paper is just a page of cards again.",
+    "keyCharacteristics": [
+      "Two materials, ink and paper, never blended into one grey ramp",
+      "Editorial serif for anything that carries a point; sans for the interface; mono for measurement and labels",
+      "The carousel's print language — marker, squiggle, hand-drawn arrow, grain — is the accent vocabulary, used instead of adding more bordered rectangles",
+      "Letterpress rather than float: the page-level primary presses into the surface",
+      "One authored motion moment per surface; everything else is feedback",
+      "Dark-only, by decision, not by omission"
+    ],
+    "rules": [
+      { "name": "The Tinted Surface Rule", "body": "Secondary text on a coloured surface is tinted from that hue or from the surface's own foreground — never the neutral muted grey. Grey on an amber-tinted panel reads as a rendering mistake.", "section": "colors" },
+      { "name": "The Reserved Saturation Rule", "body": "Full saturation belongs to calls to action and status. Greys carry the rhythm. If two things on a screen are amber, one of them is wrong.", "section": "colors" },
+      { "name": "The Monospace Rule", "body": "Mono means code, data, or measurement. It is never a costume for \"technical\". A mono label that names a metric or a date is measurement and belongs; a mono label used for texture does not.", "section": "typography" },
+      { "name": "The Name-or-Delete Rule", "body": "An eyebrow above a heading stays only when it names something the heading does not — a metric, a card type, or a date. An eyebrow that decorates or restates the heading is deleted. This is a deliberate, narrow exception to the general guidance that eyebrows are always slop: the print language is genuinely Crux's, but only where the label carries information.", "section": "typography" },
+      { "name": "The Measure Rule", "body": "Body text sits at 65-75 characters. Left unbounded the pages ran past 90ch and read as documentation rather than product.", "section": "typography" },
+      { "name": "The Letterpress Rule", "body": "The page-level primary action carries a hard 2px offset shadow that collapses on :active. This is earned by the world — the world is print, and letterpress leaves an impression — but it is rationed to one control per screen. On every button in a row it stops meaning \"press me\" and becomes texture, which is exactly when a block shadow turns into a costume.", "section": "elevation" },
+      { "name": "The Contact Rule", "body": "Every shadow has an offset and a soft blur. A zero-offset coloured halo is decoration, not depth. The letterpress is the single, named exception.", "section": "elevation" },
+      { "name": "The Unavailable Rule", "body": "A disabled primary drops to an outline — transparent fill, muted text, a 1px ring — it does not dim. Amber at 50% opacity on near-black is a muddy olive that still reads as a filled, pressable button. A loading button is not unavailable: it keeps its fill and gains a spinner.", "section": "elevation" },
+      { "name": "The One Moment Rule", "body": "Each surface gets one authored sequence, chosen because something real is happening — understanding assembling, a take being stamped, a quote verifying. Everything else is feedback. An identical fade-and-rise on every section is not a motion thesis.", "section": "elevation" },
+      { "name": "The Reduced Motion Rule", "body": "Every animation has a prefers-reduced-motion path that reduces movement while keeping the meaning: opacity, colour, and state changes survive; spatial movement and sequencing do not. animation-delay is zeroed too, or a stagger still arrives a second apart.", "section": "elevation" },
+      { "name": "The Visible Default Rule", "body": "Content is rendered visible and armed by script, never hidden by default and revealed by script. A failed effect must not hide the page.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Plate for the user's work and Card for the product's chrome; keep it to one plate per viewport",
+      "Do keep an eyebrow only when it names a metric, a card type, or a date",
+      "Do ration the letterpress to the one page-level primary",
+      "Do tint secondary text on a coloured surface from that hue, never neutral grey",
+      "Do bound body text to 65-75 characters",
+      "Do give each surface exactly one authored motion moment, chosen because something real happened",
+      "Do theme the browser's own surfaces — caret, selection, scrollbars, focus ring, numerals",
+      "Do reach past transform and opacity: blur, mask, clip-path, and shadow are part of the motion palette",
+      "Do show the product's own measurement — the eval scores and the calibration curve — rather than asserting quality"
+    ],
+    "donts": [
+      "Don't use an eyebrow that decorates or restates the heading",
+      "Don't put the letterpress on row actions, secondary buttons, or more than one control per screen",
+      "Don't dim a disabled primary to muddy amber; drop it to an outline",
+      "Don't build a page out of a row of same-size icon-heading-text cards, and never nest cards",
+      "Don't use monospace as a costume for \"technical\" — only for code, data, or measurement",
+      "Don't add a second saturated accent to a screen that already has one",
+      "Don't use gradient text, or glass and blur as decoration rather than as a specific effect",
+      "Don't use emoji or Unicode glyphs as icons; icons are drawn SVGs from lucide-react",
+      "Don't use bounce or elastic easing",
+      "Don't animate a static area merely because it exists, and don't repeat one entrance on every section",
+      "Don't add a motion dependency for something CSS expresses cleanly"
+    ]
+  }
+}
