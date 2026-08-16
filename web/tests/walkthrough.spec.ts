@@ -105,7 +105,10 @@ test("the whole journey", async ({ page }) => {
   await page.waitForTimeout(700);
   await shot(page, "think-loading");
 
-  await page.getByText(/in plain english/i).waitFor({ timeout: 90_000 });
+  // "In plain English" was the old paper-plate label; the redesign folded the
+  // summary straight into the "What the sources say" section, so that heading
+  // is now the reliable signal the synthesis has landed.
+  await page.getByRole("heading", { name: /what the sources say/i }).waitFor({ timeout: 90_000 });
   await page.waitForTimeout(1500);
   await shot(page, "think-synthesis", { fullPage: true });
 
@@ -136,8 +139,11 @@ test("the whole journey", async ({ page }) => {
   await page.getByRole("button", { name: /talk it through/i }).click();
   await page.waitForTimeout(700);
   await shot(page, "think-coach-loading");
-  // Wait for the auto-seeded first assistant message.
-  await page.locator('div[class*="self-start"]').first().waitFor({ timeout: 60_000 }).catch(() => {});
+  // Wait for the auto-seeded first assistant message. Each turn (both yours
+  // and the instrument's) is an <article> now, not a `self-start`/`self-end`
+  // bubble — the 2nd article (index 1) is the first assistant reply, since
+  // the 1st is the auto-sent "My take: ..." seed.
+  await page.locator("article").nth(1).waitFor({ timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(3000);
   await shot(page, "think-coach-initial", { fullPage: true });
 
@@ -173,14 +179,18 @@ test("the whole journey", async ({ page }) => {
   await writeUp.click();
   await page.waitForTimeout(700);
   await shot(page, "think-commit-loading");
-  await page.getByText(/your take, in one sentence/i).waitFor({ timeout: 60_000 });
+  // "Your take, in one sentence" was the old commit-step label; the redesign
+  // renamed it to "Your crux" and moved confidence into its own section, so
+  // wait on that instead — unique to the fully-rendered commit step.
+  await page.getByRole("heading", { name: /^confidence$/i }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(1000);
   await shot(page, "think-commit-take", { fullPage: true });
 
-  // Pick a confidence level — Med, the honest choice for a debatable claim.
-  // The DOM text is lowercase "med" (Tailwind's capitalize is CSS-only,
-  // doesn't touch the text node) — a case-sensitive /^Med/ never matches.
-  await page.locator("button").filter({ hasText: /^med/i }).first().click();
+  // Pick a confidence level — the honest choice for a debatable claim. The
+  // redesign shows a percentage numeral plus a claim ("You lean"), not the
+  // literal word "med" anywhere in the button's text — match the accessible
+  // name (from its aria-label) instead.
+  await page.getByRole("button", { name: /you lean/i }).click();
   await page.waitForTimeout(300);
   await shot(page, "think-commit-confidence", { fullPage: true });
 
@@ -188,7 +198,7 @@ test("the whole journey", async ({ page }) => {
   // conversation through /api/commit-suggest, which sets showDepth true as
   // part of returning its draft, so the "+ Add detail" toggle is usually
   // already gone and the fields already visible. Only click it if it's there.
-  const addDetail = page.getByText(/add detail/i).first();
+  const addDetail = page.getByText(/add evidence/i).first();
   if (await addDetail.count()) {
     await addDetail.click();
     await page.waitForTimeout(300);
@@ -220,11 +230,17 @@ test("the whole journey", async ({ page }) => {
   await page.waitForURL(/\/studio/, { timeout: 60_000 });
   await page.waitForTimeout(800);
   await shot(page, "studio-loading");
-  await page.getByText(/^style$/i).waitFor({ timeout: 60_000 });
+  // The rail now has its own "Style" section heading alongside the deck-wide
+  // "Style" eyebrow (a plain span) — getByRole disambiguates by only matching
+  // the real <h2>, so this stays a single-element match.
+  await page.getByRole("heading", { name: /^style$/i }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(2000);
   await shot(page, "studio-generated", { fullPage: true });
 
-  // Pick a different design swatch.
+  // Pick a different design swatch. `.nth(2)` lands on the 3rd deck-wide
+  // swatch — the rail's per-slide override picker renders the same
+  // aria-pressed swatches but starts collapsed inside a closed <details>, so
+  // its buttons sort later in DOM order and don't shift this index.
   const designButtons = page.locator("button[aria-pressed]");
   const designCount = await designButtons.count();
   if (designCount > 1) {
@@ -235,6 +251,34 @@ test("the whole journey", async ({ page }) => {
 
   // The per-slide edit panel (right rail) as it stands after the style change.
   await shot(page, "studio-edit-panel", { fullPage: true });
+
+  // ---------- Redo the deck (direction rewrite) ----------
+  const directionInput = page.getByPlaceholder(/redo it, but/i);
+  await directionInput.click();
+  await page.getByRole("button", { name: /^punchier$/i }).click();
+  await shot(page, "studio-direction-typed", { fullPage: true });
+  await page.getByRole("button", { name: /^redo the deck$/i }).click();
+  await page.waitForTimeout(500);
+  await shot(page, "studio-redo-loading");
+  await page.getByText(/rewritten with your direction/i).waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(800);
+  await shot(page, "studio-redo-done", { fullPage: true });
+
+  // ---------- Rewrite in my voice ----------
+  const rewriteVoiceBtn = page.getByRole("button", { name: /rewrite in my voice/i });
+  await rewriteVoiceBtn.click();
+  await page.waitForTimeout(500);
+  await shot(page, "studio-revoice-loading");
+  await page.getByText(/rewritten in your voice/i).waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(800);
+  await shot(page, "studio-revoice-done", { fullPage: true });
+
+  // ---------- Visual module (statBars — "the visual bars") ----------
+  await page.getByLabel(/visual module/i).selectOption("statBars");
+  const fillingNotice = page.getByText(/generating relevant data/i);
+  if (await fillingNotice.count()) await fillingNotice.waitFor({ state: "hidden", timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(600);
+  await shot(page, "studio-visual-module", { fullPage: true });
 
   // Export menu. This trigger is a native <summary>/<details> disclosure, not
   // a <button> — Chromium reports its accessible role as "generic", so

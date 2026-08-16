@@ -954,7 +954,10 @@ export function CarouselStudio({
         </Section>
 
         <Section label="Visual module" className="mt-6">
+          {/* The heading above is visual only — nothing associated it with the
+              control, so the select had no accessible name of its own. */}
           <select
+            aria-label="Visual module"
             value={current.module?.type ?? "none"}
             onChange={(e) => void switchModule(e.target.value)}
             className="w-full rounded-control border border-line bg-ink px-3 py-2 text-base sm:text-small"

@@ -870,7 +870,7 @@ export function ConvictionFlow({
                     id="gut-take"
                     value={take}
                     onChange={setTake}
-                    placeholder="The one sentence you'd defend."
+                    placeholder="Your gut reaction — you'll get to defend it next."
                   />
                   <p className="mt-3 text-small text-paper-muted">
                     One sentence, in your words. You&rsquo;ll get to defend it next.
